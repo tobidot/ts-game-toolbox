@@ -16,8 +16,10 @@
   "license": "MIT",
   "scripts": {
     "test": "npx parcel ./test-src/index.html --out-dir ./test-dist/",
-    "tsc": "tsc",
-    "publish": "npm publish --access public"
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "publish": "yarn publish --access public --minor",
+    "release": "yarn run build && yarn run publish"
   },
   "devDependencies": {
     "@types/p5": "^0.9.1",

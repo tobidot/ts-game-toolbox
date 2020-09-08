@@ -42,11 +42,13 @@ export function register_tests() {
     };
 
     window.onerror = (message, source, lineno, colno, error) => {
-
         if (error instanceof Error) {
             console.error(error.name + ' : ' + error.message);
         } else {
             console.error(message);
         }
+        const source_file = source?.replace(window.location.origin, '');
+        const error_position = "[" + [lineno, colno].join(':') + "]";
+        // console.error([...new Array(4)].map(() => '=').join('') + source_file + error_position);
     }
 };

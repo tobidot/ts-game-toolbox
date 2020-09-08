@@ -31,6 +31,7 @@ export class QuadTreeTest extends TestClass {
 
     public test_remove_element_from_empty_quad_tree_throws_element_not_found() {
         const element = new DemoQuadElement<number>(0, 0, 0, 0, 10);
+        debugger;
         this.assert_exception(
             TreeElementNotFoundException,
             () => {

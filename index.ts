@@ -5,5 +5,5 @@ export var tools = {
     signals: {
         SignalSocket,
         ObservableSocket,
-    }
+    },
 };

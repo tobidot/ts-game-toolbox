@@ -1,4 +1,4 @@
-import { TestClassExceptionExpectedExcetpion } from "./ExceptionExpectedException";
+import { TestClassExceptionExpectedExcetpion } from "./exceptions/ExceptionExpectedException";
 
 type Printable<T> = { toString(): string };
 type Class<T> = { new(...args: any): T, name: string };
