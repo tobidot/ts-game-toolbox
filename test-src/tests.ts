@@ -40,4 +40,13 @@ export function register_tests() {
         }
         console.log(' ... Tests finished');
     };
+
+    window.onerror = (message, source, lineno, colno, error) => {
+
+        if (error instanceof Error) {
+            console.error(error.name + ' : ' + error.message);
+        } else {
+            console.error(message);
+        }
+    }
 };
