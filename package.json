@@ -1,6 +1,6 @@
 {
   "name": "@game.object/ts-game-toolbox",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -18,7 +18,7 @@
     "test": "npx parcel ./test-src/index.html --out-dir ./test-dist/",
     "build": "tsc",
     "watch": "tsc --watch",
-    "release": "yarn run build && yarn run publish"
+    "release": "yarn run build && yarn run publish --patch"
   },
   "devDependencies": {
     "@types/p5": "^0.9.1",
