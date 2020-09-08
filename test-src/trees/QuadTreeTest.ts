@@ -1,7 +1,7 @@
 import { TestClass } from "../../src/test-helpers/TestClass";
 import { QuadTree } from "../../src/trees/QuadTree";
 import { TreeElementNotFoundException } from "../../src/trees/exceptions/TreeElementNotFoundException";
-import { Rect, IRect } from "../../src/structs/Rect";
+import { Rect, IRect } from "../../src/geometry/Rect";
 
 export class QuadTreeTest extends TestClass {
 

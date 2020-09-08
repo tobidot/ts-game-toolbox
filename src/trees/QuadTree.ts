@@ -1,6 +1,6 @@
 import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundException";
 import p5 from "p5";
-import { IRect, Rect } from "../structs/Rect";
+import { IRect, Rect } from "../geometry/Rect";
 
 export class QuadTree<T extends IRect> {
     private root_branch: QuadTreeBranch<T>;
