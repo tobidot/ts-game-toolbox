@@ -1,0 +1,6 @@
+/node_modules
+/src
+/index.ts
+/test-dist
+/test-src
+.cache
