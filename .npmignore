@@ -1,6 +1,9 @@
+.cache
 /node_modules
+/.ts-config
+
 /src
 /index.ts
+
 /test-dist
 /test-src
-.cache
