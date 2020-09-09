@@ -1,6 +1,6 @@
 .cache
 /node_modules
-/.ts-config
+/tsconfig.json
 
 /src
 /index.ts

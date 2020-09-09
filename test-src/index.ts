@@ -1,5 +1,11 @@
-import { register_tests } from "./tests";
-import { stream_console_log_to_container } from "./stream_console_log";
+import { TestDashboard } from "../src/testing/TestDashboard";
+import { QuadTreeTest } from "./trees/QuadTreeTest";
 
-stream_console_log_to_container('test-console');
-register_tests();
+const element = document.getElementById('test-dashboard');
+if (!element) throw new Error('Element not found');
+const dashboard = new TestDashboard();
+element.append(dashboard.get_element());
+
+dashboard.add_test(
+    new QuadTreeTest(),
+);
