@@ -12,7 +12,7 @@ export class QuadTreeTest extends TestClass {
     public tree = new QuadTree<DemoQuadElement<number>>(this.base_rect);
 
     public get_name() {
-        return "quad_tree_test"
+        return "Quadtree Test"
     }
 
     public set_up() {

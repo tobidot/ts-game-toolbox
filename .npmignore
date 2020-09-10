@@ -4,6 +4,7 @@
 
 /src
 /index.ts
+*.map.js
 
 /test-dist
 /test-src

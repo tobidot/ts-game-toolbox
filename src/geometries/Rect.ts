@@ -9,6 +9,18 @@ export class Rect implements IRect {
 
     }
 
+    public get_bottom(): number {
+        return this.y + this.h;
+    }
+
+    public get_right(): number {
+        return this.x + this.w;
+    }
+
+    public get_area(): number {
+        return this.w * this.h;
+    }
+
     public contains(point: { x: number, y: number }): boolean;
     public contains(x: number, y: number): boolean;
     public contains(x: number | { x: number, y: number }, y?: number): boolean {
@@ -28,8 +40,10 @@ export class Rect implements IRect {
         return Rect.is_within(this, outer);
     }
 
-    // static
 
+    /**
+     * static
+     */
     public static contains(rect: IRect, x: number, y: number): boolean {
         return (x > rect.x && y > rect.y && x < rect.x + rect.w && y < rect.y + rect.h);
     }

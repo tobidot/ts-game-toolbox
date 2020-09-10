@@ -5,10 +5,15 @@ export class TestConsoleLogElement {
         this.container = this.create_element();
         this.hook_into_console_log();
         this.hook_into_console_error();
+        this.hook_into_window_error();
     }
 
     public get_element(): HTMLElement {
         return this.container;
+    }
+
+    public clear() {
+        this.container.innerHTML = "";
     }
 
     protected hook_into_console_log() {
@@ -39,6 +44,12 @@ export class TestConsoleLogElement {
         colno?: number,
         error?: Error
     ): any => {
+        if (event instanceof ErrorEvent) {
+            source = event.filename;
+            lineno = event.lineno;
+            colno = event.colno;
+            error = event.error;
+        }
         if (error instanceof Error) {
             console.error(error.name + ' : ' + error.message);
         } else {

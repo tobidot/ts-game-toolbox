@@ -1,5 +1,5 @@
-import { TestClass } from ".";
 import { TestConsoleLogElement } from "./TestConsoleLogElement";
+import { TestClass } from "./TestClass";
 
 interface TestDashboardElements {
     dashboard: HTMLElement,
@@ -50,6 +50,7 @@ export class TestDashboard {
 
     protected create_element_for_test_button(test: TestClass): HTMLElement {
         return this.create_element_button(test.get_name(), () => {
+            this.elements.console_log.clear();
             test.run_all_test_cases();
         });
     }
@@ -63,15 +64,21 @@ export class TestDashboard {
         return list_item;
     }
 
-    public add_test(test: TestClass): this {
-        this.tests.push(test);
-        if (this.elements) {
-            this.elements.button_list.append(this.create_element_for_test_button(test));
+    public add_test(tests: TestClass | TestClass[]): this {
+        if (!(tests instanceof Array)) {
+            tests = [tests];
         }
+        tests.forEach((test: TestClass) => {
+            this.tests.push(test);
+            if (this.elements) {
+                this.elements.button_list.append(this.create_element_for_test_button(test));
+            }
+        });
         return this;
     }
 
     public start_all_tests_func = () => {
+        this.elements.console_log.clear();
         console.log('Starting Tests ... ');
         for (const test of this.tests) {
             test.run_all_test_cases();
