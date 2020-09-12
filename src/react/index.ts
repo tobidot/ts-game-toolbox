@@ -1,5 +1,5 @@
-import { GameScreenComponent } from "./components/GameScreenComponent";
+import { GameScreen } from "./components/GameScreen";
 
 export var react = {
-    GameScreenComponent
+    GameScreen
 };

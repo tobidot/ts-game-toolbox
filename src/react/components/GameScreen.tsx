@@ -6,7 +6,7 @@ interface Props {
     container: ObservableSocket<HTMLDivElement | null>
 }
 
-export class GameScreenComponent extends React.PureComponent<Props> {
+export class GameScreen extends React.PureComponent<Props> {
     private game_screen_container = React.createRef<HTMLDivElement>();
 
     public componentDidMount() {
