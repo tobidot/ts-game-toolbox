@@ -1,6 +1,5 @@
-import { P5InstanceComponent } from "./components/P5InstanceComponent"
-// export * from "./components/P5InstanceComponent"
+import { GameScreenComponent } from "./components/GameScreenComponent";
 
 export var react = {
-    P5InstanceComponent
+    GameScreenComponent
 };
