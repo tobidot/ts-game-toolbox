@@ -1,6 +1,6 @@
 {
   "name": "@game.object/ts-game-toolbox",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -15,6 +15,7 @@
   "description": "A little toolbox of classes for some game development",
   "license": "MIT",
   "scripts": {
+    "tsc": "tsc --noEmit --watch",
     "test": "npx parcel ./test-src/index.html --out-dir ./test-dist/",
     "build": "tsc",
     "watch": "tsc --watch",
