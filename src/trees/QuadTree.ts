@@ -23,8 +23,50 @@ export class QuadTree<T extends IRect> {
         }
     }
 
+    /**
+     * First wrap the root in a branch that contains the root at the bottom right,
+     * then create a branch wich has that new branch in the bottom left, 
+     * like that the tree expands in all directions 
+     */
     public elevate_root_branch() {
-        throw new Error("not yet implemented");
+        const old_root_branch = this.root_branch;
+        const extend_top_left_rect = {
+            x: old_root_branch.x - old_root_branch.w,
+            y: old_root_branch.y - old_root_branch.h,
+            w: old_root_branch.w * 2,
+            h: old_root_branch.h * 2,
+        };
+        const extend_bottom_right_rect = {
+            x: extend_top_left_rect.x,
+            y: extend_top_left_rect.y,
+            w: extend_top_left_rect.w * 2,
+            h: extend_top_left_rect.h * 2,
+        };
+
+        this.wrap_root_node_in_node_with_rect(extend_top_left_rect, 2);
+        this.wrap_root_node_in_node_with_rect(extend_bottom_right_rect, 0);
+    }
+
+    public wrap_root_node_in_node_with_rect(rect: IRect, node_pos: 0 | 1 | 2 | 3) {
+        const wrapper_node = new QuadTreeBranch<T>(
+            rect.x,
+            rect.y,
+            rect.w,
+            rect.h,
+        );
+        wrapper_node.create_child_branches();
+        if (!wrapper_node.child_branch_nodes) throw new Error();
+        wrapper_node.child_branch_nodes[node_pos] = this.root_branch;
+        this.root_branch = wrapper_node;
+    }
+
+    public change_element(element: T, rect: IRect) {
+        this.remove(element);
+        element.x = rect.x;
+        element.y = rect.y;
+        element.w = rect.w;
+        element.h = rect.h;
+        this.add(element);
     }
 
     public remove(element: T) {
@@ -37,6 +79,9 @@ export class QuadTree<T extends IRect> {
         return this.root_branch.is_empty();
     }
 
+    public clear() {
+        this.root_branch.clear(8);
+    }
 
     public debug_draw(p: p5) {
         p.noFill();
@@ -94,7 +139,7 @@ export class QuadTreeBranch<T extends IRect> extends Rect {
 
     public pick(rect: IRect, result: Array<T> = []): Array<T> {
         if (!this.overlaps_with(rect)) return result;
-        result.push(...this.elements);
+        result.push(...this.elements.filter((element) => Rect.overlap(rect, element)));
         if (this.child_branch_nodes === null) return result;
         if (this.is_within(rect)) return this.pick_all(result);
         for (let branch of this.child_branch_nodes) {
@@ -136,6 +181,19 @@ export class QuadTreeBranch<T extends IRect> extends Rect {
 
     public is_self_empty(): boolean {
         return this.elements.length === 0;
+    }
+
+    public clear(max_levels_deep: number) {
+        this.elements.splice(0);
+        if (this.child_branch_nodes) {
+            if (max_levels_deep <= 0) {
+                this.child_branch_nodes = null;
+            } else {
+                this.child_branch_nodes.forEach((node) => {
+                    node.clear(max_levels_deep - 1);
+                })
+            }
+        }
     }
 
     public debug_draw(p: p5) {
