@@ -20,20 +20,8 @@ export class TestDashboard {
     }
 
     protected create_dashboard_elements(): TestDashboardElements {
-
-        const dashboard = document.createElement('div');
-        dashboard.className = 'test-dashboard';
-
-        const button_list = document.createElement('ul');
-        button_list.className = "test-dashboard__button-list";
-
-        const button_start_all = this.create_element_button('Run all tests', this.start_all_tests_func);
-        button_list.append(button_start_all);
-        this.tests.forEach((test: TestClass) => {
-            const button = this.create_element_for_test_button(test);
-            button_list.append(button);
-        });
-
+        const dashboard = this.create_dashboard_wrapping_element();
+        const button_list = this.create_test_button_list();
         const console_log = new TestConsoleLogElement();
 
         dashboard.append(button_list);
@@ -46,6 +34,25 @@ export class TestDashboard {
         };
 
         return this.elements;
+    }
+
+    protected create_dashboard_wrapping_element(): HTMLElement {
+        const dashboard = document.createElement('div');
+        dashboard.className = 'test-dashboard';
+        return dashboard;
+    }
+
+    protected create_test_button_list(): HTMLUListElement {
+        const button_list = document.createElement('ul');
+        button_list.className = "test-dashboard__button-list";
+
+        const button_start_all = this.create_element_button('Run all tests', this.start_all_tests_func);
+        button_list.append(button_start_all);
+        this.tests.forEach((test: TestClass) => {
+            const button = this.create_element_for_test_button(test);
+            button_list.append(button);
+        });
+        return button_list;
     }
 
     protected create_element_for_test_button(test: TestClass): HTMLElement {

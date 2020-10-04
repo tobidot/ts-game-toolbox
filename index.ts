@@ -5,6 +5,7 @@ import { geometries } from "./src/geometries/index";
 import { react } from "./src/react/index";
 import { testing } from "./src/testing/index";
 import { trees } from "./src/trees/index";
+import { abstract } from "./src/trees/index";
 
 // export * from "./src/signals/index";
 // export * from "./src/assets/index";
@@ -20,4 +21,5 @@ export var tools = {
     react,
     testing,
     trees,
+    abstract,
 };
