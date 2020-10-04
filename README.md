@@ -23,6 +23,10 @@ Several classes and implementations of tree-structure to store and access data.
 ### Signals
 Helpers to connect distant parts of the programs with events and signals
 
+### Abstract
+Will hold abstract programming paradigm related classes, 
+like the base classes for model view composer
+
 ### Test-Helpers
 Tools for a custom test-suite
 
