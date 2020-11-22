@@ -1,10 +1,23 @@
-import { Game } from "./Game";
-import { Model, View, Controller, ViewManager } from "./ModelViewComposer";
+import { Model } from "./mvc/Model";
+import { View } from "./mvc/View";
+import { Controller } from "./mvc/Controller";
+import { CanvasView } from "./mvc/CanvasView";
+import { ControllerEventConstructor } from "./mvc/helpers/ControllerEvent";
+import { MvcGame as MvcGame } from "./mvc/MVCgame";
+import { MvcCanvasGame } from "./mvc/MvcCanvasGame";
 
 export var abstract = {
-    Model,
-    View,
-    Controller,
-    ViewManager,
-    Game,
+    mvc: {
+        MvcGame,
+        MvcCanvasGame,
+        CanvasView,
+        Model,
+        View,
+        Controller,
+
+
+        helpers: {
+            ControllerEventConstructor
+        }
+    }
 };
