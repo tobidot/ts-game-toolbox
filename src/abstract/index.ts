@@ -14,10 +14,8 @@ export var abstract = {
         Model,
         View,
         Controller,
-
-
         helpers: {
             ControllerEventConstructor
-        }
-    }
+        },
+    },
 };

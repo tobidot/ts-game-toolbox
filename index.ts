@@ -6,6 +6,8 @@ import { react } from "./src/react/index";
 import { testing } from "./src/testing/index";
 import { trees } from "./src/trees/index";
 import { abstract } from "./src/abstract/index";
+import { data } from "./src/data";
+import { commons } from "./src/commons";
 
 // export * from "./src/signals/index";
 // export * from "./src/assets/index";
@@ -22,4 +24,6 @@ export var tools = {
     testing,
     trees,
     abstract,
+    data,
+    commons,
 };
