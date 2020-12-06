@@ -5,6 +5,7 @@ import { CanvasView } from "./mvc/CanvasView";
 import { ControllerEventConstructor } from "./mvc/helpers/ControllerEvent";
 import { MvcGame as MvcGame } from "./mvc/MVCgame";
 import { MvcCanvasGame } from "./mvc/MvcCanvasGame";
+import { ModelTable } from "./mvc/ModelTable";
 
 export var abstract = {
     mvc: {
@@ -12,6 +13,7 @@ export var abstract = {
         MvcCanvasGame,
         CanvasView,
         Model,
+        ModelTable,
         View,
         Controller,
         helpers: {
