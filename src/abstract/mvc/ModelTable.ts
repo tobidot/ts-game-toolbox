@@ -16,7 +16,16 @@ export class ModelTable<MODEL_COLLECTION extends ModelCollectionBase, MODEL exte
     }
 
     public insert_new(): MODEL {
-        return new this.model_class(this.model_collection);
+        return this.insert(new this.model_class(this.model_collection));
+    }
+
+    public insert(model: MODEL): MODEL {
+        this.models.push(model);
+        return model;
+    }
+
+    public delete(model: MODEL): void {
+        this.models = this.models.filter((current) => model !== current);
     }
 
     public all(): Array<MODEL> {
