@@ -1,14 +1,14 @@
 import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundException";
-import { IRect, Rect } from "../geometries/Rect";
+import { RectI, Rect } from "../geometries/Rect";
 
-export class QuadTree<T extends IRect> {
+export class QuadTree<T extends RectI> {
     private root_branch: QuadTreeBranch<T>;
 
-    constructor(base_rect: IRect) {
+    constructor(base_rect: RectI) {
         this.root_branch = new QuadTreeBranch<T>(base_rect.x, base_rect.y, base_rect.w, base_rect.h);
     }
 
-    public pick(rect: IRect): Array<T> {
+    public pick(rect: RectI): Array<T> {
         return this.root_branch.pick(rect);
     }
 
@@ -46,7 +46,7 @@ export class QuadTree<T extends IRect> {
         this.wrap_root_node_in_node_with_rect(extend_bottom_right_rect, 0);
     }
 
-    public wrap_root_node_in_node_with_rect(rect: IRect, node_pos: 0 | 1 | 2 | 3) {
+    public wrap_root_node_in_node_with_rect(rect: RectI, node_pos: 0 | 1 | 2 | 3) {
         const wrapper_node = new QuadTreeBranch<T>(
             rect.x,
             rect.y,
@@ -59,7 +59,7 @@ export class QuadTree<T extends IRect> {
         this.root_branch = wrapper_node;
     }
 
-    public change_element(element: T, rect: IRect) {
+    public change_element(element: T, rect: RectI) {
         this.remove(element);
         element.x = rect.x;
         element.y = rect.y;
@@ -83,7 +83,7 @@ export class QuadTree<T extends IRect> {
     }
 }
 
-export class QuadTreeBranch<T extends IRect> extends Rect {
+export class QuadTreeBranch<T extends RectI> extends Rect {
     public child_branch_nodes: [QuadTreeBranch<T>, QuadTreeBranch<T>, QuadTreeBranch<T>, QuadTreeBranch<T>] | null = null;
     public elements: Array<T> = [];
 
@@ -129,7 +129,7 @@ export class QuadTreeBranch<T extends IRect> extends Rect {
         ];
     }
 
-    public pick(rect: IRect, result: Array<T> = []): Array<T> {
+    public pick(rect: RectI, result: Array<T> = []): Array<T> {
         if (!this.overlaps_with(rect)) return result;
         result.push(...this.elements.filter((element) => Rect.overlap(rect, element)));
         if (this.child_branch_nodes === null) return result;

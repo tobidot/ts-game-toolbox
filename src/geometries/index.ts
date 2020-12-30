@@ -1,6 +1,7 @@
-import { Rect } from "./Rect";
-// export * from "./Rect";
+import {Rect} from "./Rect";
+import {Vector2} from "./Vector2";
 
 export var geometries = {
     Rect,
+    Vector2,
 };

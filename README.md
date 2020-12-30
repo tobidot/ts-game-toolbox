@@ -23,6 +23,16 @@ Tools to help with loading storing and retrieveng various types of assets.
 ### Geometry
 Contains classes and functions handling Geometric calculations
 
+The Geometric functions and classes assume a 2D-coordinate system,
+where -x is left +x is at the right -y is at the bottom and +y at the top.
+  
+|..|-y|..|  
+|-x|..|+x|  
+|..|+y|..|
+
+The angle of a vector will mostly be expected in radians (from 0 to +2Pi).
+With angle 0 the vector is pointing to the right. 
+
 ### Trees
 Several classes and implementations of tree-structure to store and access data.
 
