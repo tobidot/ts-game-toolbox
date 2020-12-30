@@ -1,5 +1,4 @@
 import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundException";
-import p5 from "p5";
 import { IRect, Rect } from "../geometries/Rect";
 
 export class QuadTree<T extends IRect> {
@@ -81,13 +80,6 @@ export class QuadTree<T extends IRect> {
 
     public clear() {
         this.root_branch.clear(8);
-    }
-
-    public debug_draw(p: p5) {
-        p.noFill();
-        p.stroke(255, 0, 255);
-        p.strokeWeight(2);
-        this.root_branch.debug_draw(p);
     }
 }
 
@@ -195,13 +187,4 @@ export class QuadTreeBranch<T extends IRect> extends Rect {
             }
         }
     }
-
-    public debug_draw(p: p5) {
-        if (this.child_branch_nodes === null) {
-            p.rect(this.x, this.y, this.w, this.h);
-        } else {
-            this.child_branch_nodes.forEach((branch) => branch.debug_draw(p));
-        }
-    }
-
 }

@@ -40,7 +40,7 @@ export abstract class TestClass {
 
     public assert_instance_of<T extends Printable<T>>(value: Printable<T>, expected: Class<T>): void {
         if (false === value instanceof expected) {
-            throw new Error('Expected ' + value?.toString() + ' to be of instance ' + expected.name);
+            throw new Error('Expected ' + value.toString() + ' to be of instance ' + expected.name);
         }
         this.success();
     }
