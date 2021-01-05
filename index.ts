@@ -9,13 +9,6 @@ import { abstract } from "./src/abstract/index";
 import { data } from "./src/data";
 import { commons } from "./src/commons";
 
-// export * from "./src/signals/index";
-// export * from "./src/assets/index";
-// export * from "./src/geometries/index";
-// export * from "./src/react/index";
-// export * from "./src/testing/index";
-// export * from "./src/trees/index";
-
 export var tools = {
     signals,
     assets,

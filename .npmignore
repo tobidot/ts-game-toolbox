@@ -1,8 +1,9 @@
 .cache
+.idea
 /node_modules
 /tsconfig.json
 
-/index.ts
-
+# only realy export the distributed files
+/src
 /test-dist
 /test-src
