@@ -1,6 +1,6 @@
 {
   "name": "@game.object/ts-game-toolbox",
-  "version": "2.3.8",
+  "version": "2.3.9",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
