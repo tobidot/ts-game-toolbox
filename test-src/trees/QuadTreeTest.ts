@@ -1,12 +1,12 @@
 import { TestClass } from "../../src/testing/TestClass";
 import { QuadTree } from "../../src/trees/QuadTree";
 import { TreeElementNotFoundException } from "../../src/trees/exceptions/TreeElementNotFoundException";
-import { Rect, IRect } from "../../src/geometries/Rect";
+import { Rect, RectI } from "../../src/geometries/Rect";
 
 export class QuadTreeTest extends TestClass {
 
 
-    public base_rect: IRect = {
+    public base_rect: RectI = {
         x: -50, y: -50, w: 100, h: 100,
     };
     public tree = new QuadTree<DemoQuadElement<number>>(this.base_rect);
@@ -56,7 +56,7 @@ export class QuadTreeTest extends TestClass {
     }
 
     public test_quad_tree_pick_returns_empty_array() {
-        const rect: IRect = { x: 0, y: 0, w: 500, h: 500 };
+        const rect: RectI = { x: 0, y: 0, w: 500, h: 500 };
         const result: Array<DemoQuadElement<number>> = this.tree.pick(rect);
         this.assert_true(result.length === 0);
     }

@@ -1,6 +1,6 @@
 {
   "name": "@game.object/ts-game-toolbox",
-  "version": "2.3.9",
+  "version": "3.1.0",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -22,21 +22,11 @@
     "release": "yarn run build; yarn publish --patch"
   },
   "devDependencies": {
-    "@types/p5": "^0.9.1",
     "@types/parcel-env": "^0.0.0",
-    "@types/react": "^16.9.46",
-    "@types/react-dom": "^16.9.8",
-    "@types/semantic-ui": "^2.2.7",
     "parcel": "^1.12.4",
     "typescript": "^4.0.2"
   },
-  "dependencies": {
-    "p5": "^1.1.9",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "semantic-ui-css": "^2.4.1",
-    "semantic-ui-react": "^1.2.1"
-  },
+  "dependencies": {},
   "bugs": {
     "url": "https://github.com/tobidot/ts-game-toolbox/issues"
   },
