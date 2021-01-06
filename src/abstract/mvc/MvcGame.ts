@@ -28,8 +28,7 @@ export class MvcGame {
         this.ingame_time_in_seconds += delta_seconds;
         if (!this.active_controller) return;
         if (!this.active_controller.update) return;
-        const response = update_controller_response({}, this.active_controller.update(delta_seconds));
-        this.apply_controller_response(response);
+        this.apply_controller_response(this.active_controller.update(delta_seconds));
         this.handle_events();
     }
 
@@ -40,22 +39,22 @@ export class MvcGame {
             if (event.fire_at && event.fire_at >= this.ingame_time_in_seconds) return true;
             if (!this.active_controller) return false;
             if (!this.active_controller.dispatch_event) return false;
-            const response = update_controller_response({}, this.active_controller.dispatch_event(event));
-            this.apply_controller_response(response);
+            this.apply_controller_response(this.active_controller.dispatch_event(event));
             return false;
         });
         this.event_queue = [...event_queue_buffer, ...this.event_queue];
     }
 
-    public apply_controller_response(response: ControllerRouteResponseType) {
-        if (response.view !== undefined) {
-            this.set_active_view(response.view);
+    public apply_controller_response(response: ControllerRouteResponse) {
+        const response_struct: ControllerRouteResponseType = update_controller_response({}, response);
+        if (response_struct.view !== undefined) {
+            this.set_active_view(response_struct.view);
         }
-        if (response.controller !== undefined) {
-            this.set_active_controller(response.controller);
+        if (response_struct.controller !== undefined) {
+            this.set_active_controller(response_struct.controller);
         }
-        if (response.events !== undefined) {
-            this.event_queue.push(...response.events);
+        if (response_struct.events !== undefined) {
+            this.event_queue.push(...response_struct.events);
         }
     }
 

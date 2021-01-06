@@ -6,6 +6,9 @@ import { ControllerEventConstructor } from "./mvc/helpers/ControllerEvent";
 import { MvcGame as MvcGame } from "./mvc/MVCgame";
 import { MvcCanvasGame } from "./mvc/MvcCanvasGame";
 import { ModelTable } from "./mvc/ModelTable";
+import { update_controller_response } from "./mvc/helpers/ControllerResponse";
+import { PromiseController } from "./mvc/controllers/PromiseController";
+
 
 export var abstract = {
     mvc: {
@@ -17,7 +20,11 @@ export var abstract = {
         View,
         Controller,
         helpers: {
-            ControllerEventConstructor
+            ControllerEventConstructor,
+            update_controller_response,
+        },
+        controllers: {
+            PromiseController
         },
     },
 };
