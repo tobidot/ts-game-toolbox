@@ -4,6 +4,6 @@
 /tsconfig.json
 
 # only realy export the distributed files
-/src
+# /src # Src is necessary, for parcel
 /test-dist
 /test-src

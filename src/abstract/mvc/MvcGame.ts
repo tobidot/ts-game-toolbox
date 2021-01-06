@@ -1,6 +1,7 @@
 import { EventControllerInterface, is_controller_interface, is_event_controller_interface } from "./Controller";
 import { ControllerEvent, is_controller_event } from "./ControllerEvent";
-import { ControllerRouteResponse } from "./ControllerRouteResponse";
+import { ControllerRouteResponse, ControllerRouteResponseType } from "./ControllerRouteResponse";
+import { update_controller_response } from "./helpers/ControllerResponse";
 import { is_view_interface, ViewInterface } from "./View";
 
 
@@ -27,7 +28,8 @@ export class MvcGame {
         this.ingame_time_in_seconds += delta_seconds;
         if (!this.active_controller) return;
         if (!this.active_controller.update) return;
-        this.apply_controller_response(this.active_controller.update(delta_seconds));
+        const response = update_controller_response({}, this.active_controller.update(delta_seconds));
+        this.apply_controller_response(response);
         this.handle_events();
     }
 
@@ -38,17 +40,14 @@ export class MvcGame {
             if (event.fire_at && event.fire_at >= this.ingame_time_in_seconds) return true;
             if (!this.active_controller) return false;
             if (!this.active_controller.dispatch_event) return false;
-            this.apply_controller_response(this.active_controller.dispatch_event(event));
+            const response = update_controller_response({}, this.active_controller.dispatch_event(event));
+            this.apply_controller_response(response);
             return false;
         });
         this.event_queue = [...event_queue_buffer, ...this.event_queue];
     }
 
-    public apply_controller_response(response: ControllerRouteResponse) {
-        if (response === null) return;
-        if (is_view_interface(response)) return this.set_active_view(response);
-        if (is_event_controller_interface(response)) return this.set_active_controller(response);
-        if (is_controller_event(response)) return this.event_queue.push(response);
+    public apply_controller_response(response: ControllerRouteResponseType) {
         if (response.view !== undefined) {
             this.set_active_view(response.view);
         }
