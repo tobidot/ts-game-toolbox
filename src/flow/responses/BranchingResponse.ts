@@ -2,7 +2,7 @@
  * Callback type for the Branching Response
  */
 export type BranchingResponseCallback<RESPONSE, PARAMETERS> =
-    (params: PARAMETERS, previous: RESPONSE | null) => RESPONSE | null;
+    (params: PARAMETERS, previous: RESPONSE) => RESPONSE;
 
 /**
  * @class BranchingResponse
@@ -23,10 +23,10 @@ export type BranchingResponseCallback<RESPONSE, PARAMETERS> =
  *      .do_on_match(()=>0, "negative");
  */
 export class BranchingResponse<RESPONSE, STATES, PARAMETERS> {
-    public response: RESPONSE | null = null;
     public constructor(
         private state: STATES,
-        private params: PARAMETERS
+        private params: PARAMETERS,
+        public response: RESPONSE,
     ) { }
     public do_on_match(callback: BranchingResponseCallback<RESPONSE, PARAMETERS>, state: STATES): this {
         if (state === this.state) return this;
