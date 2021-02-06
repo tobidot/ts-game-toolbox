@@ -7,6 +7,7 @@ import { trees } from "./src/trees";
 import { abstract } from "./src/abstract";
 import { data } from "./src/data";
 import { commons } from "./src/commons";
+import { flow } from "./src/flow";
 
 export var tools = {
     signals,
@@ -17,4 +18,5 @@ export var tools = {
     abstract,
     data,
     commons,
+    flow,
 };
