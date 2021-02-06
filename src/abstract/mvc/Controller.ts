@@ -31,7 +31,7 @@ export interface EventControllerInterface {
     mouse_pressed?: (event: MouseEvent, canvas_x: number, canvas_y: number) => ControllerRouteResponse;
     mouse_moved?: (event: MouseEvent, canvas_x: number, canvas_y: number) => ControllerRouteResponse;
     update?: (delta_seconds: number) => ControllerRouteResponse;
-    dispatch_event?: (event: ControllerEvent) => ControllerRouteResponse;
+    custom_event?: (event: ControllerEvent) => ControllerRouteResponse;
 }
 
 export function is_event_controller_interface(controller: any): controller is EventControllerInterface {

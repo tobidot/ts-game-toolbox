@@ -38,8 +38,8 @@ export class MvcGame {
         event_queue_buffer = event_queue_buffer.filter((event) => {
             if (event.fire_at && event.fire_at >= this.ingame_time_in_seconds) return true;
             if (!this.active_controller) return false;
-            if (!this.active_controller.dispatch_event) return false;
-            this.apply_controller_response(this.active_controller.dispatch_event(event));
+            if (!this.active_controller.custom_event) return false;
+            this.apply_controller_response(this.active_controller.custom_event(event));
             return false;
         });
         this.event_queue = [...event_queue_buffer, ...this.event_queue];
