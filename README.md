@@ -47,6 +47,8 @@ like the base classes for model view composer
 Tools for a custom test-suite
 
 ## Quick Version Log
+- 4.0.0 
+  - Major restructuring of the mvc part
 - 3.0.0 
   - Cut the Dependencies to react and p5
 - 2.0.0 
