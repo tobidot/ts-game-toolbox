@@ -1,8 +1,8 @@
-import { EventControllerInterface, is_controller_interface, is_event_controller_interface } from "./Controller";
-import { ControllerEvent, is_controller_event } from "./ControllerEvent";
-import { ControllerRouteResponse, ControllerRouteResponseType } from "./ControllerRouteResponse";
+import { EventControllerInterface, is_controller_interface, is_event_controller_interface } from "./controllers/Controller";
+import { ControllerRouteResponse, ControllerRouteResponseType } from "./controllers/ControllerRouteResponse";
+import { ControllerEvent, is_controller_event } from "./events/ControllerEvent";
 import { update_controller_response } from "./helpers/ControllerResponse";
-import { is_view_interface, ViewInterface } from "./View";
+import { is_view_interface, ViewInterface } from "./views/View";
 
 
 /**

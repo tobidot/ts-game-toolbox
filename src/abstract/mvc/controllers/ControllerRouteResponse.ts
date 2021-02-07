@@ -1,6 +1,6 @@
+import { ControllerEvent } from "../events/ControllerEvent";
+import { ViewInterface } from "../views/View";
 import { EventControllerInterface } from "./Controller";
-import { ControllerEvent } from "./ControllerEvent";
-import { ViewInterface } from "./View";
 
 export type ControllerRouteResponse = null | ViewInterface | EventControllerInterface | ControllerEvent | ControllerRouteResponseType;
 

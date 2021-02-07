@@ -1,7 +1,7 @@
-import { is_event_controller_interface } from "../Controller";
-import { is_controller_event } from "../ControllerEvent";
-import { ControllerRouteResponseType, ControllerRouteResponse } from "../ControllerRouteResponse";
-import { is_view_interface } from "../View";
+import { is_event_controller_interface } from "../controllers/Controller";
+import { ControllerRouteResponseType, ControllerRouteResponse } from "../controllers/ControllerRouteResponse";
+import { is_controller_event } from "../events/ControllerEvent";
+import { is_view_interface } from "../views/View";
 
 
 export function update_controller_response<T extends ControllerRouteResponseType>(base: T, response: ControllerRouteResponse): T {

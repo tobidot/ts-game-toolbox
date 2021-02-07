@@ -1,4 +1,4 @@
-import { ModelCollectionBase } from "./Collections";
+import { ModelCollectionBase } from "../Collections";
 
 export interface ModelInterface {
 

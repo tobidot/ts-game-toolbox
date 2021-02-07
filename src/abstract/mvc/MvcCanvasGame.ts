@@ -1,4 +1,4 @@
-import { ControllerRouteResponse } from "./ControllerRouteResponse";
+import { ControllerRouteResponse } from "./controllers/ControllerRouteResponse";
 import { MvcGame } from "./MvcGame";
 
 export abstract class MvcCanvasGame<MODELS, VIEWS, CONTROLLERS> extends MvcGame {

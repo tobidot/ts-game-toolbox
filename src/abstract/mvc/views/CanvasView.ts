@@ -1,4 +1,4 @@
-import { ViewCollectionBase } from "./Collections";
+import { ViewCollectionBase } from "../Collections";
 import { View } from "./View";
 
 export class CanvasView<COLLECTION extends ViewCollectionBase> extends View<COLLECTION> {

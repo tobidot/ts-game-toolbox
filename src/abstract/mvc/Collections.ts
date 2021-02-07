@@ -1,7 +1,7 @@
 import { CollectionTree } from "../../trees/Collection";
-import { ControllerInterface } from "./Controller";
-import { ModelInterface } from "./Model";
-import { ViewInterface } from "./View";
+import { ControllerInterface } from "./controllers/Controller";
+import { ModelInterface } from "./models/Model";
+import { ViewInterface } from "./views/View";
 
 export interface ModelCollectionBase extends CollectionTree<ModelInterface> { }
 export interface ViewCollectionBase extends CollectionTree<ViewInterface> { }

@@ -1,4 +1,4 @@
-import { ModelCollectionBase } from "./Collections";
+import { ModelCollectionBase } from "../Collections";
 import { ModelInterface } from "./Model";
 
 interface ModelClass<MODEL_COLLECTION extends ModelCollectionBase, MODEL> {

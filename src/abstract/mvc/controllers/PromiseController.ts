@@ -1,8 +1,8 @@
-import { EventControllerInterface, ControllerInterface } from "../Controller";
-import { ControllerEvent } from "../ControllerEvent";
-import { ControllerRouteResponseType, ControllerRouteResponse } from "../ControllerRouteResponse";
+import { EventControllerInterface, ControllerInterface } from "./Controller";
+import { ControllerEvent } from "../events/ControllerEvent";
 import { update_controller_response } from "../helpers/ControllerResponse";
-import { ViewInterface } from "../View";
+import { ViewInterface } from "../views/View";
+import { ControllerRouteResponseType, ControllerRouteResponse } from "./ControllerRouteResponse";
 
 
 export interface PromisableController {

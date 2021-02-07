@@ -1,5 +1,5 @@
-import { ControllerCollectionBase, ModelCollectionBase, ViewCollectionBase } from "./Collections";
-import { ControllerEvent } from "./ControllerEvent";
+import { ControllerCollectionBase, ModelCollectionBase, ViewCollectionBase } from "../Collections";
+import { ControllerEvent } from "../events/ControllerEvent";
 import { ControllerRouteResponse, ControllerRouteResponseType } from "./ControllerRouteResponse";
 
 export interface ControllerInterface {

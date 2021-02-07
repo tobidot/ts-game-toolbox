@@ -1,4 +1,4 @@
-import { ViewCollectionBase } from "./Collections";
+import { ViewCollectionBase } from "../Collections";
 
 export interface ViewInterface {
     update: (() => void) | null;

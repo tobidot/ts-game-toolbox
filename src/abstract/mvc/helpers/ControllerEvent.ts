@@ -1,4 +1,4 @@
-import { ControllerEvent } from "../ControllerEvent";
+import { ControllerEvent } from "../events/ControllerEvent";
 interface TimeProvider {
     ingame_time_in_seconds: number
 }
