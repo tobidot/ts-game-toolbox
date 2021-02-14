@@ -9,7 +9,7 @@ import { ModelTable } from "./mvc/models/ModelTable";
 import { update_controller_response } from "./mvc/helpers/ControllerResponse";
 import { PromiseController } from "./mvc/controllers/PromiseController";
 import { is_specific_controller_event, is_controller_event } from "./mvc/events/ControllerEvent";
-import { UserInterfaceModelAdapter } from "./mvc/adapters/UserInterfaceModelAdapter";
+import { UserInterfaceModelAdapter } from "./mvc/models/adapters/UserInterfaceModelAdapter";
 
 
 export var abstract = {
@@ -22,6 +22,9 @@ export var abstract = {
         models: {
             Model,
             ModelTable,
+            adapters: {
+                UserInterfaceModelAdapter,
+            },
         },
         views: {
             CanvasView,
@@ -30,9 +33,6 @@ export var abstract = {
         controllers: {
             Controller,
             PromiseController
-        },
-        adapters: {
-            UserInterfaceModelAdapter,
         },
         events: {
             ControllerEventConstructor,
