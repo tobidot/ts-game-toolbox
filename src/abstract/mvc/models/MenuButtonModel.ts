@@ -5,7 +5,7 @@ import { ModelCollectionBase } from "../Collections";
 import { UserInterfaceAdaptable } from "./adapters/UserInterfaceModelAdapter";
 import { Model } from "./Model";
 
-export abstract class MenuButtonModel<MODEL_COLLECTION extends ModelCollectionBase, UI_ACTION>
+export class MenuButtonModel<MODEL_COLLECTION extends ModelCollectionBase, UI_ACTION>
     extends Model<MODEL_COLLECTION>
     implements UserInterfaceAdaptable<UI_ACTION>
 {
