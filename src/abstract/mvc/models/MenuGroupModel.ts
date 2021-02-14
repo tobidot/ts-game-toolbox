@@ -50,7 +50,7 @@ type MenuButtonModelModelTable<UI_ACTION> = ModelTable<
 
 type MenuGroupModelModelTable<UI_ACTION> = ModelTable<
     ModelCollectionBaseWithMenuItems<UI_ACTION>,
-    MenuButtonModel<ModelCollectionBaseWithMenuItems<UI_ACTION>, UI_ACTION>
+    MenuGroupModel<ModelCollectionBaseWithMenuItems<UI_ACTION>, UI_ACTION>
 >;
 
 type ModelCollectionBaseWithMenuItems<UI_ACTION> = ModelCollectionBase & {

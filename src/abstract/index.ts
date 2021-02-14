@@ -10,6 +10,10 @@ import { update_controller_response } from "./mvc/helpers/ControllerResponse";
 import { PromiseController } from "./mvc/controllers/PromiseController";
 import { is_specific_controller_event, is_controller_event } from "./mvc/events/ControllerEvent";
 import { UserInterfaceModelAdapter } from "./mvc/models/adapters/UserInterfaceModelAdapter";
+import { MenuButtonModel } from "./mvc/models/MenuButtonModel";
+import { MenuGroupModel } from "./mvc/models/MenuGroupModel";
+
+
 
 
 export var abstract = {
@@ -22,6 +26,8 @@ export var abstract = {
         models: {
             Model,
             ModelTable,
+            MenuButtonModel,
+            MenuGroupModel,
             adapters: {
                 UserInterfaceModelAdapter,
             },
