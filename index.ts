@@ -8,8 +8,10 @@ import { abstract } from "./src/abstract";
 import { data } from "./src/data";
 import { commons } from "./src/commons";
 import { flow } from "./src/flow";
+import { dom } from "./src/dom";
 
 export var tools = {
+    dom,
     signals,
     assets,
     geometries,

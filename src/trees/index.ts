@@ -3,7 +3,7 @@ import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundEx
 export * from "./QuadTree";
 export * from "./exceptions/TreeElementNotFoundException";
 
-export var trees = {
+export const trees = {
     exceptions: {
         TreeElementNotFoundException,
     },
