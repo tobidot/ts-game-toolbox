@@ -1,6 +1,6 @@
 {
   "name": "@game.object/ts-game-toolbox",
-  "version": "4.0.12",
+  "version": "4.0.13",
   "main": "dist/index.js",
   "files": [
     "./dist/**/*"
