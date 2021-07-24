@@ -1,8 +1,4 @@
-// export * from "./TestClass"
-import { TestClass } from "./TestClass"
-import { TestDashboard } from "./TestDashboard";
-
-export var testing = {
-    TestClass,
-    TestDashboard,
-};
+export * from "./TestClass";
+export * from "./TestConsoleLogElement";
+export * from "./TestDashboard";
+export * from "./exceptions/ExceptionExpectedException";

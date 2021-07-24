@@ -1,8 +1,7 @@
-import { tools } from "../../../index";
+import * as tools from "../../../index";
 import { RgbColor } from "../../../data/RgbColor";
 import { Rect } from "../../../geometries/Rect";
 import { CollectionTree } from "../../../trees/Collection";
-import { ModelCollectionBase } from "../Collections";
 import { UserInterfaceAdaptable } from "./adapters/UserInterfaceModelAdapter";
 import { Model } from "./Model";
 
@@ -11,8 +10,8 @@ export class MenuButtonModel<UI_ACTION>
     implements UserInterfaceAdaptable<UI_ACTION>
 {
     // graphics
-    public background: RgbColor = tools.commons.Colors.BLUE;
-    public foreground: RgbColor = tools.commons.Colors.WHITE;
+    public background: RgbColor = tools.Colors.BLUE;
+    public foreground: RgbColor = tools.Colors.WHITE;
     public is_visible: boolean = true;
     public title: string = "Menu";
     // logic

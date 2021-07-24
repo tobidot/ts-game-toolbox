@@ -11,3 +11,9 @@ dashboard.add_test([
     new QuadTreeTest(),
     new RectTest(),
 ]);
+
+
+import * as flow from "../src/flow";
+
+let x: flow.Class<number>;
+let y: flow.Class<number>;

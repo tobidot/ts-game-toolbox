@@ -1,7 +1,2 @@
-import { RgbColor } from "./RgbColor"
+export * from "./RgbColor"
 
-
-
-export var data = {
-    RgbColor
-};
