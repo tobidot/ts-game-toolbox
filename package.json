@@ -1,7 +1,10 @@
 {
   "name": "@game.object/ts-game-toolbox",
-  "version": "4.0.11",
+  "version": "4.0.12",
   "main": "dist/index.js",
+  "files": [
+    "./dist/**/*"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tobidot/ts-game-toolbox.git"
@@ -16,14 +19,23 @@
   "license": "MIT",
   "scripts": {
     "tsc": "tsc --noEmit --watch",
-    "test": "npx parcel ./test-src/index.html --out-dir ./test-dist/",
+    "test-ex": "npx parcel ./test-src/index.html --out-dir ./test-dist/",
+    "test": "mocha -r ts-node/register src/**/*.test.ts",
     "build": "tsc",
     "watch": "tsc --watch",
-    "release": "yarn run build; yarn publish --patch"
+    "release": "yarn run build; yarn publish --patch",
+    "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
+    "lint": "tslint -p tsconfig.json"
   },
   "devDependencies": {
+    "@types/mocha": "^9.0.0",
     "@types/parcel-env": "^0.0.0",
+    "mocha": "^9.0.2",
     "parcel": "^1.12.4",
+    "prettier": "^2.3.2",
+    "ts-node": "^10.1.0",
+    "tslint": "^6.1.3",
+    "tslint-config-prettier": "^1.18.0",
     "typescript": "^4.0.2"
   },
   "dependencies": {},
