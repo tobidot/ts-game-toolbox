@@ -1,4 +1,4 @@
-import { tools } from "../../../../index";
+import { tools } from "../../../index";
 import { RgbColor } from "../../../data/RgbColor";
 import { Rect } from "../../../geometries/Rect";
 import { CollectionTree } from "../../../trees/Collection";

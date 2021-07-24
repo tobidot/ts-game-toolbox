@@ -78,10 +78,5 @@
   },
   "include": [
     "src"
-  ], 
-  "exclude": [
-    "node_modules",
-    "test-dist",
-    "test-src",
   ]
 }
