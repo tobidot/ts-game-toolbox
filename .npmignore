@@ -1,9 +1,0 @@
-.cache
-.idea
-/node_modules
-/tsconfig.json
-
-# only realy export the distributed files
-# /src # Src is necessary, for parcel
-/test-dist
-/test-src
