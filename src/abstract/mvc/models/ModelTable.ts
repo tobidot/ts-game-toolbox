@@ -5,12 +5,18 @@ interface ModelClass<MODEL_COLLECTION extends ModelCollectionBase, MODEL> {
     new(collection: MODEL_COLLECTION): MODEL
 }
 
-export class ModelTable<MODEL_COLLECTION extends ModelCollectionBase, MODEL extends ModelInterface> {
-    protected models: Array<MODEL> = [];
-    protected model_collection: MODEL_COLLECTION;
-    protected model_class: ModelClass<MODEL_COLLECTION, MODEL>;
+type ModelCollection<MODEL extends ModelInterface, TABLE_NAME extends string>
+    = Record<TABLE_NAME, ModelTable<MODEL, TABLE_NAME>>;
 
-    public constructor(model_collection: MODEL_COLLECTION, model_class: ModelClass<MODEL_COLLECTION, MODEL>) {
+export class ModelTable
+    <MODEL extends ModelInterface
+    , TABLE_NAME extends string
+    > {
+    protected models: Array<MODEL> = [];
+    protected model_collection: ModelCollection<MODEL, TABLE_NAME>;
+    protected model_class: ModelClass<ModelCollection<MODEL, TABLE_NAME>, MODEL>;
+
+    public constructor(model_collection: ModelCollection<MODEL, TABLE_NAME>, model_class: ModelClass<ModelCollection<MODEL, TABLE_NAME>, MODEL>) {
         this.model_collection = model_collection;
         this.model_class = model_class;
     }

@@ -1,12 +1,13 @@
 import { tools } from "../../../../index";
 import { RgbColor } from "../../../data/RgbColor";
 import { Rect } from "../../../geometries/Rect";
+import { CollectionTree } from "../../../trees/Collection";
 import { ModelCollectionBase } from "../Collections";
 import { UserInterfaceAdaptable } from "./adapters/UserInterfaceModelAdapter";
 import { Model } from "./Model";
 
-export class MenuButtonModel<MODEL_COLLECTION extends ModelCollectionBase, UI_ACTION>
-    extends Model<MODEL_COLLECTION>
+export class MenuButtonModel<UI_ACTION>
+    extends Model<{ menu_buttons: CollectionTree<MenuButtonModel<UI_ACTION>> }>
     implements UserInterfaceAdaptable<UI_ACTION>
 {
     // graphics

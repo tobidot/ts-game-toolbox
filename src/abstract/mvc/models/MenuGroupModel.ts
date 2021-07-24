@@ -1,6 +1,7 @@
 import { tools } from "../../../../index";
 import { RgbColor } from "../../../data/RgbColor";
 import { Rect } from "../../../geometries/Rect";
+import { CollectionTree } from "../../../trees/Collection";
 import { ModelCollectionBase } from "../Collections";
 import { UserInterfaceAdaptable } from "./adapters/UserInterfaceModelAdapter";
 import { MenuButtonModel } from "./MenuButtonModel";
@@ -8,11 +9,8 @@ import { Model } from "./Model";
 import { ModelTable } from "./ModelTable";
 
 
-export class MenuGroupModel
-    <MODEL_COLLECTION extends ModelCollectionBaseWithMenuItems<UI_ACTION, MODEL_COLLECTION>
-    , UI_ACTION
-    >
-    extends Model<MODEL_COLLECTION>
+export class MenuGroupModel<UI_ACTION>
+    extends Model<ModelCollectionBaseWithMenuItems<UI_ACTION>>
     implements UserInterfaceAdaptable<UI_ACTION>
 {
     // graphics
@@ -35,35 +33,23 @@ export class MenuGroupModel
         return null;
     }
 
-    public get children(): Array<MenuButtonModel<MODEL_COLLECTION, UI_ACTION>> {
+    public get children(): Array<MenuButtonModel<UI_ACTION>> {
         return this.models.menu_buttons.all().filter(
-            (button: MenuButtonModel<MODEL_COLLECTION, UI_ACTION>): boolean => {
+            (button: MenuButtonModel<UI_ACTION>): boolean => {
                 return button.parent_group_id === this.id;
             }
         );
     }
 }
 
-type MenuButtonModelModelTable
-    <UI_ACTION
-    , MODEL_COLLECTION extends ModelCollectionBaseWithMenuItems<UI_ACTION, MODEL_COLLECTION>
-    > = ModelTable<
-        MODEL_COLLECTION,
-        MenuButtonModel<MODEL_COLLECTION, UI_ACTION>
-    >;
+type MenuButtonModelModelTable<UI_ACTION>
+    = ModelTable<MenuButtonModel<UI_ACTION>, 'menu_buttons'>;
 
-type MenuGroupModelModelTable
-    <UI_ACTION
-    , MODEL_COLLECTION extends ModelCollectionBaseWithMenuItems<UI_ACTION, MODEL_COLLECTION>
-    > = ModelTable<
-        MODEL_COLLECTION,
-        MenuGroupModel<MODEL_COLLECTION, UI_ACTION>
-    >;
+type MenuGroupModelModelTable<UI_ACTION>
+    = ModelTable<MenuButtonModel<UI_ACTION>, 'menu_groups'>;
 
-type ModelCollectionBaseWithMenuItems
-    <UI_ACTION
-    , MODEL_COLLECTION extends ModelCollectionBaseWithMenuItems<UI_ACTION, MODEL_COLLECTION>
-    > = ModelCollectionBase & {
-        menu_buttons: MenuButtonModelModelTable<UI_ACTION, MODEL_COLLECTION>;
-        menu_groups: MenuGroupModelModelTable<UI_ACTION, MODEL_COLLECTION>;
+type ModelCollectionBaseWithMenuItems<UI_ACTION>
+    = ModelCollectionBase & {
+        menu_buttons: MenuButtonModelModelTable<UI_ACTION>;
+        menu_groups: MenuGroupModelModelTable<UI_ACTION>;
     };

@@ -31,11 +31,10 @@ interface MenuBuilderGroupOptions {
 
 export class MenuBuilder
     <UI_ACTION extends number | string
-    , COLLECTION extends ModelCollectionBaseWithMenuItems<UI_ACTION>
-    , GROUPS_TABLE extends ModelTable<COLLECTION, MenuGroupModel<COLLECTION, UI_ACTION>>
-    = ModelTable<COLLECTION, MenuGroupModel<COLLECTION, UI_ACTION>>
-    , BUTTONS_TABLE extends ModelTable<COLLECTION, MenuButtonModel<COLLECTION, UI_ACTION>>
-    = ModelTable<COLLECTION, MenuButtonModel<COLLECTION, UI_ACTION>>
+    , GROUPS_TABLE extends ModelTable<MenuGroupModel<UI_ACTION>, 'menu_groups'>
+    = ModelTable<MenuGroupModel<UI_ACTION>, 'menu_groups'>
+    , BUTTONS_TABLE extends ModelTable<MenuButtonModel<UI_ACTION>, 'menu_buttons'>
+    = ModelTable<MenuButtonModel<UI_ACTION>, 'menu_buttons'>
     > {
 
     public config: MenuBuilderOptions = {
@@ -63,7 +62,7 @@ export class MenuBuilder
     public from_object(
         title: string,
         menu_structure: MenuBuilderGroupDefinition<UI_ACTION>
-    ): MenuGroupModel<COLLECTION, UI_ACTION> {
+    ): MenuGroupModel<UI_ACTION> {
         let entries = Object.entries(menu_structure.items);
 
         let group = this.groups.insert_new((group) => {
@@ -85,7 +84,7 @@ export class MenuBuilder
     }
 
 
-    public add_button_to_group(group: MenuGroupModel<COLLECTION, UI_ACTION>, title: string, content: UI_ACTION, options?: MenuBuilderGroupOptions) {
+    public add_button_to_group(group: MenuGroupModel<UI_ACTION>, title: string, content: UI_ACTION, options?: MenuBuilderGroupOptions) {
         return this.buttons.insert_new((button) => {
             button.parent_group_id = group.id;
             button.title = title;
@@ -96,7 +95,7 @@ export class MenuBuilder
         });
     }
 
-    public add_group_to_group(group: MenuGroupModel<COLLECTION, UI_ACTION>, title: string, content: MenuBuilderGroupDefinition<UI_ACTION>, options?: MenuBuilderGroupOptions) {
+    public add_group_to_group(group: MenuGroupModel<UI_ACTION>, title: string, content: MenuBuilderGroupDefinition<UI_ACTION>, options?: MenuBuilderGroupOptions) {
         const button = this.add_button_to_group(group, title, this.toggle_action_id, options);
         // inner group
         let inner_group = this.from_object(title, content);
@@ -138,13 +137,13 @@ export class MenuBuilder
 }
 
 type MenuButtonModelModelTable<UI_ACTION> = ModelTable<
-    ModelCollectionBaseWithMenuItems<UI_ACTION>,
-    MenuButtonModel<ModelCollectionBaseWithMenuItems<UI_ACTION>, UI_ACTION>
+    MenuButtonModel<UI_ACTION>,
+    'menu_buttons'
 >;
 
 type MenuGroupModelModelTable<UI_ACTION> = ModelTable<
-    ModelCollectionBaseWithMenuItems<UI_ACTION>,
-    MenuGroupModel<ModelCollectionBaseWithMenuItems<UI_ACTION>, UI_ACTION>
+    MenuGroupModel<UI_ACTION>,
+    'menu_groups'
 >;
 
 type ModelCollectionBaseWithMenuItems<UI_ACTION> = ModelCollectionBase & {

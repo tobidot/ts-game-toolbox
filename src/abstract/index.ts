@@ -12,7 +12,7 @@ import { is_specific_controller_event, is_controller_event } from "./mvc/events/
 import { UserInterfaceModelAdapter } from "./mvc/models/adapters/UserInterfaceModelAdapter";
 import { MenuButtonModel } from "./mvc/models/MenuButtonModel";
 import { MenuGroupModel } from "./mvc/models/MenuGroupModel";
-// import { MenuBuilder } from "./mvc/services/MenuBuilder";
+import { MenuBuilder } from "./mvc/services/MenuBuilder";
 
 export var abstract = {
     mvc: {
@@ -22,7 +22,7 @@ export var abstract = {
             update_controller_response,
         },
         services: {
-            // MenuBuilder
+            MenuBuilder
         },
         models: {
             Model,
