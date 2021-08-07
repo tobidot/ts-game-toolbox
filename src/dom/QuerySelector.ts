@@ -16,7 +16,7 @@ interface HasIdSelector {
  * This should include `document` and any `Element`
  */
 interface HasClassSelector {
-    getElementByClass(classname: string): Element | null;
+    getElementsByClassName(classname: string): HTMLCollection;
 }
 
 /**
@@ -52,7 +52,7 @@ export function get_element_by_id<T extends HTMLElement>(
     const element = document.getElementById(id);
     if (!element) throw new Error("Element not found #" + id);
     if (is_of_class_or_html_element<T>(element, class_type)) return element;
-    throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HtmlElement'));
+    throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HTMLElement'));
 }
 
 /**
@@ -68,10 +68,10 @@ export function get_element_by_class_name<T extends HTMLElement>(
     class_name: string,
     class_type?: Class<T>
 ): T {
-    const element = document.getElementsByClassName(class_name).item(0);
-    if (!element) throw new Error("Element not found ." + class_name);
+    const element = root.getElementsByClassName(class_name).item(0);
+    if (!element) throw new Error("Element not found by class: " + class_name);
     if (is_of_class_or_html_element<T>(element, class_type)) return element;
-    throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HtmlElement'));
+    throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HTMLElement'));
 }
 
 /**
@@ -82,11 +82,7 @@ export function get_element_by_class_name<T extends HTMLElement>(
  */
 function is_of_class_or_html_element<T extends Element>(element: Element, class_type?: Class<T>): element is T {
     if (class_type) {
-        if (!(element instanceof class_type)) throw new Error("Element not of required type " + class_type.name);
-        return true;
-    } else {
-        if (!(element instanceof HTMLElement))
-            return true;
+        return element instanceof class_type;
     }
-    return false;
+    return element instanceof HTMLElement
 }
