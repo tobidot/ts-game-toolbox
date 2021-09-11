@@ -3,8 +3,8 @@ import { ChainProperty } from "./ChainProperty";
 
 /**
  * Similar to @see ChainProperty this class allows for easy chain setting attributes.
- * This class howver does not define the property that can be chained.
- * Instead it is applied to the parent object with a key to reference the chained property.
+ * This class however does not define the property that can be chained.
+ * Instead it proxies the changes to another object.
  * 
  * ```
  * class Foo {
