@@ -64,7 +64,7 @@ export class EventSocket<T extends EventBase>
         callback?: EventCallback<EVENT>,
     ): number {
         if (!!callback) {
-            this.attach({
+            return this.attach({
                 type: type as EventClass<EVENT>,
                 // i cannot staticly ensure that a listener for event A gets called with event B.
                 // But this will be ensured in the dispatch method.
