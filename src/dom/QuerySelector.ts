@@ -33,8 +33,13 @@ export function get_element_by_query_selector<T extends HTMLElement>(
     class_type?: Class<T>
 ): T {
     const element = root.querySelector(selector);
-    if (!element) throw new Error("Element not found" + selector);
-    throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HtmlElement'));
+    if (!element) {
+        throw new Error("Element not found" + selector);
+    }
+    if (!is_of_class_or_html_element<T>(element, class_type)) {
+        throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HtmlElement'));
+    }
+    return element;
 }
 
 /**
@@ -50,9 +55,13 @@ export function get_element_by_id<T extends HTMLElement>(
     class_type?: Class<T>
 ): T {
     const element = document.getElementById(id);
-    if (!element) throw new Error("Element not found #" + id);
-    if (is_of_class_or_html_element<T>(element, class_type)) return element;
-    throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HTMLElement'));
+    if (!element) {
+        throw new Error("Element not found #" + id);
+    }
+    if (!is_of_class_or_html_element<T>(element, class_type)) {
+        throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HTMLElement'));
+    }
+    return element;
 }
 
 /**
@@ -69,9 +78,13 @@ export function get_element_by_class_name<T extends HTMLElement>(
     class_type?: Class<T>
 ): T {
     const element = root.getElementsByClassName(class_name).item(0);
-    if (!element) throw new Error("Element not found by class: " + class_name);
-    if (is_of_class_or_html_element<T>(element, class_type)) return element;
-    throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HTMLElement'));
+    if (!element) {
+        throw new Error("Element not found by class: " + class_name);
+    }
+    if (!is_of_class_or_html_element<T>(element, class_type)) {
+        throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HTMLElement'));
+    }
+    return element;
 }
 
 /**

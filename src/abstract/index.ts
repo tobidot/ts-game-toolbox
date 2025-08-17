@@ -3,7 +3,6 @@ export * from "./mvc/views/View";
 export * from "./mvc/controllers/Controller";
 export * from "./mvc/views/CanvasView";
 export * from "./mvc/helpers/ControllerEvent";
-export * from "./mvc/MVCgame";
 export * from "./mvc/MvcCanvasGame";
 export * from "./mvc/models/ModelTable";
 export * from "./mvc/helpers/ControllerResponse";
@@ -14,7 +13,11 @@ export * from "./mvc/models/MenuButtonModel";
 export * from "./mvc/models/MenuGroupModel";
 export * from "./mvc/services/MenuBuilder";
 
-
+/**
+ * @deprecated
+ * Will be moved into a separate package.
+ * "ts-class-entities"
+ */
 // const abstract = {
 //     mvc: {
 //         MvcGame,
