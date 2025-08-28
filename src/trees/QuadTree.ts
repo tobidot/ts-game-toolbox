@@ -5,7 +5,7 @@ export class QuadTree<T extends RectI> {
     private root_branch: QuadTreeBranch<T>;
 
     constructor(base_rect: RectI) {
-        this.root_branch = new QuadTreeBranch<T>(base_rect.x, base_rect.y, base_rect.w, base_rect.h);
+        this.root_branch = new QuadTreeBranch<T>(base_rect);
     }
 
     public pick(rect: RectI): Array<T> {
@@ -29,17 +29,17 @@ export class QuadTree<T extends RectI> {
      */
     public elevate_root_branch() {
         const old_root_branch = this.root_branch;
-        const extend_top_left_rect = {
-            x: old_root_branch.x - old_root_branch.w,
-            y: old_root_branch.y - old_root_branch.h,
-            w: old_root_branch.w * 2,
-            h: old_root_branch.h * 2,
+        const extend_top_left_rect: RectI = {
+            top: old_root_branch.top - old_root_branch.width,
+            left: old_root_branch.top - old_root_branch.height,
+            width: old_root_branch.width * 2,
+            height: old_root_branch.height * 2,
         };
-        const extend_bottom_right_rect = {
-            x: extend_top_left_rect.x,
-            y: extend_top_left_rect.y,
-            w: extend_top_left_rect.w * 2,
-            h: extend_top_left_rect.h * 2,
+        const extend_bottom_right_rect: RectI = {
+            top: extend_top_left_rect.top,
+            left: extend_top_left_rect.left,
+            width: extend_top_left_rect.width * 2,
+            height: extend_top_left_rect.height * 2,
         };
 
         this.wrap_root_node_in_node_with_rect(extend_top_left_rect, 2);
@@ -47,12 +47,7 @@ export class QuadTree<T extends RectI> {
     }
 
     public wrap_root_node_in_node_with_rect(rect: RectI, node_pos: 0 | 1 | 2 | 3) {
-        const wrapper_node = new QuadTreeBranch<T>(
-            rect.x,
-            rect.y,
-            rect.w,
-            rect.h,
-        );
+        const wrapper_node = new QuadTreeBranch<T>(rect);
         wrapper_node.create_child_branches();
         if (!wrapper_node.child_branch_nodes) throw new Error();
         wrapper_node.child_branch_nodes[node_pos] = this.root_branch;
@@ -61,10 +56,10 @@ export class QuadTree<T extends RectI> {
 
     public change_element(element: T, rect: RectI) {
         this.remove(element);
-        element.x = rect.x;
-        element.y = rect.y;
-        element.w = rect.w;
-        element.h = rect.h;
+        element.top = rect.top;
+        element.top = rect.top;
+        element.width = rect.width;
+        element.height = rect.height;
         this.add(element);
     }
 
@@ -119,13 +114,13 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
     }
 
     public create_child_branches() {
-        const w_half = this.w / 2;
-        const h_half = this.h / 2;
+        const w_half = this.width / 2;
+        const h_half = this.height / 2;
         this.child_branch_nodes = [
-            new QuadTreeBranch<T>(this.x, this.y, w_half, h_half),
-            new QuadTreeBranch<T>(this.x + w_half, this.y, w_half, h_half),
-            new QuadTreeBranch<T>(this.x + w_half, this.y + h_half, w_half, h_half),
-            new QuadTreeBranch<T>(this.x, this.y + h_half, w_half, h_half),
+            new QuadTreeBranch<T>({ left: this.left, top: this.top, width: w_half, height: h_half }),
+            new QuadTreeBranch<T>({ left: this.left + w_half, top: this.top, width: w_half, height: h_half }),
+            new QuadTreeBranch<T>({ left: this.left + w_half, top: this.top + h_half, width: w_half, height: h_half }),
+            new QuadTreeBranch<T>({ left: this.left, top: this.top + h_half, width: w_half, height: h_half }),
         ];
     }
 

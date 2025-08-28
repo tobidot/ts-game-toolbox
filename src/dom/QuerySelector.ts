@@ -1,3 +1,4 @@
+import { is_function, is_object, is_string, is_undefined } from "../flow";
 import { Class } from "../flow/types/Class";
 
 /**
@@ -50,16 +51,50 @@ export function get_element_by_query_selector<T extends HTMLElement>(
  */
 export function get_element_by_id(id: string): HTMLElement;
 export function get_element_by_id<T extends HTMLElement>(id: string, class_type: Class<T>): T;
+export function get_element_by_id<T extends HTMLElement>(root: HasIdSelector, id: string, class_type: Class<T>): T;
 export function get_element_by_id<T extends HTMLElement>(
-    id: string,
-    class_type?: Class<T>
+    root: string | HasIdSelector,
+    id?: string | Class<T>,
+    class_type?: Class<T>,
 ): T {
-    const element = document.getElementById(id);
+    const {
+        _root,
+        _id,
+        _class_type
+    } = ((): {
+        _root: HasIdSelector,
+        _id: string,
+        _class_type: Class<T>,
+    } => {
+        if (is_string(root) && is_undefined(id) && is_undefined(class_type)) {
+            return {
+                _root: document,
+                _id: root,
+                _class_type: HTMLElement as Class<T>,
+            }
+        }
+        if (is_string(root) && is_object(id) && is_undefined(class_type)) {
+            return {
+                _root: document,
+                _id: root,
+                _class_type: id,
+            }
+        }
+        if (is_object(root) && is_string(id) && is_function(class_type)) {
+            return {
+                _root: root,
+                _id: id,
+                _class_type: class_type,
+            }
+        }
+        throw new Error('Invalid argument combination');
+    })();
+    const element = _root.getElementById(_id);
     if (!element) {
-        throw new Error("Element not found #" + id);
+        throw new Error("Element not found #" + _id);
     }
-    if (!is_of_class_or_html_element<T>(element, class_type)) {
-        throw new Error("Element not of required type HTML Element " + (class_type?.name ?? 'HTMLElement'));
+    if (!is_of_class_or_html_element<T>(element, _class_type)) {
+        throw new Error("Element not of required type HTML Element " + (_class_type?.name ?? 'HTMLElement'));
     }
     return element;
 }

@@ -1,23 +1,24 @@
-import { throw_expression } from "..";
+import { throw_expression } from "../flow/expressions/ThrowExpression";
 
 /**
  * Wrap a canvas object to provide some helper methods or usefull drawing calls
  */
 export class CanvasHelper {
-    public context: CanvasRenderingContext2D;
+    protected _context: CanvasRenderingContext2D | null = null;
 
     constructor(
-        public readonly canvas: HTMLCanvasElement
+        public readonly element: HTMLCanvasElement
     ) {
-        this.context = this.getContext();
     }
 
     /**
      * Definetly returns a render Context and throws an expresssion if unable.
      * @returns CanvasRenderingContext2D
      */
-    public getContext(): CanvasRenderingContext2D {
-        if (this.context) return this.context;
-        return this.context = this.canvas.getContext("2d") ?? throw_expression("Could not create Context");
+    public get context(): CanvasRenderingContext2D {
+        if (this._context && !this._context.isContextLost()) {
+            return this._context;
+        }
+        return this._context = this.element.getContext("2d") ?? throw_expression("Could not create Context");
     }
 }

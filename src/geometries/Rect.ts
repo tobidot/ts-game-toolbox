@@ -1,10 +1,11 @@
-import {Vector2, Vector2I} from "./Vector2";
+import { is_object } from "../flow";
+import { Vector2, Vector2I } from "./Vector2";
 
 export interface RectI {
-    x: number,
-    y: number,
-    w: number,
-    h: number
+    left: number,
+    top: number,
+    width: number,
+    height: number
 }
 
 /**
@@ -12,75 +13,69 @@ export interface RectI {
  * A helper class for Rectangles
  */
 export class Rect implements RectI {
-    public constructor(public x: number = 0, public y: number = 0, public w: number = 0, public h: number = 0) {
+    public left: number = 0;
+    public top: number = 0;
+    public width: number = 0;
+    public height: number = 0;
 
-    }
-
-    public get left(): number {
-        return this.x;
+    public constructor(
+        rect: RectI
+    ) {
+        this.left = rect.left;
+        this.top = rect.top;
+        this.width = rect.width;
+        this.height = rect.height;
     }
 
     public get_left(): number {
-        return this.x;
-    }
-
-    public get top(): number {
-        return this.y;
+        return this.left;
     }
 
     public get_top(): number {
-        return this.y;
+        return this.top;
     }
 
     public get right(): number {
-        return this.x + this.w;
+        return this.left + this.width;
     }
 
     public get_right(): number {
-        return this.x + this.w;
+        return this.left + this.width;
     }
 
     public get_bottom(): number {
-        return this.y + this.h;
+        return this.top + this.height;
     }
 
     public get bottom(): number {
-        return this.y + this.h;
-    }
-
-    public get width(): number {
-        return this.w;
+        return this.top + this.height;
     }
 
     public get_width(): number {
-        return this.w;
-    }
-
-    public get height(): number {
-        return this.h;
+        return this.width;
     }
 
     public get_height(): number {
-        return this.h;
+        return this.height;
     }
 
     public cpy(): Rect {
-        return new Rect(this.x, this.y, this.w, this.h);
+        return new Rect(this);
     }
 
     public set(x: RectI): this;
     public set(x: number, y: number, w?: number, h?: number): this;
     public set(x: number | RectI, y?: number, w?: number, h?: number): this {
         if (typeof x === "object") {
-            this.x = x.x;
-            this.y = x.y;
-            this.w = x.w;
-            this.h = x.h;
+            this.left = x.left;
+            this.top = x.top;
+            this.width = x.width;
+            this.height = x.height;
         } else {
-            this.x = x;
-            this.y = y as number;
-            if (w !== undefined) this.w = w;
-            if (h !== undefined) this.h = h;
+            this.left = x;
+            this.top = y as number;
+            if (w !== undefined) this.width = w;
+            if (h !== undefined) this.height = h;
         }
         return this;
     }
@@ -90,16 +85,16 @@ export class Rect implements RectI {
      */
 
     public get_area(): number {
-        return this.w * this.h;
+        return this.width * this.height;
     }
 
     public get center(): Vector2I {
-        return new Vector2(this.x + this.w / 2, this.y + this.h / 2);
+        return new Vector2(this.left + this.width / 2, this.top + this.height / 2);
     }
 
     public set center(center: Vector2I) {
-        this.x = center.x - this.w / 2;
-        this.y = center.y - this.h / 2;
+        this.left = center.x - this.width / 2;
+        this.top = center.y - this.height / 2;
     }
 
     public set_center(center: Vector2I): this {
@@ -114,8 +109,8 @@ export class Rect implements RectI {
      */
     public expand_to(target: Readonly<Vector2I>): this {
         if (this.contains(target)) return this;
-        const left = Math.min(this.x, target.x);
-        const top = Math.min(this.y, target.y);
+        const left = Math.min(this.left, target.x);
+        const top = Math.min(this.top, target.y);
         const right = Math.max(this.get_right(), target.x);
         const bottom = Math.max(this.get_bottom(), target.y);
         return this.set(left, top, right - left, bottom - top);
@@ -136,7 +131,7 @@ export class Rect implements RectI {
             return Rect.contains(this, x);
         }
         if (typeof y !== "number") throw new Error("Unexpected type error");
-        return Rect.contains(this, {x, y});
+        return Rect.contains(this, { x, y });
     }
 
     /**
@@ -150,10 +145,10 @@ export class Rect implements RectI {
      */
     public lerp(target: Rect, t: number): this {
         const it = 1 - t;
-        this.x = this.x * it + target.x * t;
-        this.y = this.y * it + target.y * t;
-        this.w = this.w * it + target.w * t;
-        this.h = this.h * it + target.h * t;
+        this.left = this.left * it + target.left * t;
+        this.top = this.top * it + target.top * t;
+        this.width = this.width * it + target.width * t;
+        this.height = this.height * it + target.height * t;
         return this;
     }
 
@@ -166,10 +161,10 @@ export class Rect implements RectI {
      */
     public get_corners(): [Vector2I, Vector2I, Vector2I, Vector2I] {
         return [
-            {x: this.left, y: this.top},
-            {x: this.right, y: this.top},
-            {x: this.right, y: this.bottom},
-            {x: this.left, y: this.bottom},
+            { x: this.left, y: this.top },
+            { x: this.right, y: this.top },
+            { x: this.right, y: this.bottom },
+            { x: this.left, y: this.bottom },
         ];
     }
 
@@ -191,7 +186,7 @@ export class Rect implements RectI {
      *  True => the point is inside
      */
     public static contains(rect: RectI, point: Vector2I): boolean {
-        return (point.x >= rect.x && point.y >= rect.y && point.x <= rect.x + rect.w && point.y <= rect.y + rect.h);
+        return (point.x >= rect.left && point.y >= rect.top && point.x <= rect.left + rect.width && point.y <= rect.top + rect.height);
     }
 
     /**
@@ -207,7 +202,7 @@ export class Rect implements RectI {
      *  True => the point is inside
      */
     public static contains_exclusive(rect: RectI, point: Vector2I): boolean {
-        return (point.x > rect.x && point.y > rect.y && point.x < rect.x + rect.w && point.y < rect.y + rect.h);
+        return (point.x > rect.left && point.y > rect.top && point.x < rect.left + rect.width && point.y < rect.top + rect.height);
     }
 
     /**
@@ -216,8 +211,8 @@ export class Rect implements RectI {
      * @param b
      */
     public static overlap(a: RectI, b: RectI): boolean {
-        const overlap_x = (a.x + a.w > b.x && a.x <= b.x) || (b.x + b.w > a.x && b.x <= a.x);
-        const overlap_y = (a.y + a.h > b.y && a.y <= b.y) || (b.y + b.h > a.y && b.y <= a.y);
+        const overlap_x = (a.left + a.width > b.left && a.left <= b.left) || (b.left + b.width > a.left && b.left <= a.left);
+        const overlap_y = (a.top + a.height > b.top && a.top <= b.top) || (b.top + b.height > a.top && b.top <= a.top);
         return overlap_x && overlap_y;
     }
 
@@ -228,8 +223,8 @@ export class Rect implements RectI {
      * @param outer
      */
     public static is_within(inner: RectI, outer: RectI) {
-        const within_x = inner.x > outer.x && inner.x + inner.w < outer.x + outer.w;
-        const within_y = inner.y > outer.y && inner.y + inner.h < outer.y + outer.h;
+        const within_x = inner.left > outer.left && inner.left + inner.width < outer.left + outer.width;
+        const within_y = inner.top > outer.top && inner.top + inner.height < outer.top + outer.height;
         return within_x && within_y;
     }
 }
