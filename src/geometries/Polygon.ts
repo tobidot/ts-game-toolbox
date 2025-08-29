@@ -27,11 +27,11 @@ export class Polygon implements PolygonI {
         if (this.points.length < 2) {
             return [];
         }
-        const lines = [];
-        for (let i = 1; i < this.points.length; ++i) {
+        const lines: Array<Line> = [];
+        for (let i = 1; i <= this.points.length; ++i) {
             const a = this.points[i - 1];
-            const b = this._points[i];
-            lines.push(new Line(a, b.cpy().sub(a)));
+            const b = this._points[i % this.points.length];
+            lines.push(new Line(a, b));
         }
         return lines;
     }
@@ -42,7 +42,7 @@ export class Polygon implements PolygonI {
      */
     public contains(point: Vector2I): boolean {
         // const random_point = new Vector2(0, 0);
-        const direction = new Vector2(1, 0); // Vector2.from_angle(Math.random() + Math.PI * 2)
+        const direction = new Vector2(0.66, 0.66); // Vector2.from_angle(Math.random() + Math.PI * 2)
         const ray = new Ray(point, direction);
         // cast a ray from a random point and count the crosssections with all lines of the plygone
         // if an even number of lines are crossed it is outside the polygone
@@ -53,6 +53,7 @@ export class Polygon implements PolygonI {
             const t = line.get_ray_projection(ray);
             if (t !== null && t >= 0 && t < 1) {
                 hits++;
+                console.log(i, line, t);
             }
         }
         // if it is odd it is inside

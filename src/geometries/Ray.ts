@@ -68,16 +68,16 @@ export class Ray {
 
         // det(A) = (d1x * -d2y) - (d1y * -d2x)
         // det(At) = ((p2x-p1x) * -d2y) - ((p2y-p1y) * -d2x)
-        // t = (d1x * -d2y) - (d1y * -d2x) / ((p2x-p1x) * -d2y) - ((p2y-p1y) * -d2x)
+        // t = ((d1x * -d2y) - (d1y * -d2x)) / (((p2x-p1x) * -d2y) - ((p2y-p1y) * -d2x))
 
-        const det_a = (this.direction.x * -other.direction.y) - (this.direction.y - other.direction.x);
+        const det_a = (this.direction.x * -other.direction.y) - (this.direction.y * -other.direction.x);
 
         if (MathHelper.float_equals(det_a, 0)) {
             // no intersection, because rays are parallel
             return null;
         }
 
-        const det_at = ((other.point.x - this.point.x) * -other.direction.y) - ((other.point.y - this.point.y) - other.direction.x);
+        const det_at = ((other.point.x - this.point.x) * -other.direction.y) - ((other.point.y - this.point.y) * -other.direction.x);
         return det_at / det_a;
     }
 

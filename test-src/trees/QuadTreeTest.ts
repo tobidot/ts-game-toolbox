@@ -7,7 +7,7 @@ export class QuadTreeTest extends TestClass {
 
 
     public base_rect: RectI = {
-        x: -50, y: -50, w: 100, h: 100,
+        left: -50, top: -50, width: 100, height: 100,
     };
     public tree = new QuadTree<DemoQuadElement<number>>(this.base_rect);
 
@@ -56,14 +56,14 @@ export class QuadTreeTest extends TestClass {
     }
 
     public test_quad_tree_pick_returns_empty_array() {
-        const rect: RectI = { x: 0, y: 0, w: 500, h: 500 };
+        const rect: RectI = { left: 0, top: 0, width: 500, height: 500 };
         const result: Array<DemoQuadElement<number>> = this.tree.pick(rect);
         this.assert_true(result.length === 0);
     }
 
     public test_quad_tree_picking_rect_with_element_within_returns_element_in_array() {
         const element = new DemoQuadElement<number>(0, 0, 0, 0, 10);
-        const rect = new Rect(-1, -1, 3, 3);
+        const rect = new Rect({ left: -1, top: -1, width: 3, height: 3 });
         this.tree.add(element);
         const result = this.tree.pick(rect);
         this.assert_equals(result.length, 1);
@@ -75,6 +75,6 @@ class DemoQuadElement<T> extends Rect {
     public constructor(
         x: number, y: number, w: number, h: number, public data: T
     ) {
-        super(x, y, w, h);
+        super({ left: x, top: y, width: w, height: h });
     }
 }

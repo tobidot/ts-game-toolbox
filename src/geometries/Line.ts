@@ -9,10 +9,10 @@ export interface LineI {
 
 export class Line extends Ray {
     public constructor(
-        point: Vector2I,
-        direction: Vector2I,
+        start: Vector2I,
+        end: Vector2I,
     ) {
-        super(point, direction)
+        super(start, new Vector2(end).sub(start));
     }
 
     public static from_points(
