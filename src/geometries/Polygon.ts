@@ -48,12 +48,12 @@ export class Polygon implements PolygonI {
         // if an even number of lines are crossed it is outside the polygone
         const lines = this.lines;
         let hits = 0;
-        for (let i = 1; i < lines.length; ++i) {
+        for (let i = 0; i < lines.length; ++i) {
             const line = lines[i];
-            const t = line.get_ray_projection(ray);
-            if (t !== null && t >= 0 && t < 1) {
+            const t = ray.get_ray_projection(line);
+            const u = line.get_ray_projection(ray);
+            if (t !== null && u !== null && t >= 0 && u >= 0 && u < 1) {
                 hits++;
-                console.log(i, line, t);
             }
         }
         // if it is odd it is inside

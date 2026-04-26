@@ -73,7 +73,7 @@ export function get_element_by_id<T extends HTMLElement>(
                 _class_type: HTMLElement as Class<T>,
             }
         }
-        if (is_string(root) && is_object(id) && is_undefined(class_type)) {
+        if (is_string(root) && is_function(id) && is_undefined(class_type)) {
             return {
                 _root: document,
                 _id: root,

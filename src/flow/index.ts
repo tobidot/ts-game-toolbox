@@ -6,3 +6,4 @@ export * from "./types/Class";
 export * from "./types/Guards";
 export * from "./decorators/Throttler";
 export * from "./async/Sleep";
+export * from "./helpers/Progress";

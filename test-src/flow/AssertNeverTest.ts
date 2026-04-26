@@ -12,7 +12,7 @@ export class AssertNeverTest extends TestClass {
     }
 
     public test_with_switch_statement(): void {
-        let foo = [Foo.A, Foo.B, Foo.C][Math.trunc(Math.random() * 3)];
+        const foo = [Foo.A, Foo.B, Foo.C][Math.trunc(Math.random() * 3)];
         switch (foo) {
             case Foo.A: return this.assert_true(true);
             case Foo.B: return this.assert_true(true);
@@ -31,7 +31,7 @@ export class AssertNeverTest extends TestClass {
     // }
 
     public test_with_if_statement() {
-        let foo = [Foo.A, Foo.B, Foo.C][Math.trunc(Math.random() * 3)];
+        const foo = [Foo.A, Foo.B, Foo.C][Math.trunc(Math.random() * 3)];
         if (foo === Foo.A) return this.assert_true(true);
         if (foo === Foo.B) return this.assert_true(true);
         if (foo === Foo.C) return this.assert_true(true);
@@ -39,7 +39,7 @@ export class AssertNeverTest extends TestClass {
     }
 
     public test_with_string_narrowing() {
-        let foo = ["A", "B", "C"][Math.trunc(Math.random() * 3)] as "A" | "B" | "C";
+        const foo = ["A", "B", "C"][Math.trunc(Math.random() * 3)] as "A" | "B" | "C";
         if (foo === "A") return this.assert_true(true);
         if (foo === "B") return this.assert_true(true);
         if (foo === "C") return this.assert_true(true);

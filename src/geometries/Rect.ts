@@ -102,6 +102,11 @@ export class Rect implements RectI {
         return this;
     }
 
+    public move(offset: Vector2I): this {
+        this.left += offset.x;
+        this.top += offset.y;
+        return this;
+    }
 
     /**
      * Expand this rectangle to include the given target.
@@ -116,8 +121,8 @@ export class Rect implements RectI {
         return this.set(left, top, right - left, bottom - top);
     }
 
-    public overlaps_with(other: RectI): boolean {
-        return Rect.overlap(this, other);
+    public intersects(other: RectI): boolean {
+        return Rect.intersects(this, other);
     }
 
     public is_within(outer: RectI): boolean {
@@ -210,7 +215,7 @@ export class Rect implements RectI {
      * @param a
      * @param b
      */
-    public static overlap(a: RectI, b: RectI): boolean {
+    public static intersects(a: RectI, b: RectI): boolean {
         const overlap_x = (a.left + a.width > b.left && a.left <= b.left) || (b.left + b.width > a.left && b.left <= a.left);
         const overlap_y = (a.top + a.height > b.top && a.top <= b.top) || (b.top + b.height > a.top && b.top <= a.top);
         return overlap_x && overlap_y;

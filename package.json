@@ -1,6 +1,6 @@
 {
   "name": "@game.object/ts-game-toolbox",
-  "version": "5.0.4",
+  "version": "5.0.5",
   "main": "src/index.ts",
   "types": "src/index.d.ts",
   "files": [
@@ -19,32 +19,39 @@
   "description": "A little toolbox of classes for some game development",
   "license": "MIT",
   "scripts": {
-    "tsc": "tsc --noEmit --watch",
-    "test-ex": "npx parcel ./test-src/index.html --out-dir ./test-dist/",
-    "test": "mocha -r ts-node/register src/**/*.test.ts",
-    "build": "tsc",
-    "watch": "tsc --watch",
-    "release": "yarn run build; yarn publish --patch",
-    "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
-    "lint": "tslint -p tsconfig.json"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "coverage": "vitest run --coverage",
+    "format": "prettier --write \"src/**/*.ts\" \"test-src/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\""
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.10",
     "@types/parcel-env": "^0.0.9",
-    "mocha": "^11.7.1",
-    "npm-check-updates": "^18.0.2",
-    "parcel": "^2.15.4",
-    "prettier": "^3.6.2",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "@vitest/coverage-v8": "^4.1.4",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "jsdom": "^29.0.2",
+    "mocha": "^11.7.5",
+    "npm-check-updates": "^21.0.2",
+    "prettier": "^3.8.3",
     "ts-node": "^10.9.2",
-    "tslint": "^6.1.3",
-    "tslint-config-prettier": "^1.18.0",
-    "typescript": "^5.9.2"
-  },
-  "dependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4",
     "@types/assert": "^1.5.11",
-    "@types/chai": "^5.2.2",
-    "chai": "^6.0.1"
+    "@types/chai": "^5.2.3",
+    "chai": "^6.2.2"
   },
+  "dependencies": {},
   "bugs": {
     "url": "https://github.com/tobidot/ts-game-toolbox/issues"
   },
@@ -54,6 +61,5 @@
     "game",
     "js",
     "ts"
-  ],
-  "packageManager": "yarn@1.22.22"
+  ]
 }

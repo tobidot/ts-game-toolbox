@@ -63,8 +63,8 @@ export class TestDashboard {
     }
 
     protected create_element_button(text: string, on_click: () => void): HTMLElement {
-        let list_item = document.createElement('li');
-        let button = document.createElement('button');
+        const list_item = document.createElement('li');
+        const button = document.createElement('button');
         button.innerText = text;
         button.addEventListener('click', on_click);
         list_item.append(button);

@@ -13,7 +13,7 @@ export class QuadTree<T extends RectI> {
     }
 
     public add(element: T): void {
-        let is_within = Rect.is_within(element, this.root_branch);
+        const is_within = Rect.is_within(element, this.root_branch);
         if (is_within) {
             this.root_branch.add(element);
         } else {
@@ -89,7 +89,7 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
             return true;
         };
         const overlapping_branches = this.child_branch_nodes.filter((branch) => {
-            return branch.overlaps_with(element);
+            return branch.intersects(element);
         }, []);
         if (overlapping_branches.length === 0) throw Error('Inconsistent Result');
         if (overlapping_branches.length === 1) {
@@ -125,11 +125,11 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
     }
 
     public pick(rect: RectI, result: Array<T> = []): Array<T> {
-        if (!this.overlaps_with(rect)) return result;
-        result.push(...this.elements.filter((element) => Rect.overlap(rect, element)));
+        if (!this.intersects(rect)) return result;
+        result.push(...this.elements.filter((element) => Rect.intersects(rect, element)));
         if (this.child_branch_nodes === null) return result;
         if (this.is_within(rect)) return this.pick_all(result);
-        for (let branch of this.child_branch_nodes) {
+        for (const branch of this.child_branch_nodes) {
             branch.pick(rect, result);
         }
         return result;
@@ -138,7 +138,7 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
     public pick_all(result: Array<T>): Array<T> {
         result.push(...this.elements);
         if (this.child_branch_nodes === null) return result;
-        for (let branch of this.child_branch_nodes) {
+        for (const branch of this.child_branch_nodes) {
             branch.pick_all(result);
         }
         return result;
@@ -151,7 +151,7 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
             return true;
         }
         if (this.child_branch_nodes === null) return false;
-        for (let branch of this.child_branch_nodes) {
+        for (const branch of this.child_branch_nodes) {
             if (branch.remove(element)) return true;
         }
         return false;
@@ -160,7 +160,7 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
     public is_empty(): boolean {
         if (!this.is_self_empty()) return false;
         if (this.child_branch_nodes === null) return true;
-        for (let branch of this.child_branch_nodes) {
+        for (const branch of this.child_branch_nodes) {
             if (!branch.is_empty()) return false;
         }
         return true;
