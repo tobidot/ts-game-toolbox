@@ -12,8 +12,8 @@
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.npmjs.org/",
-    "tag": "game, tools"
+    "registry": "https://registry.npmjs.org",
+    "tag": "latest"
   },
   "author": "tobidot <Object.name@live.de>",
   "description": "A little toolbox of classes for some game development",
