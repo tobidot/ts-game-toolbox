@@ -47,4 +47,4 @@ export class ChainProperty<OBJECT, PROPERTY> {
     }
 }
 
-export var CP = ChainProperty;
+export const CP = ChainProperty;

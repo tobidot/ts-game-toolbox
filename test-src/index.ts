@@ -13,7 +13,3 @@ dashboard.add_test([
 ]);
 
 
-import * as flow from "../src/flow";
-
-let x: flow.Class<number>;
-let y: flow.Class<number>;

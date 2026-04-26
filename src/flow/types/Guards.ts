@@ -6,7 +6,7 @@ export function is_object(x: unknown | object): x is object {
     return typeof (x) === "object";
 }
 
-export function is_function(x: unknown | Function): x is Function {
+export function is_function(x: unknown): x is (...args: any[]) => any {
     return typeof (x) === "function";
 }
 

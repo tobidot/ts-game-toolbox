@@ -1,4 +1,3 @@
-import { is_object } from "../flow";
 import { Vector2, Vector2I } from "./Vector2";
 
 export interface RectI {

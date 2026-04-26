@@ -37,7 +37,7 @@ export class Progress {
 
     public make_child_progress(max: number): Progress {
         const child = new Progress(max);
-        child.listen((percent, self) => {
+        child.listen(() => {
             this.notify_listeners();
         });
         this.children.push(child)

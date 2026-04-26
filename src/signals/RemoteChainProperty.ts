@@ -68,5 +68,5 @@ type ChainPropertyType<CLASS, T> =
     : never;
 
 /// alias 
-export var RCP = RemoteChainProperty;
+export const RCP = RemoteChainProperty;
 

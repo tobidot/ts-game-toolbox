@@ -71,7 +71,7 @@ export class TestConsoleLogElement {
         const format_or_log = args.shift();
         if (typeof format_or_log === "string") {
             return this.print_format(format_or_log, ...args)
-                .then((...rest_args: any[]) => {
+                .then(() => {
                     this.log(...args);
                 });
         } else {
@@ -82,7 +82,7 @@ export class TestConsoleLogElement {
     }
 
     public async print_format(format: string, ...args: any[]) {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve) => {
             let style = '';
             let text = format;
             if (format.indexOf('%c') === 0) {
@@ -95,6 +95,7 @@ export class TestConsoleLogElement {
                 text = text.replace('%s', next.toString());
             }
             this.print(text, style)
+            resolve();
         });
     }
 

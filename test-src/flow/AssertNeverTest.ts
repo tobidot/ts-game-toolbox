@@ -1,4 +1,3 @@
-import { assets } from "../../src/assets";
 import { assert_never } from "../../src/flow/asserts/AssertNever";
 import { TestClass } from "../../src/testing/TestClass";
 

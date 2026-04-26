@@ -1,4 +1,3 @@
-import assert from "assert";
 import { sleep } from "../async/Sleep";
 import { Throttler } from "./Throttler";
 import { expect } from "chai";
@@ -63,7 +62,7 @@ describe('Throttler', () => {
         const now = performance.now();
         const first_promise = throttler.run(_FIRST_RETURN);
         for (let i = 0; i < _ITERATIONS; i++) {
-            throttler.run(i).then(result => count_after++);
+            throttler.run(i).then(() => count_after++);
         }
         const last_promise = throttler.run(_LAST_RETURN);
         const first_result = await first_promise;
@@ -110,12 +109,12 @@ describe('Throttler', () => {
         const now = performance.now();
         const first_promise = throttler.run(_FIRST_RETURN);
         for (let i = 0; i < _ITERATIONS; i++) {
-            throttler.run(i).then(result => count_after++);
+            throttler.run(i).then(() => count_after++);
         }
         await sleep(_BREAK_SLEEP);
         const second_promise = throttler.run(_SECOND_RETURN);
         for (let i = 0; i < _ITERATIONS; i++) {
-            throttler.run(i).then(result => count_after++);
+            throttler.run(i).then(() => count_after++);
         }
         const last_promise = throttler.run(_LAST_RETURN);
         // 

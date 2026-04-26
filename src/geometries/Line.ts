@@ -1,4 +1,3 @@
-import { MathHelper } from "../helpers/MathHelper";
 import { Ray } from "./Ray";
 import { Vector2, Vector2I } from "./Vector2";
 

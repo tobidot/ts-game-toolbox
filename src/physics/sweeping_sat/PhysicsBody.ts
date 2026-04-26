@@ -1,4 +1,4 @@
-import { Rect, Vector2, Vector2I } from "../../geometries";
+import { Vector2, Vector2I } from "../../geometries";
 import { Polygon, PolygonI } from "../../geometries/Polygon";
 
 export class PhysicsBody<REFERENCE> {

@@ -1,4 +1,3 @@
-import assert from "assert";
 import { WithDefaultSettings } from "../../helpers";
 import { assert_never } from "../asserts/AssertNever";
 import { sleep } from "../async/Sleep";

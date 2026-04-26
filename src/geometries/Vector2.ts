@@ -1,5 +1,4 @@
 type radians = number;
-type degrees = number;
 
 export interface Vector2I {
     x: number;

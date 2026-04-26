@@ -1,6 +1,6 @@
 import { RgbColor } from "../data/RgbColor";
 
-export var Colors = {
+export const Colors = {
     RED: new RgbColor(255, 0, 0),
     BLUE: new RgbColor(0, 0, 255),
     GREEN: new RgbColor(0, 255, 0),

@@ -22,10 +22,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:dev": "vitest",
     "coverage": "vitest run --coverage",
     "format": "prettier --write \"src/**/*.ts\" \"test-src/**/*.ts\"",
-    "lint": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\""
+    "lint": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\" --fix"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
