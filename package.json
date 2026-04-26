@@ -30,28 +30,25 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
-    "@types/mocha": "^10.0.10",
+    "@types/assert": "^1.5.11",
+    "@types/chai": "^5.2.3",
     "@types/parcel-env": "^0.0.9",
     "@typescript-eslint/eslint-plugin": "^8.58.2",
     "@typescript-eslint/parser": "^8.58.2",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-vue": "^6.0.6",
     "@vitest/coverage-v8": "^4.1.4",
+    "chai": "^6.2.2",
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^29.0.2",
-    "mocha": "^11.7.5",
     "npm-check-updates": "^21.0.2",
     "prettier": "^3.8.3",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.8",
-    "vitest": "^4.1.4",
-    "@types/assert": "^1.5.11",
-    "@types/chai": "^5.2.3",
-    "chai": "^6.2.2"
+    "vitest": "^4.1.4"
   },
-  "dependencies": {},
   "bugs": {
     "url": "https://github.com/tobidot/ts-game-toolbox/issues"
   },
