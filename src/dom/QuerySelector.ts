@@ -1,5 +1,4 @@
-import { is_function, is_object, is_string, is_undefined } from "../flow";
-import { Class } from "../flow/types/Class";
+import { is_function, is_object, is_string, is_undefined, Class } from "../flow";
 
 /**
  * This should include `document` and any `Element`
@@ -77,7 +76,7 @@ export function get_element_by_id<T extends HTMLElement>(
             return {
                 _root: document,
                 _id: root,
-                _class_type: id,
+                _class_type: id as Class<T>,
             }
         }
         if (is_object(root) && is_string(id) && is_function(class_type)) {
