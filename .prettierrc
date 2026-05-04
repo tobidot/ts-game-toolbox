@@ -2,4 +2,5 @@
     "printWith": 80,
     "trailingComma": "all",
     "singleQuote": false,
+    "tabWidth": 4
 }

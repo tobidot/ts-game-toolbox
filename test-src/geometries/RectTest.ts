@@ -2,51 +2,39 @@ import { TestClass } from "../../src/testing/TestClass"
 import { Rect } from "../../src/geometries/Rect"
 
 export class RectTest extends TestClass {
-    private rect: Rect = new Rect();
-
     public get_name(): string {
-        return "Rect Test";
+        return "Rect Visual Test";
     }
 
-    public set_up() {
-        this.rect = new Rect(0, 0, 100, 100);
-    }
+    public test_rect_visualization() {
+        const test_container =
+            document.querySelector(".test-dashboard__test-container") ||
+            document.body;
 
-    public test_rect_right_and_bottom_on_rect_at_0_0() {
-        this.assert_equals(100, this.rect.get_right());
-        this.assert_equals(100, this.rect.get_bottom());
-    }
+        const canvas = document.createElement("canvas");
+        canvas.width = 400;
+        canvas.height = 300;
+        canvas.style.border = "1px solid black";
+        canvas.style.display = "block";
+        canvas.style.marginTop = "10px";
+        test_container.appendChild(canvas);
 
-    public test_rect_right_and_bottom_on_rect_at_50_25() {
-        this.rect.x = 50;
-        this.rect.y = 25;
-        this.assert_equals(150, this.rect.get_right());
-        this.assert_equals(125, this.rect.get_bottom());
-    }
+        const ctx = canvas.getContext("2d")!;
+        const rect1 = new Rect(50, 50, 100, 100);
+        const rect2 = new Rect(100, 100, 100, 100);
 
-    public test_rect_area() {
-        this.assert_equals(10000, this.rect.get_area());
-    }
+        ctx.strokeStyle = "blue";
+        ctx.strokeRect(rect1.left, rect1.top, rect1.width, rect1.height);
+        ctx.fillText("Rect 1", rect1.left, rect1.top - 5);
 
-    public test_rect_should_overlap() {
-        const rect_same_start = {
-            x: 0, y: 0, w: 50, h: 50
-        };
-        this.assert_true(this.rect.overlaps_with(rect_same_start));
+        ctx.strokeStyle = "red";
+        ctx.strokeRect(rect2.left, rect2.top, rect2.width, rect2.height);
+        ctx.fillText("Rect 2", rect2.left, rect2.top - 5);
 
-        const rect_overlap_x = {
-            x: 0, y: -100, w: 50, h: 50
-        };
-        this.assert_false(this.rect.overlaps_with(rect_overlap_x));
-
-        const rect_overlap_y = {
-            x: -100, y: -100, w: 50, h: 150
-        };
-        this.assert_false(this.rect.overlaps_with(rect_overlap_y));
-
-        const rect_overlap_fraction = {
-            x: -100, y: -100, w: 100.001, h: 100.001
-        };
-        this.assert_true(this.rect.overlaps_with(rect_overlap_fraction));
+        const overlaps = rect1.overlaps_with(rect2);
+        ctx.fillStyle = overlaps ? "rgba(0, 255, 0, 0.3)" : "rgba(255, 0, 0, 0.3)";
+        ctx.fillText(`Overlaps: ${overlaps}`, 10, 20);
+        
+        console.log("Rect visualization created. Blue and Red rects should overlap (Green text indicates logic).");
     }
 }

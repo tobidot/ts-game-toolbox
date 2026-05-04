@@ -16,15 +16,41 @@
         .test-console-log span {
             display: block;
         }
+
+        .test-dashboard {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        .test-dashboard__button-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .test-dashboard__button-list button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .test-dashboard__button-list button:hover {
+            background: #ddd;
+        }
     </style>
 </head>
 
 <body>
     <div id="test-dashboard">
-
+        <h1>TS Game Toolbox - Feature Showcase</h1>
     </div>
 
-    <script src="./index.ts"></script>
+    <script type="module" src="./index.ts"></script>
 </body>
 
 </html>

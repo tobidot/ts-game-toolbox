@@ -4,6 +4,7 @@ import { TestClass } from "./TestClass";
 interface TestDashboardElements {
     dashboard: HTMLElement,
     button_list: HTMLElement,
+    test_container: HTMLElement,
     console_log: TestConsoleLogElement;
 }
 
@@ -22,14 +23,17 @@ export class TestDashboard {
     protected create_dashboard_elements(): TestDashboardElements {
         const dashboard = this.create_dashboard_wrapping_element();
         const button_list = this.create_test_button_list();
+        const test_container = this.create_test_container();
         const console_log = new TestConsoleLogElement();
 
         dashboard.append(button_list);
+        dashboard.append(test_container);
         dashboard.append(console_log.get_element());
 
         this.elements = {
             dashboard,
             button_list,
+            test_container,
             console_log,
         };
 
@@ -40,6 +44,12 @@ export class TestDashboard {
         const dashboard = document.createElement('div');
         dashboard.className = 'test-dashboard';
         return dashboard;
+    }
+
+    protected create_test_container(): HTMLElement {
+        const container = document.createElement('div');
+        container.className = 'test-dashboard__test-container';
+        return container;
     }
 
     protected create_test_button_list(): HTMLUListElement {
@@ -57,9 +67,14 @@ export class TestDashboard {
 
     protected create_element_for_test_button(test: TestClass): HTMLElement {
         return this.create_element_button(test.get_name(), () => {
+            this.clear_test_container();
             this.elements.console_log.clear();
             test.run_all_test_cases();
         });
+    }
+
+    protected clear_test_container(): void {
+        this.elements.test_container.innerHTML = '';
     }
 
     protected create_element_button(text: string, on_click: () => void): HTMLElement {
@@ -85,6 +100,7 @@ export class TestDashboard {
     }
 
     public start_all_tests_func = () => {
+        this.clear_test_container();
         this.elements.console_log.clear();
         console.log('Starting Tests ... ');
         for (const test of this.tests) {

@@ -30,8 +30,8 @@ export class QuadTree<T extends RectI> {
     public elevate_root_branch() {
         const old_root_branch = this.root_branch;
         const extend_top_left_rect: RectI = {
-            top: old_root_branch.top - old_root_branch.width,
-            left: old_root_branch.top - old_root_branch.height,
+            top: old_root_branch.top - old_root_branch.height,
+            left: old_root_branch.left - old_root_branch.width,
             width: old_root_branch.width * 2,
             height: old_root_branch.height * 2,
         };
@@ -57,7 +57,7 @@ export class QuadTree<T extends RectI> {
     public change_element(element: T, rect: RectI) {
         this.remove(element);
         element.top = rect.top;
-        element.top = rect.top;
+        element.left = rect.left;
         element.width = rect.width;
         element.height = rect.height;
         this.add(element);

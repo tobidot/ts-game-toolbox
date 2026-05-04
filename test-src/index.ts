@@ -1,6 +1,9 @@
 import { TestDashboard } from "../src/testing/TestDashboard";
 import { QuadTreeTest } from "./trees/QuadTreeTest";
 import { RectTest } from "./geometries/RectTest";
+import { PolygonTest } from "./geometries/PolygonTest";
+import { AssertNeverTest } from "./flow/AssertNeverTest";
+import { MenuTest } from "./ui/MenuTest";
 
 const element = document.getElementById('test-dashboard');
 if (!element) throw new Error('Element not found');
@@ -10,6 +13,9 @@ element.append(dashboard.get_element());
 dashboard.add_test([
     new QuadTreeTest(),
     new RectTest(),
+    new PolygonTest(),
+    new AssertNeverTest(),
+    new MenuTest(),
 ]);
 
 

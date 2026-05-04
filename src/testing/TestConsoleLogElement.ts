@@ -68,16 +68,17 @@ export class TestConsoleLogElement {
     }
 
     public log(...args: any[]) {
+        if (args.length === 0) return;
+        
         const format_or_log = args.shift();
-        if (typeof format_or_log === "string") {
-            return this.print_format(format_or_log, ...args)
+        if (typeof format_or_log === "string" && format_or_log.includes('%')) {
+            this.print_format(format_or_log, ...args)
                 .then(() => {
-                    this.log(...args);
+                    // print_format might have consumed some args, but let's assume it consumed what it needed.
+                    // If there are more args, we could log them, but usually % format strings are self-contained.
                 });
         } else {
-            args.forEach((arg: any) => {
-                this.print((arg).toString());
-            });
+            this.print([format_or_log, ...args].map(arg => arg === undefined ? 'undefined' : (arg === null ? 'null' : arg.toString())).join(' '));
         }
     }
 

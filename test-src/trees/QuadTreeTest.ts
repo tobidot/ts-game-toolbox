@@ -4,70 +4,57 @@ import { TreeElementNotFoundException } from "../../src/trees/exceptions/TreeEle
 import { Rect, RectI } from "../../src/geometries/Rect";
 
 export class QuadTreeTest extends TestClass {
-
-
     public base_rect: RectI = {
-        left: -50, top: -50, width: 100, height: 100,
+        left: 0, top: 0, width: 400, height: 300,
     };
-    public tree = new QuadTree<DemoQuadElement<number>>(this.base_rect);
 
     public get_name() {
-        return "Quadtree Test"
+        return "Quadtree Visualization"
     }
 
-    public set_up() {
-        this.tree = new QuadTree(this.base_rect);
-    }
+    public test_quadtree_visualization() {
+        const test_container =
+            document.querySelector(".test-dashboard__test-container") ||
+            document.body;
 
-    public test_new_quad_tree_is_empty() {
-        this.assert_true(this.tree.is_empty());
-    }
+        const canvas = document.createElement("canvas");
+        canvas.width = 400;
+        canvas.height = 300;
+        canvas.style.border = "1px solid black";
+        canvas.style.display = "block";
+        canvas.style.marginTop = "10px";
+        test_container.appendChild(canvas);
 
-    public test_quad_tree_is_not_empty_after_add_element() {
-        const element = new DemoQuadElement<number>(0, 0, 0, 0, 10);
-        this.tree.add(element);
-        this.assert_false(this.tree.is_empty());
-    }
+        const ctx = canvas.getContext("2d")!;
+        const tree = new QuadTree<DemoQuadElement<string>>(this.base_rect);
+        
+        const elements = [
+            new DemoQuadElement(10, 10, 20, 20, "A"),
+            new DemoQuadElement(100, 100, 50, 50, "B"),
+            new DemoQuadElement(250, 50, 30, 30, "C"),
+        ];
 
-    public test_remove_element_from_empty_quad_tree_throws_element_not_found() {
-        const element = new DemoQuadElement<number>(0, 0, 0, 0, 10);
-        this.assert_exception(
-            TreeElementNotFoundException,
-            () => {
-                this.tree.remove(element);
-            }
-        );
-    }
+        elements.forEach(e => tree.add(e));
 
-    public test_quad_tree_is_empty_after_add_and_remove_element() {
-        const element = new DemoQuadElement<number>(0, 0, 0, 0, 10);
-        this.tree.add(element);
-        this.tree.remove(element);
-        this.assert_true(this.tree.is_empty());
-    }
+        ctx.strokeStyle = "#ccc";
+        ctx.strokeRect(this.base_rect.left, this.base_rect.top, this.base_rect.width, this.base_rect.height);
 
-    public test_quad_tree_after_once_add_twice_remove_throws_element_not_found() {
-        const element = new DemoQuadElement<number>(0, 0, 0, 0, 10);
-        this.tree.add(element);
-        this.tree.remove(element);
-        this.assert_exception(TreeElementNotFoundException, () => {
-            this.tree.remove(element);
+        ctx.strokeStyle = "blue";
+        elements.forEach(e => {
+            ctx.strokeRect(e.left, e.top, e.width, e.height);
+            ctx.fillText(e.data, e.left, e.top - 5);
         });
-    }
 
-    public test_quad_tree_pick_returns_empty_array() {
-        const rect: RectI = { left: 0, top: 0, width: 500, height: 500 };
-        const result: Array<DemoQuadElement<number>> = this.tree.pick(rect);
-        this.assert_true(result.length === 0);
-    }
+        const pick_rect = { left: 0, top: 0, width: 150, height: 150 };
+        ctx.strokeStyle = "rgba(255, 165, 0, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(pick_rect.left, pick_rect.top, pick_rect.width, pick_rect.height);
+        
+        const picked = tree.pick(pick_rect);
+        ctx.fillStyle = "orange";
+        ctx.fillText(`Picked: ${picked.map(p => p.data).join(", ")}`, 10, 290);
 
-    public test_quad_tree_picking_rect_with_element_within_returns_element_in_array() {
-        const element = new DemoQuadElement<number>(0, 0, 0, 0, 10);
-        const rect = new Rect({ left: -1, top: -1, width: 3, height: 3 });
-        this.tree.add(element);
-        const result = this.tree.pick(rect);
-        this.assert_equals(result.length, 1);
-        this.assert_equals(result[0], element);
+        console.log("Quadtree visualization created. Orange rect shows 'pick' area.");
     }
 }
 

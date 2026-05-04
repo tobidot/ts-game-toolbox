@@ -1,24 +1,23 @@
-import assert from "assert";
+import { describe, it, expect } from "vitest";
 import { Polygon } from "./Polygon";
 import { Vector2 } from "./Vector2";
 
 describe('Polygon', () => {
-    it('contains', () => {
+    it('should correctly detect if a point is contained', () => {
         const polygon = new Polygon([
-            new Vector2(0, 1),
-            new Vector2(1, 0),
-            new Vector2(-1, 0),
+            new Vector2(0, 100),
+            new Vector2(100, 0),
+            new Vector2(-100, 0),
         ]);
-        // assert.strictEqual(true, polygon.contains(new Vector2(0.5, 0.5)));
-        // assert.strictEqual(true, polygon.contains(new Vector2(0.9, 0.01)));
-        // assert.strictEqual(true, polygon.contains(new Vector2(-0.9, 0.01)));
-        // assert.strictEqual(true, polygon.contains(new Vector2(0.0, 0.99)));
-        // assert.strictEqual(false, polygon.contains(new Vector2(-1.0, 1.0)));
-        // assert.strictEqual(false, polygon.contains(new Vector2(1.0, 1.0)));
 
-        assert.strictEqual(false, polygon.contains(new Vector2(-1.1, 0.0)));
-        // assert.strictEqual(false, polygon.contains(new Vector2(1.1, 0.0)));
-        // assert.strictEqual(false, polygon.contains(new Vector2(0, -0.1)));
-        // assert.strictEqual(false, polygon.contains(new Vector2(0, 1.1)));
-    })
-})
+        expect(polygon.contains(new Vector2(0, 50))).toBe(true);
+        expect(polygon.contains(new Vector2(50, 10))).toBe(true);
+        expect(polygon.contains(new Vector2(-50, 10))).toBe(true);
+        
+        expect(polygon.contains(new Vector2(100, 100))).toBe(false);
+        expect(polygon.contains(new Vector2(0, -10))).toBe(false);
+        expect(polygon.contains(new Vector2(-110, 0))).toBe(false);
+        expect(polygon.contains(new Vector2(110, 0))).toBe(false);
+        expect(polygon.contains(new Vector2(0, 110))).toBe(false);
+    });
+});

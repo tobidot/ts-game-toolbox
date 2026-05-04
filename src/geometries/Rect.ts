@@ -18,12 +18,14 @@ export class Rect implements RectI {
     public height: number = 0;
 
     public constructor(
-        rect: RectI
+        rect?: RectI | number,
+        y?: number,
+        w?: number,
+        h?: number
     ) {
-        this.left = rect.left;
-        this.top = rect.top;
-        this.width = rect.width;
-        this.height = rect.height;
+        if (rect !== undefined) {
+            this.set(rect as any, y, w, h);
+        }
     }
 
     public get_left(): number {
@@ -124,6 +126,10 @@ export class Rect implements RectI {
         return Rect.intersects(this, other);
     }
 
+    public overlaps_with(other: RectI): boolean {
+        return Rect.intersects(this, other);
+    }
+
     public is_within(outer: RectI): boolean {
         return Rect.is_within(this, outer);
     }
@@ -193,39 +199,16 @@ export class Rect implements RectI {
         return (point.x >= rect.left && point.y >= rect.top && point.x <= rect.left + rect.width && point.y <= rect.top + rect.height);
     }
 
-    /**
-     * Is the given point inside the rectangle.
-     * The borders of the rectangle count as outside.
-     * @see Rect.contains
-     *
-     * @param rect
-     *  The rectangle bilding the boundry
-     * @param point
-     *  The point to check
-     * @return boolean
-     *  True => the point is inside
-     */
     public static contains_exclusive(rect: RectI, point: Vector2I): boolean {
         return (point.x > rect.left && point.y > rect.top && point.x < rect.left + rect.width && point.y < rect.top + rect.height);
     }
 
-    /**
-     * Do theses Rectangles overlap
-     * @param a
-     * @param b
-     */
     public static intersects(a: RectI, b: RectI): boolean {
         const overlap_x = (a.left + a.width > b.left && a.left <= b.left) || (b.left + b.width > a.left && b.left <= a.left);
         const overlap_y = (a.top + a.height > b.top && a.top <= b.top) || (b.top + b.height > a.top && b.top <= a.top);
         return overlap_x && overlap_y;
     }
 
-    /**
-     * Is the inner rectangle completly within the outer rectangle.
-     *
-     * @param inner
-     * @param outer
-     */
     public static is_within(inner: RectI, outer: RectI) {
         const within_x = inner.left > outer.left && inner.left + inner.width < outer.left + outer.width;
         const within_y = inner.top > outer.top && inner.top + inner.height < outer.top + outer.height;

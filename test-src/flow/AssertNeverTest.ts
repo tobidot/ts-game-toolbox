@@ -7,41 +7,31 @@ enum Foo {
 
 export class AssertNeverTest extends TestClass {
     public get_name(): string {
-        throw new Error("AssertNever Test");
+        return "AssertNever Visual Demo";
     }
 
-    public test_with_switch_statement(): void {
+    public test_demo_logic() {
+        console.log("This test demonstrates compile-time exhaustiveness checking.");
+        console.log("See src/flow/asserts/AssertNever.test.ts for non-interactive unit tests.");
+        
         const foo = [Foo.A, Foo.B, Foo.C][Math.trunc(Math.random() * 3)];
+        let handled = false;
         switch (foo) {
-            case Foo.A: return this.assert_true(true);
-            case Foo.B: return this.assert_true(true);
-            case Foo.C: return this.assert_true(true);
+            case Foo.A: 
+                console.log("Handled A");
+                handled = true;
+                break;
+            case Foo.B:
+                console.log("Handled B");
+                handled = true;
+                break;
+            case Foo.C:
+                console.log("Handled C");
+                handled = true;
+                break;
+            default:
+                assert_never(foo);
         }
-        return assert_never(foo);
-    }
-
-    // Does not work, bacause typescript does not narrow down numbers
-    //
-    // public test_with_if_statement() {
-    //     let x = Math.random();
-    //     if (x < 0.5) return;
-    //     if (x > 0.4) return;
-    //     return assert_never(x);
-    // }
-
-    public test_with_if_statement() {
-        const foo = [Foo.A, Foo.B, Foo.C][Math.trunc(Math.random() * 3)];
-        if (foo === Foo.A) return this.assert_true(true);
-        if (foo === Foo.B) return this.assert_true(true);
-        if (foo === Foo.C) return this.assert_true(true);
-        return assert_never(foo);
-    }
-
-    public test_with_string_narrowing() {
-        const foo = ["A", "B", "C"][Math.trunc(Math.random() * 3)] as "A" | "B" | "C";
-        if (foo === "A") return this.assert_true(true);
-        if (foo === "B") return this.assert_true(true);
-        if (foo === "C") return this.assert_true(true);
-        return assert_never(foo);
+        this.assert_true(handled);
     }
 }
