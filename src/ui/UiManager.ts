@@ -1,4 +1,4 @@
-import {Vector2, Vector2I} from "../geometries/Vector2";
+import {Vector2, Vector2I} from "../geometries";
 import {Element} from "./Element";
 import {Group} from "./Group";
 

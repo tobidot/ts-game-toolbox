@@ -1,6 +1,6 @@
-import {EventSocket} from "../signals/EventSocket";
-import {Rect, RectI} from "../geometries/Rect";
-import {Vector2, Vector2I} from "../geometries/Vector2";
+import {EventSocket} from "../signals";
+import {Rect, RectI} from "../geometries";
+import {Vector2, Vector2I} from "../geometries";
 import {ElementChangeEvent, ElementClickEvent} from "./events";
 
 export type ElementEvents = ElementChangeEvent | ElementClickEvent;

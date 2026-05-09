@@ -1,5 +1,5 @@
-import {RectI} from "../../geometries/Rect";
-import {Vector2I} from "../../geometries/Vector2";
+import {RectI} from "../../geometries";
+import {Vector2I} from "../../geometries";
 import {Element} from "../Element";
 
 export class Button extends Element {
