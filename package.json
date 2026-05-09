@@ -1,6 +1,6 @@
 {
   "name": "@game.object/ts-game-toolbox",
-  "version": "v5.1.8",
+  "version": "vlist..1",
   "main": "src/index.ts",
   "types": "src/index.d.ts",
   "files": [
