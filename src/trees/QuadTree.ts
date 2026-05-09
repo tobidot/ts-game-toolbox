@@ -24,8 +24,8 @@ export class QuadTree<T extends RectI> {
 
     /**
      * First wrap the root in a branch that contains the root at the bottom right,
-     * then create a branch wich has that new branch in the bottom left, 
-     * like that the tree expands in all directions 
+     * then create a branch wich has that new branch in the bottom left,
+     * like that the tree expands in all directions
      */
     public elevate_root_branch() {
         const old_root_branch = this.root_branch;
@@ -46,7 +46,10 @@ export class QuadTree<T extends RectI> {
         this.wrap_root_node_in_node_with_rect(extend_bottom_right_rect, 0);
     }
 
-    public wrap_root_node_in_node_with_rect(rect: RectI, node_pos: 0 | 1 | 2 | 3) {
+    public wrap_root_node_in_node_with_rect(
+        rect: RectI,
+        node_pos: 0 | 1 | 2 | 3,
+    ) {
         const wrapper_node = new QuadTreeBranch<T>(rect);
         wrapper_node.create_child_branches();
         if (!wrapper_node.child_branch_nodes) throw new Error();
@@ -79,7 +82,14 @@ export class QuadTree<T extends RectI> {
 }
 
 export class QuadTreeBranch<T extends RectI> extends Rect {
-    public child_branch_nodes: [QuadTreeBranch<T>, QuadTreeBranch<T>, QuadTreeBranch<T>, QuadTreeBranch<T>] | null = null;
+    public child_branch_nodes:
+        | [
+              QuadTreeBranch<T>,
+              QuadTreeBranch<T>,
+              QuadTreeBranch<T>,
+              QuadTreeBranch<T>,
+          ]
+        | null = null;
     public elements: Array<T> = [];
 
     public add(element: T): boolean {
@@ -87,11 +97,15 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
             this.elements.push(element);
             this.create_child_branches_if_necessary();
             return true;
-        };
-        const overlapping_branches = this.child_branch_nodes.filter((branch) => {
-            return branch.intersects(element);
-        }, []);
-        if (overlapping_branches.length === 0) throw Error('Inconsistent Result');
+        }
+        const overlapping_branches = this.child_branch_nodes.filter(
+            (branch) => {
+                return branch.intersects(element);
+            },
+            [],
+        );
+        if (overlapping_branches.length === 0)
+            throw Error("Inconsistent Result");
         if (overlapping_branches.length === 1) {
             overlapping_branches[0].add(element);
         } else {
@@ -117,16 +131,40 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
         const w_half = this.width / 2;
         const h_half = this.height / 2;
         this.child_branch_nodes = [
-            new QuadTreeBranch<T>({ left: this.left, top: this.top, width: w_half, height: h_half }),
-            new QuadTreeBranch<T>({ left: this.left + w_half, top: this.top, width: w_half, height: h_half }),
-            new QuadTreeBranch<T>({ left: this.left + w_half, top: this.top + h_half, width: w_half, height: h_half }),
-            new QuadTreeBranch<T>({ left: this.left, top: this.top + h_half, width: w_half, height: h_half }),
+            new QuadTreeBranch<T>({
+                left: this.left,
+                top: this.top,
+                width: w_half,
+                height: h_half,
+            }),
+            new QuadTreeBranch<T>({
+                left: this.left + w_half,
+                top: this.top,
+                width: w_half,
+                height: h_half,
+            }),
+            new QuadTreeBranch<T>({
+                left: this.left + w_half,
+                top: this.top + h_half,
+                width: w_half,
+                height: h_half,
+            }),
+            new QuadTreeBranch<T>({
+                left: this.left,
+                top: this.top + h_half,
+                width: w_half,
+                height: h_half,
+            }),
         ];
     }
 
     public pick(rect: RectI, result: Array<T> = []): Array<T> {
         if (!this.intersects(rect)) return result;
-        result.push(...this.elements.filter((element) => Rect.intersects(rect, element)));
+        result.push(
+            ...this.elements.filter((element) =>
+                Rect.intersects(rect, element),
+            ),
+        );
         if (this.child_branch_nodes === null) return result;
         if (this.is_within(rect)) return this.pick_all(result);
         for (const branch of this.child_branch_nodes) {
@@ -178,7 +216,7 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
             } else {
                 this.child_branch_nodes.forEach((node) => {
                     node.clear(max_levels_deep - 1);
-                })
+                });
             }
         }
     }

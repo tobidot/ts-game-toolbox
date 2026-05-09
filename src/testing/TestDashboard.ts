@@ -2,9 +2,9 @@ import { TestConsoleLogElement } from "./TestConsoleLogElement";
 import { TestClass } from "./TestClass";
 
 interface TestDashboardElements {
-    dashboard: HTMLElement,
-    button_list: HTMLElement,
-    test_container: HTMLElement,
+    dashboard: HTMLElement;
+    button_list: HTMLElement;
+    test_container: HTMLElement;
     console_log: TestConsoleLogElement;
 }
 
@@ -41,22 +41,25 @@ export class TestDashboard {
     }
 
     protected create_dashboard_wrapping_element(): HTMLElement {
-        const dashboard = document.createElement('div');
-        dashboard.className = 'test-dashboard';
+        const dashboard = document.createElement("div");
+        dashboard.className = "test-dashboard";
         return dashboard;
     }
 
     protected create_test_container(): HTMLElement {
-        const container = document.createElement('div');
-        container.className = 'test-dashboard__test-container';
+        const container = document.createElement("div");
+        container.className = "test-dashboard__test-container";
         return container;
     }
 
     protected create_test_button_list(): HTMLUListElement {
-        const button_list = document.createElement('ul');
+        const button_list = document.createElement("ul");
         button_list.className = "test-dashboard__button-list";
 
-        const button_start_all = this.create_element_button('Run all tests', this.start_all_tests_func);
+        const button_start_all = this.create_element_button(
+            "Run all tests",
+            this.start_all_tests_func,
+        );
         button_list.append(button_start_all);
         this.tests.forEach((test: TestClass) => {
             const button = this.create_element_for_test_button(test);
@@ -74,14 +77,17 @@ export class TestDashboard {
     }
 
     protected clear_test_container(): void {
-        this.elements.test_container.innerHTML = '';
+        this.elements.test_container.innerHTML = "";
     }
 
-    protected create_element_button(text: string, on_click: () => void): HTMLElement {
-        const list_item = document.createElement('li');
-        const button = document.createElement('button');
+    protected create_element_button(
+        text: string,
+        on_click: () => void,
+    ): HTMLElement {
+        const list_item = document.createElement("li");
+        const button = document.createElement("button");
         button.innerText = text;
-        button.addEventListener('click', on_click);
+        button.addEventListener("click", on_click);
         list_item.append(button);
         return list_item;
     }
@@ -93,7 +99,9 @@ export class TestDashboard {
         tests.forEach((test: TestClass) => {
             this.tests.push(test);
             if (this.elements) {
-                this.elements.button_list.append(this.create_element_for_test_button(test));
+                this.elements.button_list.append(
+                    this.create_element_for_test_button(test),
+                );
             }
         });
         return this;
@@ -102,10 +110,10 @@ export class TestDashboard {
     public start_all_tests_func = () => {
         this.clear_test_container();
         this.elements.console_log.clear();
-        console.log('Starting Tests ... ');
+        console.log("Starting Tests ... ");
         for (const test of this.tests) {
             test.run_all_test_cases();
         }
-        console.log(' ... Tests finished');
-    }
+        console.log(" ... Tests finished");
+    };
 }

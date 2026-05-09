@@ -36,12 +36,9 @@ export class PolygonTest extends TestClass {
         ctx.strokeStyle = "blue";
         ctx.stroke();
 
-        const test_points = [
-            new Vector2(200, 150),
-            new Vector2(50, 50),
-        ];
+        const test_points = [new Vector2(200, 150), new Vector2(50, 50)];
 
-        test_points.forEach(p => {
+        test_points.forEach((p) => {
             const inside = polygon.contains(p);
             ctx.fillStyle = inside ? "green" : "red";
             ctx.beginPath();
@@ -50,6 +47,8 @@ export class PolygonTest extends TestClass {
             ctx.fillText(inside ? "Inside" : "Outside", p.x + 10, p.y);
         });
 
-        console.log("Polygon visualization created. Green dots are inside, red dots are outside.");
+        console.log(
+            "Polygon visualization created. Green dots are inside, red dots are outside.",
+        );
     }
 }

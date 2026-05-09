@@ -1,2 +1,1 @@
-export * from "./RgbColor"
-
+export * from "./RgbColor";

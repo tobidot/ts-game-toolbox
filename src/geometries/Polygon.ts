@@ -3,20 +3,18 @@ import { Ray } from "./Ray";
 import { Vector2, Vector2I } from "./Vector2";
 
 export interface PolygonI {
-    points: Array<Vector2I>,
+    points: Array<Vector2I>;
 }
 
 export class Polygon implements PolygonI {
     protected _points: Array<Vector2> = [];
 
-    public constructor(
-        points: Array<Vector2I>,
-    ) {
+    public constructor(points: Array<Vector2I>) {
         this.points = points;
     }
 
     public set points(points: Array<Vector2I>) {
-        this._points = points.map(p => new Vector2(p));
+        this._points = points.map((p) => new Vector2(p));
     }
 
     public get points(): Array<Vector2I> {
@@ -38,7 +36,7 @@ export class Polygon implements PolygonI {
 
     /**
      * Check if a point is inside this polygone via even/odd rule
-     * @param point 
+     * @param point
      */
     public contains(point: Vector2I): boolean {
         // const random_point = new Vector2(0, 0);

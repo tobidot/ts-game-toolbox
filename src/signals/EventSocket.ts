@@ -6,12 +6,10 @@ import { Observable } from "./Interfaces";
  */
 export class EventBase {
     /**
-     * 
+     *
      * @param event_name The unique identifier for the event
      */
-    constructor(
-        public readonly event_name: string
-    ) { }
+    constructor(public readonly event_name: string) {}
 }
 
 /**
@@ -20,11 +18,13 @@ export class EventBase {
 export type EventCallback<T extends EventBase> = (event: T) => void;
 
 /**
- * An EventSocket provides an easy way to 
+ * An EventSocket provides an easy way to
  */
-export class EventSocket<T extends EventBase>
-    implements Observable<Listener<T>, number, T>
-{
+export class EventSocket<T extends EventBase> implements Observable<
+    Listener<T>,
+    number,
+    T
+> {
     /**
      * The list of listeners attached
      */
@@ -32,7 +32,7 @@ export class EventSocket<T extends EventBase>
 
     /**
      * Dispatches an event to all listeners that are listening to this specific event.
-     * 
+     *
      * @param event The dispatched event
      */
     public dispatch(event: T): void {
@@ -45,13 +45,13 @@ export class EventSocket<T extends EventBase>
 
     /**
      * Attaches a new Eventlistener to this Eventsocket.
-     * 
+     *
      * @param listener The Listener to attach
      */
     public attach(listener: Listener<T>): number;
     /**
      * Attaches a new Eventlistener to this Eventsocket.
-     * 
+     *
      * @param type The EventClass to listen for
      * @param callback The function to call when event occurs
      */
@@ -74,12 +74,14 @@ export class EventSocket<T extends EventBase>
         }
         const listener = type as Listener<T>;
         return this.listeners.push(listener) - 1;
-    };
+    }
 
     /**
-     * 
+     *
      */
-    public detach<EVENT extends T>(identifier: EventClass<EVENT> | number): boolean {
+    public detach<EVENT extends T>(
+        identifier: EventClass<EVENT> | number,
+    ): boolean {
         if (typeof identifier === "number") {
             if (!(identifier in this.listeners)) return false;
             delete this.listeners[identifier];
@@ -99,10 +101,7 @@ export class EventSocket<T extends EventBase>
     public detach_all() {
         this.listeners = [];
     }
-
 }
-
-
 
 /**
  * @internal
@@ -117,6 +116,6 @@ type EventClass<T extends EventBase> = Class<T> & {
  * The internal listener object
  */
 interface Listener<T extends EventBase> {
-    type: EventClass<T>,
-    callback: EventCallback<T>,
+    type: EventClass<T>;
+    callback: EventCallback<T>;
 }

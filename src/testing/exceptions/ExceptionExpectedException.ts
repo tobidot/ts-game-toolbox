@@ -1,3 +1,1 @@
-export class TestClassExceptionExpectedExcetpion extends Error {
-
-}
+export class TestClassExceptionExpectedExcetpion extends Error {}

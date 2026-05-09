@@ -1,1 +1,1 @@
-export * from "./manager/AssetManager"
+export * from "./manager/AssetManager";

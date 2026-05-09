@@ -9,8 +9,8 @@ export class Vector2 {
     public x: number;
     public y: number;
 
-    public constructor(vec: Readonly<Vector2I>)
-    public constructor(x?: number, y?: number)
+    public constructor(vec: Readonly<Vector2I>);
+    public constructor(x?: number, y?: number);
     public constructor(x: number | Readonly<Vector2I> = 0, y: number = 0) {
         if (typeof x === "object") {
             this.x = x.x;
@@ -21,8 +21,8 @@ export class Vector2 {
         }
     }
 
-    public set(vec: Readonly<Vector2I>): this
-    public set(x: number, y: number): this
+    public set(vec: Readonly<Vector2I>): this;
+    public set(x: number, y: number): this;
     public set(x: number | Readonly<Vector2I>, y: number = 0): this {
         if (typeof x === "object") {
             this.x = x.x;
@@ -68,8 +68,8 @@ export class Vector2 {
 
     public set_magnitude(magnitude: number): this {
         const len = this.len();
-        this.x = this.x / len * magnitude;
-        this.y = this.y / len * magnitude;
+        this.x = (this.x / len) * magnitude;
+        this.y = (this.y / len) * magnitude;
         return this;
     }
 
@@ -108,7 +108,7 @@ export class Vector2 {
 
     public get_angle(): radians {
         // let 0 be showing up (0,1)
-        return (Math.atan2(this.y, this.x) + (Math.PI / 2)) % (2 * Math.PI);
+        return (Math.atan2(this.y, this.x) + Math.PI / 2) % (2 * Math.PI);
     }
 
     public rotate_radians_clockwise(radians: number): this {
@@ -151,5 +151,4 @@ export class Vector2 {
     public static from_angle(angle: radians, length: number = 1): Vector2 {
         return new Vector2(Math.cos(angle) * length, Math.sin(angle) * length);
     }
-
 }

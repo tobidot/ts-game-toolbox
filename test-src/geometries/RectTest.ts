@@ -1,5 +1,5 @@
-import { TestClass } from "../../src/testing/TestClass"
-import { Rect } from "../../src/geometries/Rect"
+import { TestClass } from "../../src/testing/TestClass";
+import { Rect } from "../../src/geometries/Rect";
 
 export class RectTest extends TestClass {
     public get_name(): string {
@@ -32,9 +32,13 @@ export class RectTest extends TestClass {
         ctx.fillText("Rect 2", rect2.left, rect2.top - 5);
 
         const overlaps = rect1.overlaps_with(rect2);
-        ctx.fillStyle = overlaps ? "rgba(0, 255, 0, 0.3)" : "rgba(255, 0, 0, 0.3)";
+        ctx.fillStyle = overlaps
+            ? "rgba(0, 255, 0, 0.3)"
+            : "rgba(255, 0, 0, 0.3)";
         ctx.fillText(`Overlaps: ${overlaps}`, 10, 20);
-        
-        console.log("Rect visualization created. Blue and Red rects should overlap (Green text indicates logic).");
+
+        console.log(
+            "Rect visualization created. Blue and Red rects should overlap (Green text indicates logic).",
+        );
     }
 }

@@ -1,10 +1,9 @@
-import {RectI} from "../geometries/Rect";
-import {Vector2, Vector2I} from "../geometries/Vector2";
-import {Element} from "./Element";
+import { RectI } from "../geometries/Rect";
+import { Vector2, Vector2I } from "../geometries/Vector2";
+import { Element } from "./Element";
 
 export class Group extends Element {
-
-    public readonly children: Array<Element>
+    public readonly children: Array<Element>;
 
     public constructor(
         children: Array<Element>,
@@ -28,7 +27,10 @@ export class Group extends Element {
         return super.hit(coords);
     }
 
-    public override hover(coords: Vector2I, locked_element: Element | null): boolean {
+    public override hover(
+        coords: Vector2I,
+        locked_element: Element | null,
+    ): boolean {
         if (!this.is_visible) {
             super.hover(coords, locked_element);
             for (const child of this.children) {
@@ -44,7 +46,10 @@ export class Group extends Element {
         return is_hit;
     }
 
-    public override drag(_start_coords: Vector2 | null, _current_coords: Vector2I): boolean {
+    public override drag(
+        _start_coords: Vector2 | null,
+        _current_coords: Vector2I,
+    ): boolean {
         return false;
     }
 
@@ -54,5 +59,4 @@ export class Group extends Element {
             child.draw(ctx);
         }
     }
-
 }

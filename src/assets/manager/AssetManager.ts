@@ -30,8 +30,8 @@ export class AssetManager {
 
     public async load(
         assets: {
-            images?: Record<string, string>,
-            audio?: Record<string, string>,
+            images?: Record<string, string>;
+            audio?: Record<string, string>;
         },
         progress: Progress,
     ) {
@@ -58,11 +58,11 @@ export class AssetManager {
                         element: image,
                         url: url,
                     });
-                    image.addEventListener('load', () => {
+                    image.addEventListener("load", () => {
                         single_progress.mark_as_done();
                         resolve();
                     });
-                    image.addEventListener('error', () => {
+                    image.addEventListener("error", () => {
                         console.warn("Failed to load image", url);
                         single_progress.mark_as_done();
                         reject();
@@ -70,7 +70,7 @@ export class AssetManager {
                     image.crossOrigin = "anonymous";
                     image.src = url;
                 });
-            }
+            },
         );
     }
 
@@ -89,11 +89,11 @@ export class AssetManager {
                         element: audio,
                         url: url,
                     });
-                    audio.addEventListener('canplay', () => {
+                    audio.addEventListener("canplay", () => {
                         single_progress.mark_as_done();
                         resolve();
                     });
-                    audio.addEventListener('error', () => {
+                    audio.addEventListener("error", () => {
                         console.warn("Failed to load audio", url);
                         single_progress.mark_as_done();
                         reject();
@@ -101,17 +101,23 @@ export class AssetManager {
                     audio.preload = "auto";
                     audio.load();
                 });
-            }
+            },
         );
     }
 
     public async load_assets(
         assets: Record<string, string>,
         progress: Progress,
-        callback: (progress: Progress, path: string, url: string) => Promise<void>
+        callback: (
+            progress: Progress,
+            path: string,
+            url: string,
+        ) => Promise<void>,
     ): Promise<Array<void>> {
         const promises = new Array<Promise<void>>();
-        const child_progress = progress.make_child_progress(Object.keys(assets).length);
+        const child_progress = progress.make_child_progress(
+            Object.keys(assets).length,
+        );
         for (const [path, url] of Object.entries(assets)) {
             const single_progress = child_progress.make_child_progress(1);
             const promise = callback(single_progress, path, url);
@@ -132,7 +138,8 @@ export class AssetManager {
     }
 
     public list_pending() {
-        return this.pending.filter((asset) => asset.finished_at === null).map((asset) => asset.path);
+        return this.pending
+            .filter((asset) => asset.finished_at === null)
+            .map((asset) => asset.path);
     }
-
 }

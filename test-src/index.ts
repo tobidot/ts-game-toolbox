@@ -5,8 +5,8 @@ import { PolygonTest } from "./geometries/PolygonTest";
 import { AssertNeverTest } from "./flow/AssertNeverTest";
 import { MenuTest } from "./ui/MenuTest";
 
-const element = document.getElementById('test-dashboard');
-if (!element) throw new Error('Element not found');
+const element = document.getElementById("test-dashboard");
+if (!element) throw new Error("Element not found");
 const dashboard = new TestDashboard();
 element.append(dashboard.get_element());
 
@@ -17,5 +17,3 @@ dashboard.add_test([
     new AssertNeverTest(),
     new MenuTest(),
 ]);
-
-

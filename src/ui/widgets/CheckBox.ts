@@ -1,9 +1,8 @@
-import {RectI} from "../../geometries";
-import {Vector2I} from "../../geometries";
-import {Element} from "../Element";
+import { RectI } from "../../geometries";
+import { Vector2I } from "../../geometries";
+import { Element } from "../Element";
 
 export class CheckBox extends Element {
-
     public title: string;
     public checked: boolean;
 
@@ -30,22 +29,29 @@ export class CheckBox extends Element {
         const box_x = this.rect.left;
         const box_y = this.rect.top + (this.rect.height - box_size) / 2;
 
-        ctx.fillStyle = this.is_down ? '#666' : (this.is_hovered ? '#999' : '#ccc');
+        ctx.fillStyle = this.is_down
+            ? "#666"
+            : this.is_hovered
+              ? "#999"
+              : "#ccc";
         ctx.fillRect(box_x, box_y, box_size, box_size);
 
-        ctx.strokeStyle = '#333';
+        ctx.strokeStyle = "#333";
         ctx.strokeRect(box_x, box_y, box_size, box_size);
 
         if (this.checked) {
-            ctx.fillStyle = '#000';
+            ctx.fillStyle = "#000";
             ctx.fillRect(box_x + 4, box_y + 4, box_size - 8, box_size - 8);
         }
 
-        ctx.fillStyle = '#000';
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.title, box_x + box_size + 10, this.rect.top + this.rect.height / 2);
+        ctx.fillStyle = "#000";
+        ctx.font = "16px Arial";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+            this.title,
+            box_x + box_size + 10,
+            this.rect.top + this.rect.height / 2,
+        );
     }
-
 }

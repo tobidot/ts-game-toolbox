@@ -8,21 +8,15 @@ export class Progress {
     protected listeners: Array<ProgressListener> = [];
     protected children: Array<Progress> = [];
 
-    public constructor(
-        max: number = 1,
-    ) {
+    public constructor(max: number = 1) {
         this.max = max;
     }
 
-    public listen(
-        callback: (percent: number, self: Progress) => void
-    ): void {
+    public listen(callback: (percent: number, self: Progress) => void): void {
         this.listeners.push(callback);
     }
 
-    public set_self_progress(
-        current: number
-    ): void {
+    public set_self_progress(current: number): void {
         this.current = current;
         this.notify_listeners();
     }
@@ -31,7 +25,10 @@ export class Progress {
         if (this.max <= 0) {
             return 100;
         }
-        const children_progress = this.children.reduce((acc, child) => acc + child.get_percent(), 0);
+        const children_progress = this.children.reduce(
+            (acc, child) => acc + child.get_percent(),
+            0,
+        );
         return (this.current + children_progress) / this.max;
     }
 
@@ -40,7 +37,7 @@ export class Progress {
         child.listen(() => {
             this.notify_listeners();
         });
-        this.children.push(child)
+        this.children.push(child);
         return child;
     }
 

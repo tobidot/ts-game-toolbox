@@ -2,11 +2,11 @@ import { sleep } from "../async/Sleep";
 import { Throttler } from "./Throttler";
 import { expect } from "chai";
 
-describe('Throttler', () => {
+describe("Throttler", () => {
     /**
      * Make sure the result is received at the caller
      */
-    it('returns result', async () => {
+    it("returns result", async () => {
         // declare definitions
         const _CALLBACK_SLEEP = 100;
         const _MAX_TIMEOUT = 200;
@@ -20,7 +20,7 @@ describe('Throttler', () => {
             strategy: Throttler.STRATEGIES.COMBINE,
             callback,
             delay_ms: 0,
-            wake_up_ms: 0
+            wake_up_ms: 0,
         });
 
         // run the test
@@ -29,14 +29,20 @@ describe('Throttler', () => {
         const elapsed = performance.now() - now;
 
         // Run assertions
-        expect(result).to.equal(1, "The return value should be the same as the callback has returned.");
-        expect(elapsed).to.be.lessThan(_MAX_TIMEOUT, "The call should have taken less than 110ms.");
+        expect(result).to.equal(
+            1,
+            "The return value should be the same as the callback has returned.",
+        );
+        expect(elapsed).to.be.lessThan(
+            _MAX_TIMEOUT,
+            "The call should have taken less than 110ms.",
+        );
     });
 
     /**
      * Make sure the throttline mechanic works as intended
      */
-    it('combines multiple calls', async () => {
+    it("combines multiple calls", async () => {
         // declare definitions
         const _FIRST_RETURN = Math.random();
         const _LAST_RETURN = Math.random();
@@ -47,7 +53,7 @@ describe('Throttler', () => {
         // declare helper
         let count_callback = 0;
         let count_after = 0;
-        const callback = async (input:number) => {
+        const callback = async (input: number) => {
             await sleep(_CALLBACK_SLEEP);
             count_callback++;
             return input;
@@ -55,7 +61,7 @@ describe('Throttler', () => {
         const throttler = new Throttler({
             callback,
             delay_ms: 0,
-            wake_up_ms: 0
+            wake_up_ms: 0,
         });
 
         // run the test
@@ -70,18 +76,32 @@ describe('Throttler', () => {
         const elapsed = performance.now() - now;
 
         // Run assertions
-        expect(first_result).to.equal(_FIRST_RETURN, "All return values should be from the first call.");
-        expect(last_result).to.equal(_FIRST_RETURN, "All return values should be from the first call.");
-        expect(count_callback).to.equal(1, "The callback sohuld only have been called once.");
-        expect(count_after).to.equal(_ITERATIONS, "The then method should have been called 10 times.");
-        expect(elapsed).to.be.lessThan(_MAX_TIMEOUT, "The call should have taken less than 110ms.");
+        expect(first_result).to.equal(
+            _FIRST_RETURN,
+            "All return values should be from the first call.",
+        );
+        expect(last_result).to.equal(
+            _FIRST_RETURN,
+            "All return values should be from the first call.",
+        );
+        expect(count_callback).to.equal(
+            1,
+            "The callback sohuld only have been called once.",
+        );
+        expect(count_after).to.equal(
+            _ITERATIONS,
+            "The then method should have been called 10 times.",
+        );
+        expect(elapsed).to.be.lessThan(
+            _MAX_TIMEOUT,
+            "The call should have taken less than 110ms.",
+        );
     });
 
-    
     /**
      * Check two throttled calls with a delay in between
      */
-    it('combines multiple calls', async () => {
+    it("combines multiple calls", async () => {
         // declare definitions
         const _FIRST_RETURN = Math.random();
         const _SECOND_RETURN = Math.random();
@@ -94,7 +114,7 @@ describe('Throttler', () => {
         // declare helper
         let count_callback = 0;
         let count_after = 0;
-        const callback = async (input:number) => {
+        const callback = async (input: number) => {
             await sleep(_CALLBACK_SLEEP);
             count_callback++;
             return input;
@@ -102,7 +122,7 @@ describe('Throttler', () => {
         const throttler = new Throttler({
             callback,
             delay_ms: 0,
-            wake_up_ms: 0
+            wake_up_ms: 0,
         });
 
         // run the test
@@ -117,18 +137,30 @@ describe('Throttler', () => {
             throttler.run(i).then(() => count_after++);
         }
         const last_promise = throttler.run(_LAST_RETURN);
-        // 
+        //
         const first_result = await first_promise;
         const second_result = await second_promise;
         const last_result = await last_promise;
         const elapsed = performance.now() - now;
 
         // Run assertions
-        expect(first_result).to.equal(_FIRST_RETURN, "The first call should get its result ready.");
-        expect(second_result).to.equal(_SECOND_RETURN, "The second call should get the second return value.");
-        expect(last_result).to.equal(_SECOND_RETURN, "The last call should still be throttled and therefor have the second value.");
-        expect(count_callback).to.equal(2, "The callback should have time to be called twice.");
+        expect(first_result).to.equal(
+            _FIRST_RETURN,
+            "The first call should get its result ready.",
+        );
+        expect(second_result).to.equal(
+            _SECOND_RETURN,
+            "The second call should get the second return value.",
+        );
+        expect(last_result).to.equal(
+            _SECOND_RETURN,
+            "The last call should still be throttled and therefor have the second value.",
+        );
+        expect(count_callback).to.equal(
+            2,
+            "The callback should have time to be called twice.",
+        );
         expect(count_after).to.equal(_ITERATIONS * 2);
         expect(elapsed).to.be.lessThan(_MAX_TIMEOUT);
     });
-})
+});

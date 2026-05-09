@@ -3,11 +3,7 @@ import { PhysicsBody } from "./PhysicsBody";
 export class SweepingSatWorld {
     public bodies: Array<PhysicsBody<void>> = [];
 
-    constructor() {
+    constructor() {}
 
-    }
-
-    public update() {
-
-    }
+    public update() {}
 }

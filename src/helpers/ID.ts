@@ -18,6 +18,6 @@ export class ID {
     }
 
     public toString() {
-        return '#' + this.id.toString();
+        return "#" + this.id.toString();
     }
 }

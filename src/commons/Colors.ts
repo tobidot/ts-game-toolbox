@@ -6,4 +6,4 @@ export const Colors = {
     GREEN: new RgbColor(0, 255, 0),
     BLACK: new RgbColor(0, 0, 0),
     WHITE: new RgbColor(255, 255, 255),
-}
+};

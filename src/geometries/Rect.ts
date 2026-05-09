@@ -1,10 +1,10 @@
 import { Vector2, Vector2I } from "./Vector2";
 
 export interface RectI {
-    left: number,
-    top: number,
-    width: number,
-    height: number
+    left: number;
+    top: number;
+    width: number;
+    height: number;
 }
 
 /**
@@ -17,14 +17,30 @@ export class Rect implements RectI {
     public width: number = 0;
     public height: number = 0;
 
+    public constructor(other: RectI);
     public constructor(
-        rect?: RectI | number,
-        y?: number,
-        w?: number,
-        h?: number
+        left: number,
+        top: number,
+        width: number,
+        height: number,
+    );
+    public constructor(
+        left?: RectI | number,
+        top?: number,
+        width?: number,
+        height?: number,
     ) {
-        if (rect !== undefined) {
-            this.set(rect as any, y, w, h);
+        if (left !== undefined) {
+            if (typeof left === "number") {
+                this.set(
+                    left,
+                    top as number,
+                    width as number,
+                    height as number,
+                );
+            } else {
+                this.set(left);
+            }
         }
     }
 
@@ -64,19 +80,24 @@ export class Rect implements RectI {
         return new Rect(this);
     }
 
-    public set(x: RectI): this;
-    public set(x: number, y: number, w?: number, h?: number): this;
-    public set(x: number | RectI, y?: number, w?: number, h?: number): this {
-        if (typeof x === "object") {
-            this.left = x.left;
-            this.top = x.top;
-            this.width = x.width;
-            this.height = x.height;
+    public set(other: RectI): this;
+    public set(left: number, top: number, width: number, height: number): this;
+    public set(
+        left: number | RectI,
+        top?: number,
+        width?: number,
+        height?: number,
+    ): this {
+        if (typeof left === "object") {
+            this.left = left.left;
+            this.top = left.top;
+            this.width = left.width;
+            this.height = left.height;
         } else {
-            this.left = x;
-            this.top = y as number;
-            if (w !== undefined) this.width = w;
-            if (h !== undefined) this.height = h;
+            this.left = left;
+            this.top = top as number;
+            if (width !== undefined) this.width = width;
+            if (height !== undefined) this.height = height;
         }
         return this;
     }
@@ -90,7 +111,10 @@ export class Rect implements RectI {
     }
 
     public get center(): Vector2I {
-        return new Vector2(this.left + this.width / 2, this.top + this.height / 2);
+        return new Vector2(
+            this.left + this.width / 2,
+            this.top + this.height / 2,
+        );
     }
 
     public set center(center: Vector2I) {
@@ -178,7 +202,6 @@ export class Rect implements RectI {
         ];
     }
 
-
     /**
      * ### static function
      */
@@ -196,22 +219,40 @@ export class Rect implements RectI {
      *  True => the point is inside
      */
     public static contains(rect: RectI, point: Vector2I): boolean {
-        return (point.x >= rect.left && point.y >= rect.top && point.x <= rect.left + rect.width && point.y <= rect.top + rect.height);
+        return (
+            point.x >= rect.left &&
+            point.y >= rect.top &&
+            point.x <= rect.left + rect.width &&
+            point.y <= rect.top + rect.height
+        );
     }
 
     public static contains_exclusive(rect: RectI, point: Vector2I): boolean {
-        return (point.x > rect.left && point.y > rect.top && point.x < rect.left + rect.width && point.y < rect.top + rect.height);
+        return (
+            point.x > rect.left &&
+            point.y > rect.top &&
+            point.x < rect.left + rect.width &&
+            point.y < rect.top + rect.height
+        );
     }
 
     public static intersects(a: RectI, b: RectI): boolean {
-        const overlap_x = (a.left + a.width > b.left && a.left <= b.left) || (b.left + b.width > a.left && b.left <= a.left);
-        const overlap_y = (a.top + a.height > b.top && a.top <= b.top) || (b.top + b.height > a.top && b.top <= a.top);
+        const overlap_x =
+            (a.left + a.width > b.left && a.left <= b.left) ||
+            (b.left + b.width > a.left && b.left <= a.left);
+        const overlap_y =
+            (a.top + a.height > b.top && a.top <= b.top) ||
+            (b.top + b.height > a.top && b.top <= a.top);
         return overlap_x && overlap_y;
     }
 
     public static is_within(inner: RectI, outer: RectI) {
-        const within_x = inner.left > outer.left && inner.left + inner.width < outer.left + outer.width;
-        const within_y = inner.top > outer.top && inner.top + inner.height < outer.top + outer.height;
+        const within_x =
+            inner.left > outer.left &&
+            inner.left + inner.width < outer.left + outer.width;
+        const within_y =
+            inner.top > outer.top &&
+            inner.top + inner.height < outer.top + outer.height;
         return within_x && within_y;
     }
 }

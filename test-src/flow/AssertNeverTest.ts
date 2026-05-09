@@ -2,7 +2,9 @@ import { assert_never } from "../../src/flow/asserts/AssertNever";
 import { TestClass } from "../../src/testing/TestClass";
 
 enum Foo {
-    A, B, C
+    A,
+    B,
+    C,
 }
 
 export class AssertNeverTest extends TestClass {
@@ -11,13 +13,17 @@ export class AssertNeverTest extends TestClass {
     }
 
     public test_demo_logic() {
-        console.log("This test demonstrates compile-time exhaustiveness checking.");
-        console.log("See src/flow/asserts/AssertNever.test.ts for non-interactive unit tests.");
-        
+        console.log(
+            "This test demonstrates compile-time exhaustiveness checking.",
+        );
+        console.log(
+            "See src/flow/asserts/AssertNever.test.ts for non-interactive unit tests.",
+        );
+
         const foo = [Foo.A, Foo.B, Foo.C][Math.trunc(Math.random() * 3)];
         let handled = false;
         switch (foo) {
-            case Foo.A: 
+            case Foo.A:
                 console.log("Handled A");
                 handled = true;
                 break;

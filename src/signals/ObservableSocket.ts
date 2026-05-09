@@ -1,18 +1,16 @@
 import { SignalSocket } from "./SignalSocket";
 
 /**
- * Create a property as an observable, 
- * wich allows other objects to hook into this socket and listen to changes 
+ * Create a property as an observable,
+ * wich allows other objects to hook into this socket and listen to changes
  * on this property
  */
 export class ObservableSocket<T> extends SignalSocket<ObserverSignal<T>> {
     /**
-     * 
+     *
      * @param value The initial value
      */
-    constructor(
-        protected value: T
-    ) {
+    constructor(protected value: T) {
         super();
     }
 
@@ -34,7 +32,7 @@ export class ObservableSocket<T> extends SignalSocket<ObserverSignal<T>> {
             old: this.value,
             new: new_value,
         });
-        return this.value = new_value;
+        return (this.value = new_value);
     }
 
     /**
@@ -44,12 +42,12 @@ export class ObservableSocket<T> extends SignalSocket<ObserverSignal<T>> {
     public get(): T {
         return this.value;
     }
-};
+}
 
 /**
  * The change signal
  */
 interface ObserverSignal<T> {
-    old: T,
-    new: T,
+    old: T;
+    new: T;
 }

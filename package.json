@@ -1,64 +1,66 @@
 {
-  "name": "@game.object/ts-game-toolbox",
-  "version": "v5.1.9",
-  "main": "src/index.ts",
-  "types": "src/index.d.ts",
-  "files": [
-    "src/**/*.ts"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tobidot/ts-game-toolbox.git"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org",
-    "tag": "latest"
-  },
-  "author": "tobidot <Object.name@live.de>",
-  "description": "A little toolbox of classes for some game development",
-  "license": "MIT",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:dev": "vitest",
-    "coverage": "vitest run --coverage",
-    "format": "prettier --write \"src/**/*.ts\" \"test-src/**/*.ts\"",
-    "lint": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\"",
-    "lint:fix": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\" --fix"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3.3.5",
-    "@eslint/js": "^10.0.1",
-    "@types/assert": "^1.5.11",
-    "@types/chai": "^5.2.3",
-    "@types/parcel-env": "^0.0.9",
-    "@typescript-eslint/eslint-plugin": "^8.58.2",
-    "@typescript-eslint/parser": "^8.58.2",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-vue": "^6.0.6",
-    "@vitest/coverage-v8": "^4.1.4",
-    "chai": "^6.2.2",
-    "eslint": "^10.2.1",
-    "eslint-config-prettier": "^10.1.8",
-    "jsdom": "^29.0.2",
-    "npm-check-updates": "^21.0.2",
-    "prettier": "^3.8.3",
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.3",
-    "vite": "^8.0.8",
-    "vitest": "^4.1.4"
-  },
-  "bugs": {
-    "url": "https://github.com/tobidot/ts-game-toolbox/issues"
-  },
-  "homepage": "https://github.com/tobidot/ts-game-toolbox#readme",
-  "keywords": [
-    "tools",
-    "game",
-    "js",
-    "ts"
-  ]
+    "name": "@game.object/ts-game-toolbox",
+    "version": "v5.1.9",
+    "main": "src/index.ts",
+    "types": "src/index.d.ts",
+    "files": [
+        "src/**/*.ts"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tobidot/ts-game-toolbox.git"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org",
+        "tag": "latest"
+    },
+    "author": "tobidot <Object.name@live.de>",
+    "description": "A little toolbox of classes for some game development",
+    "license": "MIT",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "tsc": "tsc --noEmit",
+        "tsc:watch": "tsc --watch --noEmit",
+        "preview": "vite preview",
+        "test": "vitest run",
+        "test:dev": "vitest",
+        "coverage": "vitest run --coverage",
+        "format": "prettier --write \"src/**/*.ts\" \"test-src/**/*.ts\"",
+        "lint": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\"",
+        "lint:fix": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\" --fix"
+    },
+    "devDependencies": {
+        "@eslint/eslintrc": "^3.3.5",
+        "@eslint/js": "^10.0.1",
+        "@types/assert": "^1.5.11",
+        "@types/chai": "^5.2.3",
+        "@types/parcel-env": "^0.0.9",
+        "@typescript-eslint/eslint-plugin": "^8.58.2",
+        "@typescript-eslint/parser": "^8.58.2",
+        "@vitejs/plugin-react": "^6.0.1",
+        "@vitejs/plugin-vue": "^6.0.6",
+        "@vitest/coverage-v8": "^4.1.4",
+        "chai": "^6.2.2",
+        "eslint": "^10.2.1",
+        "eslint-config-prettier": "^10.1.8",
+        "jsdom": "^29.0.2",
+        "npm-check-updates": "^21.0.2",
+        "prettier": "^3.8.3",
+        "ts-node": "^10.9.2",
+        "typescript": "^6.0.3",
+        "vite": "^8.0.8",
+        "vitest": "^4.1.4"
+    },
+    "bugs": {
+        "url": "https://github.com/tobidot/ts-game-toolbox/issues"
+    },
+    "homepage": "https://github.com/tobidot/ts-game-toolbox#readme",
+    "keywords": [
+        "tools",
+        "game",
+        "js",
+        "ts"
+    ]
 }

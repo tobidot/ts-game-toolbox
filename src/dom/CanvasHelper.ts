@@ -6,10 +6,7 @@ import { throw_expression } from "../flow/expressions/ThrowExpression";
 export class CanvasHelper {
     protected _context: CanvasRenderingContext2D | null = null;
 
-    constructor(
-        public readonly element: HTMLCanvasElement
-    ) {
-    }
+    constructor(public readonly element: HTMLCanvasElement) {}
 
     /**
      * Definetly returns a render Context and throws an expresssion if unable.
@@ -19,6 +16,8 @@ export class CanvasHelper {
         if (this._context && !this._context.isContextLost()) {
             return this._context;
         }
-        return this._context = this.element.getContext("2d") ?? throw_expression("Could not create Context");
+        return (this._context =
+            this.element.getContext("2d") ??
+            throw_expression("Could not create Context"));
     }
 }

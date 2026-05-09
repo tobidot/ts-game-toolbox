@@ -1,6 +1,6 @@
-import {Vector2, Vector2I} from "../geometries";
-import {Element} from "./Element";
-import {Group} from "./Group";
+import { Vector2, Vector2I } from "../geometries";
+import { Element } from "./Element";
+import { Group } from "./Group";
 
 export class UiManager {
     public active_menu: Group | null = null;
@@ -18,7 +18,10 @@ export class UiManager {
         if (this.mouse_locked_element) {
             this.mouse_locked_element.is_down = true;
             // Also trigger drag immediately on down for elements like sliders
-            this.mouse_locked_element.drag(this.mouse_down_position, unit_coords);
+            this.mouse_locked_element.drag(
+                this.mouse_down_position,
+                unit_coords,
+            );
         }
         return !!element;
     }
@@ -39,9 +42,15 @@ export class UiManager {
 
     public pointer_move(unit_coords: Vector2I): boolean {
         this.mouse_position = new Vector2(unit_coords);
-        let is_hit = this.active_menu?.hover(unit_coords, this.mouse_locked_element) ?? false;
+        let is_hit =
+            this.active_menu?.hover(unit_coords, this.mouse_locked_element) ??
+            false;
         if (this.mouse_locked_element) {
-            is_hit = this.mouse_locked_element.drag(this.mouse_down_position, unit_coords) || is_hit;
+            is_hit =
+                this.mouse_locked_element.drag(
+                    this.mouse_down_position,
+                    unit_coords,
+                ) || is_hit;
         }
         return is_hit;
     }

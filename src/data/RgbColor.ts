@@ -4,12 +4,15 @@ export class RgbColor {
         public g: number = 0,
         public b: number = 0,
         public a: number = 255,
-    ) {
-
-    }
+    ) {}
 
     public to_hex(): string {
-        return "#" + [this.r, this.g, this.b, this.a].map(v => ("00" + v.toString(16)).substr(-2)).join('');
+        return (
+            "#" +
+            [this.r, this.g, this.b, this.a]
+                .map((v) => ("00" + v.toString(16)).substr(-2))
+                .join("")
+        );
     }
 
     public lerp(other: RgbColor, t: number): RgbColor {

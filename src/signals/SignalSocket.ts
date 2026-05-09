@@ -12,9 +12,7 @@ export interface Listener<T> {
  * Compared to the #EventSocket this is only transmitting a very specific event.
  * @template T The ValueType transmitted in this socket
  */
-export class SignalSocket<T>
-    implements Observable<Listener<T>, number, T>
-{
+export class SignalSocket<T> implements Observable<Listener<T>, number, T> {
     /**
      * The listeners
      */
@@ -22,7 +20,7 @@ export class SignalSocket<T>
 
     /**
      * Attach a listener to the socket
-     * @param listener 
+     * @param listener
      * @return {number} The handle to this listener
      */
     public attach(listener: Listener<T>): number {
@@ -31,7 +29,7 @@ export class SignalSocket<T>
 
     /**
      * Trigger an change event
-     * @param signal 
+     * @param signal
      */
     public dispatch(signal: T) {
         this.listeners.forEach((listener: Listener<T>) => {

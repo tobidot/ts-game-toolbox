@@ -1,15 +1,15 @@
-import { TestClass } from "../../src/testing/TestClass";
+import { TestClass } from "../../src";
 import {
-    MenuManager,
-    MenuGroup,
-    MenuButton,
-    MenuCheckBox,
-    MenuSlider,
-    MenuValueLabel,
+    UiManager,
+    Group,
+    Button,
+    CheckBox,
+    Slider,
+    ValueLabel,
     ElementClickEvent,
     ElementChangeEvent,
-} from "../../src/ui";
-import { Vector2I } from "../../src/geometries/Vector2";
+} from "../../src";
+import { Vector2I } from "../../src";
 
 export class MenuTest extends TestClass {
     private animation_frame: number | null = null;
@@ -39,34 +39,34 @@ export class MenuTest extends TestClass {
         test_container.appendChild(canvas);
 
         const ctx = canvas.getContext("2d")!;
-        const manager = new MenuManager();
+        const manager = new UiManager();
 
-        const button = new MenuButton("Click Me", {
+        const button = new Button("Click Me", {
             left: 20,
             top: 20,
             width: 120,
             height: 40,
         });
-        const checkbox = new MenuCheckBox("Toggle Feature", false, {
+        const checkbox = new CheckBox("Toggle Feature", false, {
             left: 20,
             top: 80,
             width: 200,
             height: 30,
         });
-        const slider = new MenuSlider("Volume", 0, 100, 50, {
+        const slider = new Slider("Volume", 0, 100, 50, {
             left: 20,
             top: 130,
             width: 300,
             height: 50,
         });
-        const valuelabel = new MenuValueLabel("Current State", "Ready", {
+        const valuelabel = new ValueLabel("Current State", "Ready", {
             left: 20,
             top: 200,
             width: 200,
             height: 30,
         });
 
-        const group = new MenuGroup([button, checkbox, slider, valuelabel], {
+        const group = new Group([button, checkbox, slider, valuelabel], {
             left: 0,
             top: 0,
             width: 400,

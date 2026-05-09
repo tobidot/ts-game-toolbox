@@ -1,10 +1,10 @@
 /**
  * Wraps a property type to make it easily chainable when accessed from the outside,
  * By keeping a reference to the outside object and returning it in the set call.
- * 
+ *
  * @template OBJECT the type of the parent object
  * @template PROPERTY the type of this property
- * 
+ *
  * Example:
  * ```
  * class Zoo {
@@ -25,12 +25,12 @@ export class ChainProperty<OBJECT, PROPERTY> {
      */
     public constructor(
         protected object: OBJECT,
-        protected property: PROPERTY
-    ) { }
+        protected property: PROPERTY,
+    ) {}
 
     /**
      * Sets the value of the property
-     * @param value 
+     * @param value
      * @returns The parent object
      */
     public set(value: PROPERTY): OBJECT {

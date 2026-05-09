@@ -1,5 +1,5 @@
-import {RectI} from "../../geometries/Rect";
-import {Element} from "../Element";
+import { RectI } from "../../geometries/Rect";
+import { Element } from "../Element";
 
 export class ValueLabel extends Element {
     public label: string;
@@ -19,10 +19,14 @@ export class ValueLabel extends Element {
     public override draw(ctx: CanvasRenderingContext2D): void {
         if (!this.is_visible) return;
 
-        ctx.fillStyle = '#000';
-        ctx.font = '14px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(`${this.label}: ${this.value}`, this.rect.left, this.rect.top);
+        ctx.fillStyle = "#000";
+        ctx.font = "14px Arial";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(
+            `${this.label}: ${this.value}`,
+            this.rect.left,
+            this.rect.top,
+        );
     }
 }
