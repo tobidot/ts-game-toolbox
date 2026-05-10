@@ -19,17 +19,17 @@ export class SignalSocket<T> implements Observable<Listener<T>, number, T> {
     protected listeners: Array<Listener<T>> = [];
 
     /**
-     * Attach a listener to the socket
-     * @param listener
-     * @return {number} The handle to this listener
+     * Attach a listener to the socket.
+     * @param listener Callback function called when a signal is dispatched
+     * @return {number} The handle to this listener, used for detaching
      */
     public attach(listener: Listener<T>): number {
         return this.listeners.push(listener) - 1;
     }
 
     /**
-     * Trigger an change event
-     * @param signal
+     * Trigger a change event and notify all listeners.
+     * @param signal The value to transmit
      */
     public dispatch(signal: T) {
         this.listeners.forEach((listener: Listener<T>) => {
@@ -38,11 +38,9 @@ export class SignalSocket<T> implements Observable<Listener<T>, number, T> {
     }
 
     /**
-     * Remove a specific listener from the socket
-     * @param handle the handle return upon attaching the listener
-     * @return {boolean}
-     *  TRUE => the handle was found and removed
-     *  FALES => the handle did not exist
+     * Remove a specific listener from the socket.
+     * @param handle the handle returned upon attaching the listener
+     * @return {boolean} TRUE if the handle was found and removed, FALSE otherwise
      */
     public detach(handle: number): boolean {
         if (!(handle in this.listeners)) return false;

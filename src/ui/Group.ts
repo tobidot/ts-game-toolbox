@@ -1,6 +1,7 @@
 import { RectI } from "../geometries/Rect";
 import { Vector2, Vector2I } from "../geometries/Vector2";
 import { Element } from "./Element";
+import { Theme } from "./Theme";
 
 export class Group extends Element {
     public readonly children: Array<Element>;
@@ -9,12 +10,17 @@ export class Group extends Element {
         children: Array<Element>,
         rect: RectI,
         is_visible: boolean = true,
+        theme?: Theme,
     ) {
-        super(rect, is_visible);
+        super(rect, is_visible, theme);
         this.children = children;
+        for (const child of this.children) {
+            child.parent = this;
+        }
     }
 
     public add(child: Element): void {
+        child.parent = this;
         this.children.push(child);
     }
 

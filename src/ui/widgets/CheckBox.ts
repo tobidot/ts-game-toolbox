@@ -1,6 +1,7 @@
 import { RectI } from "../../geometries";
 import { Vector2I } from "../../geometries";
 import { Element } from "../Element";
+import { Theme } from "../Theme";
 
 export class CheckBox extends Element {
     public title: string;
@@ -11,8 +12,9 @@ export class CheckBox extends Element {
         checked: boolean,
         rect: RectI,
         is_visible: boolean = true,
+        theme?: Theme,
     ) {
-        super(rect, is_visible);
+        super(rect, is_visible, theme);
         this.title = title;
         this.checked = checked;
     }
@@ -30,22 +32,22 @@ export class CheckBox extends Element {
         const box_y = this.rect.top + (this.rect.height - box_size) / 2;
 
         ctx.fillStyle = this.is_down
-            ? "#666"
+            ? this.theme.activeColor
             : this.is_hovered
-              ? "#999"
-              : "#ccc";
+              ? this.theme.hoverColor
+              : this.theme.backgroundColor;
         ctx.fillRect(box_x, box_y, box_size, box_size);
 
-        ctx.strokeStyle = "#333";
+        ctx.strokeStyle = this.theme.borderColor;
         ctx.strokeRect(box_x, box_y, box_size, box_size);
 
         if (this.checked) {
-            ctx.fillStyle = "#000";
+            ctx.fillStyle = this.theme.textColor;
             ctx.fillRect(box_x + 4, box_y + 4, box_size - 8, box_size - 8);
         }
 
-        ctx.fillStyle = "#000";
-        ctx.font = "16px Arial";
+        ctx.fillStyle = this.theme.textColor;
+        ctx.font = this.theme.font;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.fillText(

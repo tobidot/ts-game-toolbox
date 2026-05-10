@@ -1,6 +1,7 @@
 import { RectI } from "../../geometries/Rect";
 import { Vector2, Vector2I } from "../../geometries/Vector2";
 import { Element } from "../Element";
+import { Theme } from "../Theme";
 
 export class Slider extends Element {
     public title: string;
@@ -15,8 +16,9 @@ export class Slider extends Element {
         value: number,
         rect: RectI,
         is_visible: boolean = true,
+        theme?: Theme,
     ) {
-        super(rect, is_visible);
+        super(rect, is_visible, theme);
         this.title = title;
         this.min = min;
         this.max = max;
@@ -24,7 +26,7 @@ export class Slider extends Element {
     }
 
     public override drag(
-        start_coords: Vector2 | null,
+        _start_coords: Vector2 | null,
         current_coords: Vector2I,
     ): boolean {
         this.set_value(current_coords.x);
@@ -48,7 +50,7 @@ export class Slider extends Element {
         // Draw track
         const track_height = 4;
         const track_y = this.rect.top + this.rect.height / 2 - track_height / 2;
-        ctx.fillStyle = "#ccc";
+        ctx.fillStyle = this.theme.backgroundColor;
         ctx.fillRect(this.rect.left, track_y, this.rect.width, track_height);
 
         // Draw thumb
@@ -60,17 +62,17 @@ export class Slider extends Element {
         const thumb_y = this.rect.top + this.rect.height / 2 - thumb_height / 2;
 
         ctx.fillStyle = this.is_down
-            ? "#666"
+            ? this.theme.activeColor
             : this.is_hovered
-              ? "#999"
-              : "#ccc";
+              ? this.theme.hoverColor
+              : this.theme.backgroundColor;
         ctx.fillRect(thumb_x, thumb_y, thumb_width, thumb_height);
-        ctx.strokeStyle = "#333";
+        ctx.strokeStyle = this.theme.borderColor;
         ctx.strokeRect(thumb_x, thumb_y, thumb_width, thumb_height);
 
         // Draw title and value
-        ctx.fillStyle = "#000";
-        ctx.font = "12px Arial";
+        ctx.fillStyle = this.theme.textColor;
+        ctx.font = this.theme.secondaryFont;
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.fillText(

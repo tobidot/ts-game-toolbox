@@ -1,0 +1,18 @@
+# Ts Game Toolbox
+
+A collection of reusable functions and classes for Games or Programs developed in Javascript/Typescript.
+
+## Main
+- [Overview](README.md): Basic overview and coordinate system information.
+- [AI Documentation Context](docs/ai.md): Consolidated documentation optimized for LLMs and AI agents.
+- [Handover Guide](docs/handover.md): Instructions for sharing this library with other agents.
+- [Assets](docs/assets.md): Asset loading and management.
+- [Geometries](docs/geometries.md): Vector2, Rect, and other geometric primitives.
+- [Signals](docs/signals.md): Event and Signal sockets.
+- [Flow](docs/flow.md): Progress tracking and async utilities.
+- [UI](docs/ui.md): Canvas-based UI system.
+- [Physics](docs/physics.md): Sweeping SAT implementation (WIP).
+
+## Optional
+- [Miscellaneous](docs/misc.md): Colors, math helpers, and internal testing tools.
+- [Trees](docs/trees.md): QuadTree and Collections.

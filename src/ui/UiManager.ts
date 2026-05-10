@@ -18,10 +18,14 @@ export class UiManager {
         if (this.mouse_locked_element) {
             this.mouse_locked_element.is_down = true;
             // Also trigger drag immediately on down for elements like sliders
-            this.mouse_locked_element.drag(
-                this.mouse_down_position,
-                unit_coords,
-            );
+            const local_coords =
+                this.mouse_locked_element.transform_to_local(unit_coords);
+            const local_start = this.mouse_down_position
+                ? this.mouse_locked_element.transform_to_local(
+                      this.mouse_down_position,
+                  )
+                : null;
+            this.mouse_locked_element.drag(local_start, local_coords);
         }
         return !!element;
     }
@@ -31,7 +35,9 @@ export class UiManager {
         let is_hit = false;
         if (this.mouse_locked_element) {
             this.mouse_locked_element.is_down = false;
-            this.mouse_locked_element.on_click(unit_coords);
+            const local_coords =
+                this.mouse_locked_element.transform_to_local(unit_coords);
+            this.mouse_locked_element.on_click(local_coords);
             is_hit = true;
         }
         this.is_mouse_down = false;
@@ -46,11 +52,16 @@ export class UiManager {
             this.active_menu?.hover(unit_coords, this.mouse_locked_element) ??
             false;
         if (this.mouse_locked_element) {
+            const local_coords =
+                this.mouse_locked_element.transform_to_local(unit_coords);
+            const local_start = this.mouse_down_position
+                ? this.mouse_locked_element.transform_to_local(
+                      this.mouse_down_position,
+                  )
+                : null;
             is_hit =
-                this.mouse_locked_element.drag(
-                    this.mouse_down_position,
-                    unit_coords,
-                ) || is_hit;
+                this.mouse_locked_element.drag(local_start, local_coords) ||
+                is_hit;
         }
         return is_hit;
     }

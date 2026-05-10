@@ -146,6 +146,10 @@ export class Rect implements RectI {
         return this.set(left, top, right - left, bottom - top);
     }
 
+    /**
+     * Check if this rectangle intersects with another.
+     * @param other The other rectangle to check against
+     */
     public intersects(other: RectI): boolean {
         return Rect.intersects(this, other);
     }
@@ -158,6 +162,9 @@ export class Rect implements RectI {
         return Rect.is_within(this, outer);
     }
 
+    /**
+     * Check if a point or another rectangle is within this rectangle.
+     */
     public contains(point: Vector2I): boolean;
     public contains(x: number, y: number): boolean;
     public contains(x: number | Vector2I, y?: number): boolean {
@@ -169,13 +176,10 @@ export class Rect implements RectI {
     }
 
     /**
-     * Manipulate this rectangle to change into the target rectangle by the factor t.
-     *
-     * @param target
-     * @param t
-     *  0 => rectangle is unchanged
-     *  ..
-     *  1 => the rectangle is identical to the target rectangle.
+     * Linearly interpolate this rectangle towards a target.
+     * @param target The target rectangle
+     * @param t The interpolation factor (0 to 1)
+     * @returns this for chaining
      */
     public lerp(target: Rect, t: number): this {
         const it = 1 - t;

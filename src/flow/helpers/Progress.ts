@@ -12,6 +12,9 @@ export class Progress {
         this.max = max;
     }
 
+    /**
+     * Attach a callback that will be notified when progress changes.
+     */
     public listen(callback: (percent: number, self: Progress) => void): void {
         this.listeners.push(callback);
     }
@@ -21,6 +24,10 @@ export class Progress {
         this.notify_listeners();
     }
 
+    /**
+     * Get the current progress as a decimal between 0 and 1.
+     * Includes progress from all child tasks.
+     */
     public get_percent(): number {
         if (this.max <= 0) {
             return 100;
@@ -32,6 +39,10 @@ export class Progress {
         return (this.current + children_progress) / this.max;
     }
 
+    /**
+     * Create a child progress task that contributes to this task's total progress.
+     * @param max The "weight" or maximum value of the child task
+     */
     public make_child_progress(max: number): Progress {
         const child = new Progress(max);
         child.listen(() => {
@@ -41,6 +52,9 @@ export class Progress {
         return child;
     }
 
+    /**
+     * Mark this task as 100% complete.
+     */
     public mark_as_done(): void {
         this.current = this.max;
         this.notify_listeners();

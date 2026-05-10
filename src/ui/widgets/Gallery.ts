@@ -1,6 +1,7 @@
 import { RectI } from "../../geometries/Rect";
 import { Vector2I } from "../../geometries/Vector2";
 import { Element } from "../Element";
+import { Theme } from "../Theme";
 
 export class Gallery extends Element {
     public readonly images: Array<HTMLImageElement> = [];
@@ -12,8 +13,9 @@ export class Gallery extends Element {
         images: Array<HTMLImageElement>,
         rect: RectI,
         is_visible: boolean = true,
+        theme?: Theme,
     ) {
-        super(rect, is_visible);
+        super(rect, is_visible, theme);
         this.images = images;
         this.title = title;
     }
@@ -48,15 +50,15 @@ export class Gallery extends Element {
                 this.rect.height,
             );
         } else {
-            ctx.fillStyle = "#ccc";
+            ctx.fillStyle = this.theme.backgroundColor;
             ctx.fillRect(
                 this.rect.left,
                 this.rect.top,
                 this.rect.width,
                 this.rect.height,
             );
-            ctx.fillStyle = "#000";
-            ctx.font = "12px Arial";
+            ctx.fillStyle = this.theme.textColor;
+            ctx.font = this.theme.secondaryFont;
             ctx.textAlign = "center";
             ctx.fillText(
                 "No Image",
@@ -65,7 +67,7 @@ export class Gallery extends Element {
             );
         }
 
-        ctx.strokeStyle = "#333";
+        ctx.strokeStyle = this.theme.borderColor;
         ctx.strokeRect(
             this.rect.left,
             this.rect.top,
@@ -73,8 +75,8 @@ export class Gallery extends Element {
             this.rect.height,
         );
 
-        ctx.fillStyle = "#000";
-        ctx.font = "14px Arial";
+        ctx.fillStyle = this.theme.textColor;
+        ctx.font = this.theme.labelFont;
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
         ctx.fillText(this.title, this.rect.left, this.rect.top - 20);

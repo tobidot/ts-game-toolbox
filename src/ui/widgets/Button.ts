@@ -1,12 +1,18 @@
 import { RectI } from "../../geometries";
 import { Vector2I } from "../../geometries";
 import { Element } from "../Element";
+import { Theme } from "../Theme";
 
 export class Button extends Element {
     public label: string;
 
-    public constructor(label: string, rect: RectI, is_visible: boolean = true) {
-        super(rect, is_visible);
+    public constructor(
+        label: string,
+        rect: RectI,
+        is_visible: boolean = true,
+        theme?: Theme,
+    ) {
+        super(rect, is_visible, theme);
         this.label = label;
     }
 
@@ -18,10 +24,10 @@ export class Button extends Element {
         if (!this.is_visible) return;
 
         ctx.fillStyle = this.is_down
-            ? "#666"
+            ? this.theme.activeColor
             : this.is_hovered
-              ? "#999"
-              : "#ccc";
+              ? this.theme.hoverColor
+              : this.theme.backgroundColor;
         ctx.fillRect(
             this.rect.left,
             this.rect.top,
@@ -29,7 +35,7 @@ export class Button extends Element {
             this.rect.height,
         );
 
-        ctx.strokeStyle = "#333";
+        ctx.strokeStyle = this.theme.borderColor;
         ctx.strokeRect(
             this.rect.left,
             this.rect.top,
@@ -37,8 +43,8 @@ export class Button extends Element {
             this.rect.height,
         );
 
-        ctx.fillStyle = "#000";
-        ctx.font = "16px Arial";
+        ctx.fillStyle = this.theme.textColor;
+        ctx.font = this.theme.font;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(

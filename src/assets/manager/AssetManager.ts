@@ -28,6 +28,11 @@ export class AssetManager {
         this.images = new Map<string, Asset<HTMLImageElement>>();
     }
 
+    /**
+     * Load the assets (images and audio) and track progress.
+     * @param assets Object containing record of image and audio paths
+     * @param progress Progress object to track the loading state
+     */
     public async load(
         assets: {
             images?: Record<string, string>;
@@ -44,6 +49,11 @@ export class AssetManager {
         ]);
     }
 
+    /**
+     * Specifically load images.
+     * @param assets Record of image name to URL
+     * @param progress Progress object
+     */
     public async load_images(
         assets: Record<string, string>,
         progress: Progress,
@@ -74,6 +84,11 @@ export class AssetManager {
         );
     }
 
+    /**
+     * Specifically load audio files.
+     * @param assets Record of audio name to URL
+     * @param progress Progress object
+     */
     public async load_audio(
         assets: Record<string, string>,
         progress: Progress,

@@ -34,38 +34,70 @@ export class Vector2 {
         return this;
     }
 
+    /**
+     * Subtract another vector from this one.
+     * @param other The vector to subtract
+     * @returns this for chaining
+     */
     public sub(other: Vector2I): this {
         this.x -= other.x;
         this.y -= other.y;
         return this;
     }
 
+    /**
+     * Add another vector to this one.
+     * @param other The vector to add
+     * @returns this for chaining
+     */
     public add(other: Vector2I): this {
         this.x += other.x;
         this.y += other.y;
         return this;
     }
 
+    /**
+     * Multiply this vector by a scalar.
+     * @param scalar The factor to multiply with
+     * @returns this for chaining
+     */
     public mul(scalar: number): this {
         this.x *= scalar;
         this.y *= scalar;
         return this;
     }
 
+    /**
+     * Divide this vector by a scalar.
+     * @param scalar The factor to divide by
+     * @returns this for chaining
+     */
     public divide(scalar: number): this {
         this.x /= scalar;
         this.y /= scalar;
         return this;
     }
 
+    /**
+     * Get the squared length of the vector.
+     * Faster than len() as it avoids Math.sqrt().
+     */
     public len2(): number {
         return this.x * this.x + this.y * this.y;
     }
 
+    /**
+     * Get the length (magnitude) of the vector.
+     */
     public len(): number {
         return Math.sqrt(this.len2());
     }
 
+    /**
+     * Set the length of the vector to the specified magnitude.
+     * @param magnitude The new length
+     * @returns this for chaining
+     */
     public set_magnitude(magnitude: number): this {
         const len = this.len();
         this.x = (this.x / len) * magnitude;
@@ -73,10 +105,17 @@ export class Vector2 {
         return this;
     }
 
+    /**
+     * Calculate the dot product with another vector.
+     */
     public dot(other: Vector2I): number {
         return this.x * other.x + this.y * other.y;
     }
 
+    /**
+     * Calculate the 2D cross product with another vector.
+     * @returns a new Vector2
+     */
     public cross(other: Vector2I): Vector2 {
         return new Vector2(this.x * other.y, this.y * other.x);
     }
@@ -89,6 +128,11 @@ export class Vector2 {
         return new Vector2(this.x, this.y);
     }
 
+    /**
+     * Normalize the vector (set length to 1).
+     * If the vector is a null vector, it remains unchanged.
+     * @returns this for chaining
+     */
     public normalize(): this {
         const len = this.len();
         if (len < 0.000001) return this;
@@ -106,6 +150,10 @@ export class Vector2 {
         return Math.abs(this.x) < 0.001 && Math.abs(this.y) < 0.001;
     }
 
+    /**
+     * Get the angle of the vector in radians.
+     * 0 is pointing up (0, -1) in screen coordinates.
+     */
     public get_angle(): radians {
         // let 0 be showing up (0,1)
         return (Math.atan2(this.y, this.x) + Math.PI / 2) % (2 * Math.PI);
