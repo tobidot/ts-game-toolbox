@@ -50,15 +50,15 @@ export class Gallery extends Element {
                 this.rect.height,
             );
         } else {
-            ctx.fillStyle = this.theme.backgroundColor;
+            ctx.fillStyle = this.theme.background_color;
             ctx.fillRect(
                 this.rect.left,
                 this.rect.top,
                 this.rect.width,
                 this.rect.height,
             );
-            ctx.fillStyle = this.theme.textColor;
-            ctx.font = this.theme.secondaryFont;
+            ctx.fillStyle = this.theme.text_color;
+            ctx.font = this.theme.secondary_font;
             ctx.textAlign = "center";
             ctx.fillText(
                 "No Image",
@@ -67,7 +67,7 @@ export class Gallery extends Element {
             );
         }
 
-        ctx.strokeStyle = this.theme.borderColor;
+        ctx.strokeStyle = this.theme.border_color;
         ctx.strokeRect(
             this.rect.left,
             this.rect.top,
@@ -75,8 +75,8 @@ export class Gallery extends Element {
             this.rect.height,
         );
 
-        ctx.fillStyle = this.theme.textColor;
-        ctx.font = this.theme.labelFont;
+        ctx.fillStyle = this.theme.text_color;
+        ctx.font = this.theme.label_font;
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
         ctx.fillText(this.title, this.rect.left, this.rect.top - 20);

@@ -1,6 +1,6 @@
 import { TestClassExceptionExpectedExcetpion } from "./exceptions/ExceptionExpectedException";
 
-type Printable = { toString(): string };
+type Printable = { to_string(): string };
 type Class<T> = { new (...args: any): T; name: string };
 
 export abstract class TestClass {
@@ -58,7 +58,7 @@ export abstract class TestClass {
         if (false === value instanceof expected) {
             throw new Error(
                 "Expected " +
-                    value.toString() +
+                    value.to_string() +
                     " to be of instance " +
                     expected.name,
             );

@@ -1,8 +1,8 @@
 export class MathHelper {
     // value at which two floats are considered equal
-    static epsilon = 0.001;
+    static EPSILON = 0.001;
 
     public static float_equals(a: number, b: number): boolean {
-        return Math.abs(a - b) < this.epsilon;
+        return Math.abs(a - b) < this.EPSILON;
     }
 }

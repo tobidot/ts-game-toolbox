@@ -4,37 +4,37 @@ import { Theme } from "./Theme";
 import { Element } from "./Element";
 
 export class UiPage extends Group {
-    public referenceRect: Rect;
-    public containerRes: Vector2I = { x: 800, y: 600 };
+    public reference_rect: Rect;
+    public container_res: Vector2I = { x: 800, y: 600 };
 
     public constructor(
         rect: RectI,
-        referenceRect: RectI,
+        reference_rect: RectI,
         is_visible: boolean = true,
         theme?: Theme,
     ) {
         super([], rect, is_visible, theme);
-        this.referenceRect = new Rect(referenceRect);
+        this.reference_rect = new Rect(reference_rect);
     }
 
     public override transform_to_local(coords: Vector2I): Vector2I {
-        const parentCoords = super.transform_to_local(coords);
-        return this.transformToReference(parentCoords);
+        const parent_coords = super.transform_to_local(coords);
+        return this.transform_to_reference(parent_coords);
     }
 
-    private transformToReference(coords: Vector2I): Vector2I {
-        // Pixel coords to uniform (relative to containerRes)
-        const uniformX = coords.x / this.containerRes.x;
-        const uniformY = coords.y / this.containerRes.y;
+    private transform_to_reference(coords: Vector2I): Vector2I {
+        // Pixel coords to uniform (relative to container_res)
+        const uniform_x = coords.x / this.container_res.x;
+        const uniform_y = coords.y / this.container_res.y;
 
         // Uniform to reference space
-        // relX/relY is 0-1 within this page's uniform rect
-        const relX = (uniformX - this.rect.left) / this.rect.width;
-        const relY = (uniformY - this.rect.top) / this.rect.height;
+        // rel_x/rel_y is 0-1 within this page's uniform rect
+        const rel_x = (uniform_x - this.rect.left) / this.rect.width;
+        const rel_y = (uniform_y - this.rect.top) / this.rect.height;
 
         return {
-            x: relX * this.referenceRect.width + this.referenceRect.left,
-            y: relY * this.referenceRect.height + this.referenceRect.top,
+            x: rel_x * this.reference_rect.width + this.reference_rect.left,
+            y: rel_y * this.reference_rect.height + this.reference_rect.top,
         };
     }
 
@@ -42,16 +42,16 @@ export class UiPage extends Group {
         if (!this.is_visible) return null;
 
         // Check if page itself is hit (in uniform space)
-        const uniformX = coords.x / this.containerRes.x;
-        const uniformY = coords.y / this.containerRes.y;
+        const uniform_x = coords.x / this.container_res.x;
+        const uniform_y = coords.y / this.container_res.y;
 
-        if (!this.rect.contains(uniformX, uniformY)) {
+        if (!this.rect.contains(uniform_x, uniform_y)) {
             return null;
         }
 
-        const refCoords = this.transformToReference(coords);
+        const ref_coords = this.transform_to_reference(coords);
         for (let i = this.children.length - 1; i >= 0; i--) {
-            const hit = this.children[i].hit(refCoords);
+            const hit = this.children[i].hit(ref_coords);
             if (hit) return hit;
         }
         return this;
@@ -63,21 +63,21 @@ export class UiPage extends Group {
     ): boolean {
         if (!this.is_visible) {
             this.is_hovered = false;
-            const refCoords = this.transformToReference(coords);
+            const ref_coords = this.transform_to_reference(coords);
             for (const child of this.children) {
-                child.hover(refCoords, locked_element);
+                child.hover(ref_coords, locked_element);
             }
             return false;
         }
 
-        const uniformX = coords.x / this.containerRes.x;
-        const uniformY = coords.y / this.containerRes.y;
-        this.is_hovered = this.rect.contains(uniformX, uniformY);
+        const uniform_x = coords.x / this.container_res.x;
+        const uniform_y = coords.y / this.container_res.y;
+        this.is_hovered = this.rect.contains(uniform_x, uniform_y);
 
-        const refCoords = this.transformToReference(coords);
+        const ref_coords = this.transform_to_reference(coords);
         let is_hit = this.is_hovered;
         for (const child of this.children) {
-            is_hit = child.hover(refCoords, locked_element) || is_hit;
+            is_hit = child.hover(ref_coords, locked_element) || is_hit;
         }
         return is_hit;
     }
@@ -85,21 +85,21 @@ export class UiPage extends Group {
     public override draw(ctx: CanvasRenderingContext2D): void {
         if (!this.is_visible) return;
 
-        // Update containerRes from context
-        this.containerRes = { x: ctx.canvas.width, y: ctx.canvas.height };
+        // Update container_res from context
+        this.container_res = { x: ctx.canvas.width, y: ctx.canvas.height };
 
-        const actualLeft = this.rect.left * this.containerRes.x;
-        const actualTop = this.rect.top * this.containerRes.y;
-        const actualWidth = this.rect.width * this.containerRes.x;
-        const actualHeight = this.rect.height * this.containerRes.y;
+        const actual_left = this.rect.left * this.container_res.x;
+        const actual_top = this.rect.top * this.container_res.y;
+        const actual_width = this.rect.width * this.container_res.x;
+        const actual_height = this.rect.height * this.container_res.y;
 
         ctx.save();
-        ctx.translate(actualLeft, actualTop);
+        ctx.translate(actual_left, actual_top);
         ctx.scale(
-            actualWidth / this.referenceRect.width,
-            actualHeight / this.referenceRect.height,
+            actual_width / this.reference_rect.width,
+            actual_height / this.reference_rect.height,
         );
-        ctx.translate(-this.referenceRect.left, -this.referenceRect.top);
+        ctx.translate(-this.reference_rect.left, -this.reference_rect.top);
 
         for (const child of this.children) {
             child.draw(ctx);

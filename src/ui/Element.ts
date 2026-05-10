@@ -1,8 +1,9 @@
 import { EventSocket } from "../signals";
 import { Rect, RectI } from "../geometries";
-import { Vector2, Vector2I } from "../geometries";
+import { Vector2I } from "../geometries";
 import { ElementChangeEvent, ElementClickEvent } from "./events";
-import { DefaultTheme, Theme } from "./Theme";
+import { DEFAULT_THEME, Theme, ThemeProperties } from "./Theme";
+import type { Group } from "./Group";
 
 export type ElementEvents = ElementChangeEvent | ElementClickEvent;
 
@@ -15,37 +16,33 @@ export class Element {
     public parent: Group | null = null;
     protected _theme: Theme | null = null;
 
-    public constructor(
-        rect: RectI,
-        is_visible: boolean = true,
-        theme?: Theme,
-    ) {
+    public constructor(rect: RectI, is_visible: boolean = true, theme?: Theme) {
         this.rect = new Rect(rect);
         this.is_visible = is_visible;
         this._theme = theme ?? null;
     }
 
-    public get theme(): Theme {
-        if (!this._theme && !this.parent) return DefaultTheme;
+    public get theme(): ThemeProperties {
+        if (!this._theme && !this.parent)
+            return DEFAULT_THEME as ThemeProperties;
 
-        const self = this;
         return new Proxy(this._theme ?? {}, {
-            get(target, prop) {
+            get: (target, prop) => {
                 if (typeof prop === "string") {
                     // 1. Check local theme
                     if ((target as any)[prop] !== undefined) {
                         return (target as any)[prop];
                     }
                     // 2. Check parent theme
-                    if (self.parent) {
-                        return (self.parent.theme as any)[prop];
+                    if (this.parent) {
+                        return (this.parent.theme as any)[prop];
                     }
                     // 3. Fallback to default
-                    return (DefaultTheme as any)[prop];
+                    return (DEFAULT_THEME as any)[prop];
                 }
                 return Reflect.get(target, prop);
             },
-        }) as unknown as Theme;
+        }) as unknown as ThemeProperties;
     }
 
     public set theme(value: Theme | null) {
@@ -74,7 +71,7 @@ export class Element {
     }
 
     public drag(
-        _start_coords: Vector2 | null,
+        _start_coords: Vector2I | null,
         _current_coords: Vector2I,
     ): boolean {
         return false;

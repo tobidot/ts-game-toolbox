@@ -50,7 +50,7 @@ export class Slider extends Element {
         // Draw track
         const track_height = 4;
         const track_y = this.rect.top + this.rect.height / 2 - track_height / 2;
-        ctx.fillStyle = this.theme.backgroundColor;
+        ctx.fillStyle = this.theme.background_color;
         ctx.fillRect(this.rect.left, track_y, this.rect.width, track_height);
 
         // Draw thumb
@@ -62,17 +62,17 @@ export class Slider extends Element {
         const thumb_y = this.rect.top + this.rect.height / 2 - thumb_height / 2;
 
         ctx.fillStyle = this.is_down
-            ? this.theme.activeColor
+            ? this.theme.active_color
             : this.is_hovered
-              ? this.theme.hoverColor
-              : this.theme.backgroundColor;
+              ? this.theme.hover_color
+              : this.theme.background_color;
         ctx.fillRect(thumb_x, thumb_y, thumb_width, thumb_height);
-        ctx.strokeStyle = this.theme.borderColor;
+        ctx.strokeStyle = this.theme.border_color;
         ctx.strokeRect(thumb_x, thumb_y, thumb_width, thumb_height);
 
         // Draw title and value
-        ctx.fillStyle = this.theme.textColor;
-        ctx.font = this.theme.secondaryFont;
+        ctx.fillStyle = this.theme.text_color;
+        ctx.font = this.theme.secondary_font;
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.fillText(

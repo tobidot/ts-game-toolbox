@@ -18,14 +18,14 @@ export class Panel extends Element {
     public override draw(ctx: CanvasRenderingContext2D): void {
         if (!this.is_visible) return;
 
-        ctx.fillStyle = this.color ?? this.theme.panelColor;
+        ctx.fillStyle = this.color ?? this.theme.panel_color;
         ctx.fillRect(
             this.rect.left,
             this.rect.top,
             this.rect.width,
             this.rect.height,
         );
-        ctx.strokeStyle = this.theme.borderColor;
+        ctx.strokeStyle = this.theme.border_color;
         ctx.strokeRect(
             this.rect.left,
             this.rect.top,

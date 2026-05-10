@@ -18,8 +18,8 @@ export class Label extends Element {
     public override draw(ctx: CanvasRenderingContext2D): void {
         if (!this.is_visible) return;
 
-        ctx.fillStyle = this.theme.textColor;
-        ctx.font = this.theme.labelFont;
+        ctx.fillStyle = this.theme.text_color;
+        ctx.font = this.theme.label_font;
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
         ctx.fillText(this.text, this.rect.left, this.rect.top);

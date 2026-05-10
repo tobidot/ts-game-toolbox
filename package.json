@@ -29,7 +29,9 @@
     "coverage": "vitest run --coverage",
     "format": "prettier --write \"src/**/*.ts\" \"test-src/**/*.ts\"",
     "lint": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\"",
-    "lint:fix": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\" --fix"
+    "lint:fix": "eslint \"src/**/*.ts\" \"test-src/**/*.ts\" --fix",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test-src/**/*.ts\"",
+    "verify": "npm run format:check && npm run lint && npm run tsc && npm test"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",

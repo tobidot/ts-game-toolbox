@@ -52,13 +52,13 @@ export class Throttler<PARAMETERS extends Array<any>, RESULT> {
          * Calls during awake and running get the same promise returend.
          * (using the first call's arguments)
          */
-        COMBINE: {
+        combine: {
             queue_when_running: false,
             use_last_args: true,
         },
     };
-    public static readonly default_settings = {
-        strategy: Throttler.STRATEGIES.COMBINE,
+    public static readonly DEFAULT_SETTINGS = {
+        strategy: Throttler.STRATEGIES.combine,
         wake_up_ms: 0,
         delay_ms: 33,
     };
@@ -87,7 +87,7 @@ export class Throttler<PARAMETERS extends Array<any>, RESULT> {
             typeof Throttler
         >,
     ) {
-        this.settings = Object.assign({}, Throttler.default_settings, settings);
+        this.settings = Object.assign({}, Throttler.DEFAULT_SETTINGS, settings);
         this.logic = new Logic(this);
         this.props = new Properties(this);
     }

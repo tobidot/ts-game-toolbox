@@ -1,4 +1,4 @@
-type radians = number;
+type Radians = number;
 
 export interface Vector2I {
     x: number;
@@ -151,10 +151,10 @@ export class Vector2 {
     }
 
     /**
-     * Get the angle of the vector in radians.
+     * Get the angle of the vector in Radians.
      * 0 is pointing up (0, -1) in screen coordinates.
      */
-    public get_angle(): radians {
+    public get_angle(): Radians {
         // let 0 be showing up (0,1)
         return (Math.atan2(this.y, this.x) + Math.PI / 2) % (2 * Math.PI);
     }
@@ -196,7 +196,7 @@ export class Vector2 {
      * @param angle
      * @param length
      */
-    public static from_angle(angle: radians, length: number = 1): Vector2 {
+    public static from_angle(angle: Radians, length: number = 1): Vector2 {
         return new Vector2(Math.cos(angle) * length, Math.sin(angle) * length);
     }
 }

@@ -32,21 +32,21 @@ export class CheckBox extends Element {
         const box_y = this.rect.top + (this.rect.height - box_size) / 2;
 
         ctx.fillStyle = this.is_down
-            ? this.theme.activeColor
+            ? this.theme.active_color
             : this.is_hovered
-              ? this.theme.hoverColor
-              : this.theme.backgroundColor;
+              ? this.theme.hover_color
+              : this.theme.background_color;
         ctx.fillRect(box_x, box_y, box_size, box_size);
 
-        ctx.strokeStyle = this.theme.borderColor;
+        ctx.strokeStyle = this.theme.border_color;
         ctx.strokeRect(box_x, box_y, box_size, box_size);
 
         if (this.checked) {
-            ctx.fillStyle = this.theme.textColor;
+            ctx.fillStyle = this.theme.text_color;
             ctx.fillRect(box_x + 4, box_y + 4, box_size - 8, box_size - 8);
         }
 
-        ctx.fillStyle = this.theme.textColor;
+        ctx.fillStyle = this.theme.text_color;
         ctx.font = this.theme.font;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";

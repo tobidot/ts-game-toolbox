@@ -4,14 +4,14 @@ import { get_element_by_id } from "./QuerySelector.ts";
 describe("QuerySelector", () => {
     describe("get_element_by_id", () => {
         it("should find element by id on document when only id is provided", () => {
-            const mockElement = document.createElement("div");
-            mockElement.id = "test-id";
-            document.body.appendChild(mockElement);
+            const mock_element = document.createElement("div");
+            mock_element.id = "test-id";
+            document.body.appendChild(mock_element);
 
             const result = get_element_by_id("test-id");
-            expect(result).toBe(mockElement);
+            expect(result).toBe(mock_element);
 
-            document.body.removeChild(mockElement);
+            document.body.removeChild(mock_element);
         });
 
         it("should find element by id and check class when id and class are provided", () => {
@@ -20,17 +20,17 @@ describe("QuerySelector", () => {
                 customElements.define("my-element", MyElement);
             }
 
-            const mockElement = document.createElement(
+            const mock_element = document.createElement(
                 "my-element",
             ) as MyElement;
-            mockElement.id = "test-id-class";
-            document.body.appendChild(mockElement);
+            mock_element.id = "test-id-class";
+            document.body.appendChild(mock_element);
 
             const result = get_element_by_id("test-id-class", MyElement);
-            expect(result).toBe(mockElement);
+            expect(result).toBe(mock_element);
             expect(result).toBeInstanceOf(MyElement);
 
-            document.body.removeChild(mockElement);
+            document.body.removeChild(mock_element);
         });
 
         it("should throw error if element not found", () => {

@@ -16,7 +16,7 @@ interface HasSetting {
  * (should be static)
  */
 interface HasDefaultSettingStatic {
-    default_settings: { [k: string]: any };
+    DEFAULT_SETTINGS: { [k: string]: any };
 }
 
 /**
@@ -33,7 +33,7 @@ type Settings<INSTANCE extends HasSetting> = INSTANCE["settings"];
  * Get the default settings type of a class
  */
 type DefaultSettings<CLASS extends HasDefaultSettingStatic> =
-    CLASS["default_settings"];
+    CLASS["DEFAULT_SETTINGS"];
 
 /**
  * Get the keys of a setting that are not required because they have defaults

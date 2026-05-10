@@ -9,12 +9,12 @@ export interface WithID {
  * A unique identifier.
  */
 export class ID {
-    public static next_id = 1;
+    public static NEXT_ID = 1;
 
     public id: number;
 
     public constructor() {
-        this.id = ID.next_id++;
+        this.id = ID.NEXT_ID++;
     }
 
     public toString() {

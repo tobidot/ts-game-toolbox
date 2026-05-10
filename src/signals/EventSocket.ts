@@ -38,7 +38,7 @@ export class EventSocket<T extends EventBase> implements Observable<
     public dispatch(event: T): void {
         this.listeners.forEach((next: Listener<T> | undefined) => {
             if (!next) return;
-            if (event.event_name !== next.type.event_name) return;
+            if (event.event_name !== next.type.EVENT_NAME) return;
             next.callback(event);
         });
     }
@@ -91,7 +91,7 @@ export class EventSocket<T extends EventBase> implements Observable<
         for (let i = 0; i < this.listeners.length; ++i) {
             const listener = this.listeners[i];
             if (!listener) continue;
-            if (listener.type.event_name !== identifier.event_name) continue;
+            if (listener.type.EVENT_NAME !== identifier.EVENT_NAME) continue;
             delete this.listeners[i];
             one_hit = true;
         }
@@ -108,7 +108,7 @@ export class EventSocket<T extends EventBase> implements Observable<
  * The abstract class of an event
  */
 type EventClass<T extends EventBase> = Class<T> & {
-    readonly event_name: string;
+    readonly EVENT_NAME: string;
 };
 
 /**

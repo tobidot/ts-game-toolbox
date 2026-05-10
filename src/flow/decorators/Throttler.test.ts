@@ -17,7 +17,7 @@ describe("Throttler", () => {
             return 1;
         };
         const throttler = new Throttler({
-            strategy: Throttler.STRATEGIES.COMBINE,
+            strategy: Throttler.STRATEGIES.combine,
             callback,
             delay_ms: 0,
             wake_up_ms: 0,
