@@ -23,4 +23,12 @@ export class RgbColor {
             this.a * (1 - t) + other.a * t,
         );
     }
+
+    public toString(): string {
+        return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a / 255})`;
+    }
+
+    public equals(other: RgbColor): boolean {
+        return this.r === other.r && this.g === other.g && this.b === other.b && this.a === other.a;
+    }
 }

@@ -5,13 +5,14 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "lib": [
       "es6",
       "es2017",
+      "ESNext",
       "DOM"
     ],
     /* Specify library files to be included in the compilation. */

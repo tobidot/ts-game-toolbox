@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { get_element_by_id } from "./QuerySelector.ts";
+import { get_element_by_id } from "./QuerySelector";
 
 describe("QuerySelector", () => {
     describe("get_element_by_id", () => {

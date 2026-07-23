@@ -4,6 +4,7 @@ import { RectTest } from "./geometries/RectTest";
 import { PolygonTest } from "./geometries/PolygonTest";
 import { AssertNeverTest } from "./flow/AssertNeverTest";
 import { MenuTest } from "./ui/MenuTest";
+import { AssetManagerTest } from "./assets/AssetManagerTest";
 
 const element = document.getElementById("test-dashboard");
 if (!element) throw new Error("Element not found");
@@ -16,4 +17,5 @@ dashboard.add_test([
     new PolygonTest(),
     new AssertNeverTest(),
     new MenuTest(),
+    new AssetManagerTest(),
 ]);

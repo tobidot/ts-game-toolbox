@@ -1,7 +1,6 @@
-import { RectI } from "../../geometries";
-import { Vector2I } from "../../geometries";
+import { RectI, Vector2I } from "../../geometries";
 import { Element } from "../Element";
-import { Theme } from "../Theme";
+import { ThemeRule } from "../theme/Theme";
 
 export class CheckBox extends Element {
     public title: string;
@@ -12,48 +11,86 @@ export class CheckBox extends Element {
         checked: boolean,
         rect: RectI,
         is_visible: boolean = true,
-        theme?: Theme,
+        theme_rules?: Array<ThemeRule>,
     ) {
-        super(rect, is_visible, theme);
+        super(rect, is_visible, theme_rules);
         this.title = title;
         this.checked = checked;
+        this.type = "checkbox";
     }
 
-    public override on_click(_coords: Vector2I): void {
+    public override dispatch_click_event(coords: Vector2I) {
         this.checked = !this.checked;
+        super.dispatch_click_event(coords);
         this.dispatch_change_event();
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {
         if (!this.is_visible) return;
 
-        const box_size = Math.min(this.rect.width, this.rect.height, 20);
-        const box_x = this.rect.left;
-        const box_y = this.rect.top + (this.rect.height - box_size) / 2;
+        const {
+            background_color,
+            border_color,
+            border_width,
+            border_radius,
+            text_color,
+            font_size,
+            font_family,
+            text_baseline,
+        } = this.theme_instance.get_all();
 
-        ctx.fillStyle = this.is_down
-            ? this.theme.active_color
-            : this.is_hovered
-              ? this.theme.hover_color
-              : this.theme.background_color;
-        ctx.fillRect(box_x, box_y, box_size, box_size);
+        ctx.save();
 
-        ctx.strokeStyle = this.theme.border_color;
-        ctx.strokeRect(box_x, box_y, box_size, box_size);
+        this.apply_transforms(ctx);
+
+        const content_box = this.get_local_content_box_size();
+        const box_size = Math.min(content_box.width, content_box.height, 20);
+        const box_x = content_box.left;
+        const box_y = content_box.top + (content_box.height - box_size) / 2;
+
+        const color = background_color;
+
+        ctx.beginPath();
+        if (border_radius > 0) {
+            ctx.roundRect(
+                box_x,
+                box_y,
+                box_size,
+                box_size,
+                Math.min(border_radius, box_size / 2),
+            );
+        } else {
+            ctx.rect(box_x, box_y, box_size, box_size);
+        }
+
+        ctx.fillStyle = color.toString();
+        ctx.fill();
+
+        if (border_width > 0) {
+            ctx.lineWidth = border_width;
+            ctx.strokeStyle = border_color.toString();
+            ctx.stroke();
+        }
 
         if (this.checked) {
-            ctx.fillStyle = this.theme.text_color;
+            ctx.fillStyle = text_color.toString();
             ctx.fillRect(box_x + 4, box_y + 4, box_size - 8, box_size - 8);
         }
 
-        ctx.fillStyle = this.theme.text_color;
-        ctx.font = this.theme.font;
+        ctx.fillStyle = text_color.toString();
+        ctx.font = `${font_size}px ${font_family}`;
         ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
+        ctx.textBaseline = text_baseline;
         ctx.fillText(
             this.title,
             box_x + box_size + 10,
-            this.rect.top + this.rect.height / 2,
+            text_baseline === "middle"
+                ? content_box.top + content_box.height / 2
+                : text_baseline === "top"
+                  ? content_box.top
+                  : content_box.top + content_box.height,
         );
+
+        ctx.restore(); // transform
     }
 }

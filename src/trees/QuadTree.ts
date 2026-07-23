@@ -1,30 +1,31 @@
 import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundException";
-import { RectI, Rect } from "../geometries/Rect";
+import { RectI, Rect } from "../geometries";
 
+let depth = 0;
 export class QuadTree<T extends RectI> {
     private root_branch: QuadTreeBranch<T>;
-
     constructor(base_rect: RectI) {
         this.root_branch = new QuadTreeBranch<T>(base_rect);
     }
-
     public pick(rect: RectI): Array<T> {
         return this.root_branch.pick(rect);
     }
-
-    public add(element: T): void {
+    public add(element: T, max_depth: number = 32): void {
+        if (max_depth <= 0) {
+            throw new Error("Maximum depth reached in QuadTree");
+        }
         const is_within = Rect.is_within(element, this.root_branch);
         if (is_within) {
             this.root_branch.add(element);
         } else {
             this.elevate_root_branch();
-            this.add(element);
+            this.add(element, max_depth - 1);
         }
     }
 
     /**
      * First wrap the root in a branch that contains the root at the bottom right,
-     * then create a branch wich has that new branch in the bottom left,
+     * then create a branch which has that new branch in the bottom left,
      * like that the tree expands in all directions
      */
     public elevate_root_branch() {

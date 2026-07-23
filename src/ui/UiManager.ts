@@ -1,9 +1,10 @@
 import { Vector2, Vector2I } from "../geometries";
 import { Element } from "./Element";
 import { Group } from "./Group";
+import { UiPage } from "./UiPage";
 
 export class UiManager {
-    public active_menu: Group | null = null;
+    public active_menu: UiPage | null = null;
     public mouse_locked_element: Element | null = null;
     public is_mouse_down: boolean = false;
     public mouse_position: Vector2 | null = null;
@@ -13,15 +14,16 @@ export class UiManager {
         this.mouse_position = new Vector2(unit_coords);
         this.mouse_down_position = new Vector2(unit_coords);
         this.is_mouse_down = true;
-        const element = this.active_menu?.hit(unit_coords) ?? null;
+        const elements = this.active_menu?.hit(unit_coords);
+        const element = elements && elements.length > 0 ? elements[0] : null;
         this.mouse_locked_element = element;
         if (this.mouse_locked_element) {
-            this.mouse_locked_element.is_down = true;
+            this.mouse_locked_element.set_mouse_down(true);
             // Also trigger drag immediately on down for elements like sliders
             const local_coords =
-                this.mouse_locked_element.transform_to_local(unit_coords);
+                this.mouse_locked_element.transform_parent_to_local_coordinates(unit_coords);
             const local_start = this.mouse_down_position
-                ? this.mouse_locked_element.transform_to_local(
+                ? this.mouse_locked_element.transform_parent_to_local_coordinates(
                       this.mouse_down_position,
                   )
                 : null;
@@ -34,10 +36,10 @@ export class UiManager {
         this.mouse_position = new Vector2(unit_coords);
         let is_hit = false;
         if (this.mouse_locked_element) {
-            this.mouse_locked_element.is_down = false;
+            this.mouse_locked_element.set_mouse_down(false);
             const local_coords =
-                this.mouse_locked_element.transform_to_local(unit_coords);
-            this.mouse_locked_element.on_click(local_coords);
+                this.mouse_locked_element.transform_parent_to_local_coordinates(unit_coords);
+            this.mouse_locked_element.click(local_coords);
             is_hit = true;
         }
         this.is_mouse_down = false;
@@ -53,9 +55,9 @@ export class UiManager {
             false;
         if (this.mouse_locked_element) {
             const local_coords =
-                this.mouse_locked_element.transform_to_local(unit_coords);
+                this.mouse_locked_element.transform_parent_to_local_coordinates(unit_coords);
             const local_start = this.mouse_down_position
-                ? this.mouse_locked_element.transform_to_local(
+                ? this.mouse_locked_element.transform_parent_to_local_coordinates(
                       this.mouse_down_position,
                   )
                 : null;
@@ -70,7 +72,7 @@ export class UiManager {
         this.is_mouse_down = false;
         this.mouse_down_position = null;
         if (this.mouse_locked_element) {
-            this.mouse_locked_element.is_down = false;
+            this.mouse_locked_element.set_mouse_down(false);
         }
         this.mouse_locked_element = null;
     }

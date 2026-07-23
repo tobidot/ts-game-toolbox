@@ -1,7 +1,7 @@
 import { RectI } from "../../geometries";
 import { Vector2I } from "../../geometries";
 import { Element } from "../Element";
-import { Theme } from "../Theme";
+import { ThemeRule } from "../theme/Theme";
 
 export class Button extends Element {
     public label: string;
@@ -10,47 +10,43 @@ export class Button extends Element {
         label: string,
         rect: RectI,
         is_visible: boolean = true,
-        theme?: Theme,
+        theme_rules?: Array<ThemeRule>,
     ) {
-        super(rect, is_visible, theme);
+        super(rect, is_visible, theme_rules);
         this.label = label;
-    }
-
-    public override on_click(coords: Vector2I): void {
-        this.dispatch_click_event(coords);
+        this.type = "button";
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {
         if (!this.is_visible) return;
 
-        ctx.fillStyle = this.is_down
-            ? this.theme.active_color
-            : this.is_hovered
-              ? this.theme.hover_color
-              : this.theme.background_color;
-        ctx.fillRect(
-            this.rect.left,
-            this.rect.top,
-            this.rect.width,
-            this.rect.height,
-        );
+        const {
+            text_color,
+            font_size,
+            font_family,
+            text_baseline,
+        } = this.theme_instance.get_all()
 
-        ctx.strokeStyle = this.theme.border_color;
-        ctx.strokeRect(
-            this.rect.left,
-            this.rect.top,
-            this.rect.width,
-            this.rect.height,
-        );
+        ctx.save();
 
-        ctx.fillStyle = this.theme.text_color;
-        ctx.font = this.theme.font;
+        this.apply_transforms(ctx);
+        this.draw_background(ctx);
+
+        const content_rect = this.get_local_content_box_size();
+        ctx.fillStyle = text_color.toString();
+        ctx.font = `${font_size}px ${font_family}`;
         ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
+        ctx.textBaseline = text_baseline;
         ctx.fillText(
             this.label,
-            this.rect.left + this.rect.width / 2,
-            this.rect.top + this.rect.height / 2,
+            content_rect.left + content_rect.width / 2,
+            text_baseline === "middle"
+                ? content_rect.top + content_rect.height / 2
+                : text_baseline === "top"
+                  ? content_rect.top
+                  : content_rect.top + content_rect.height,
         );
+
+        ctx.restore(); // transform
     }
 }

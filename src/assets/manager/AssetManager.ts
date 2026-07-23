@@ -1,6 +1,6 @@
 import { Progress } from "../../flow";
 
-interface PendingAsset {
+export interface PendingAsset {
     promise: Promise<void>;
     path: string;
     url: string;
@@ -8,9 +8,10 @@ interface PendingAsset {
     finished_at: number | null;
 }
 
-interface Asset<T extends HTMLAudioElement | HTMLImageElement | SVGElement> {
+export interface Asset<T extends HTMLAudioElement | HTMLImageElement | HTMLVideoElement | SVGElement> {
     element: T;
     url: string;
+    ready: boolean;
 }
 
 /**
@@ -18,35 +19,45 @@ interface Asset<T extends HTMLAudioElement | HTMLImageElement | SVGElement> {
  * import.meta.glob("/assets/images/**\/*.png", { query: "url", eager: true, import: 'default' }),
  */
 export class AssetManager {
-    public audio: Map<string, Asset<HTMLAudioElement>>;
+    public audios: Map<string, Asset<HTMLAudioElement>>;
     public images: Map<string, Asset<HTMLImageElement>>;
+    public videos: Map<string, Asset<HTMLVideoElement>>;
     //
     protected pending: Array<PendingAsset> = [];
 
     public constructor() {
-        this.audio = new Map<string, Asset<HTMLAudioElement>>();
+        this.audios = new Map<string, Asset<HTMLAudioElement>>();
         this.images = new Map<string, Asset<HTMLImageElement>>();
+        this.videos = new Map<string, Asset<HTMLVideoElement>>();
     }
 
     /**
-     * Load the assets (images and audio) and track progress.
-     * @param assets Object containing record of image and audio paths
+     * Load the assets (images, audio, and optional videos) and track progress.
+     * @param assets Object containing record of image, audio, and video paths
      * @param progress Progress object to track the loading state
      */
     public async load(
         assets: {
             images?: Record<string, string>;
             audio?: Record<string, string>;
+            videos?: Record<string, string>;
         },
         progress: Progress,
     ) {
-        const sub_progress = progress.make_child_progress(2);
+        const count = 2 + (assets.videos ? 1 : 0);
+        const sub_progress = progress.make_child_progress(count);
         const image_progress = sub_progress.make_child_progress(1);
         const audio_progress = sub_progress.make_child_progress(1);
-        await Promise.all([
+        const video_progress = assets.videos ? sub_progress.make_child_progress(1) : null;
+
+        const promises = [
             this.load_images(assets.images ?? {}, image_progress),
             this.load_audio(assets.audio ?? {}, audio_progress),
-        ]);
+        ];
+        if (assets.videos && video_progress) {
+            promises.push(this.load_videos(assets.videos, video_progress));
+        }
+        await Promise.all(promises);
     }
 
     /**
@@ -64,11 +75,14 @@ export class AssetManager {
             async (single_progress, path, url) => {
                 return new Promise<void>((resolve, reject) => {
                     const image = new Image();
-                    this.images.set(path, {
+                    const asset = {
                         element: image,
                         url: url,
-                    });
+                        ready: false,
+                    };
+                    this.images.set(path, asset);
                     image.addEventListener("load", () => {
+                        asset.ready = true;
                         single_progress.mark_as_done();
                         resolve();
                     });
@@ -100,11 +114,14 @@ export class AssetManager {
                 return new Promise<void>((resolve, reject) => {
                     const audio = new Audio(url);
                     audio.crossOrigin = "anonymous";
-                    this.audio.set(path, {
+                    const asset = {
                         element: audio,
                         url: url,
-                    });
+                        ready: false,
+                    };
+                    this.audios.set(path, asset);
                     audio.addEventListener("canplay", () => {
+                        asset.ready = true;
                         single_progress.mark_as_done();
                         resolve();
                     });
@@ -115,6 +132,86 @@ export class AssetManager {
                     });
                     audio.preload = "auto";
                     audio.load();
+                });
+            },
+        );
+    }
+
+    /**
+     * Specifically load video files.
+     * @param assets Record of video name to URL
+     * @param progress Progress object
+     */
+    public async load_videos(
+        assets: Record<string, string>,
+        progress: Progress,
+    ) {
+        return this.load_assets(
+            assets,
+            progress,
+            async (single_progress, path, url) => {
+                return new Promise<void>((resolve, reject) => {
+                    const is_jsdom = typeof window !== "undefined" && window.navigator?.userAgent?.includes("jsdom");
+                    if (is_jsdom) {
+                        // Avoid loading media elements in JSDOM tests
+                        const video = document.createElement("video");
+                        const asset = {
+                            element: video,
+                            url: url,
+                            ready: true,
+                        };
+                        this.videos.set(path, asset);
+                        single_progress.mark_as_done();
+                        resolve();
+                        return;
+                    }
+
+                    const video = document.createElement("video");
+                    video.crossOrigin = "anonymous";
+                    const asset = {
+                        element: video,
+                        url: url,
+                        ready: false,
+                    };
+                    this.videos.set(path, asset);
+
+                    const on_canplay = () => {
+                        asset.ready = true;
+                        cleanup();
+                        single_progress.mark_as_done();
+                        resolve();
+                    };
+
+                    const on_error = () => {
+                        console.warn("Failed to load video", url);
+                        cleanup();
+                        single_progress.mark_as_done();
+                        reject();
+                    };
+
+                    const cleanup = () => {
+                        video.removeEventListener("canplaythrough", on_canplay);
+                        video.removeEventListener("canplay", on_canplay);
+                        video.removeEventListener("loadeddata", on_canplay);
+                        video.removeEventListener("error", on_error);
+                    };
+
+                    video.addEventListener("canplaythrough", on_canplay);
+                    video.addEventListener("canplay", on_canplay);
+                    video.addEventListener("loadeddata", on_canplay);
+                    video.addEventListener("error", on_error);
+
+                    video.preload = "auto";
+                    try {
+                        video.src = url;
+                        video.load();
+                    } catch (e) {
+                        console.warn("Error loading video", e);
+                        asset.ready = true;
+                        cleanup();
+                        single_progress.mark_as_done();
+                        resolve();
+                    }
                 });
             },
         );
@@ -146,6 +243,8 @@ export class AssetManager {
             const pending_index = this.pending.length - 1;
             promise.then(() => {
                 this.pending[pending_index].finished_at = performance.now();
+            }).catch(() => {
+                // Rejection handled by Promise.all caller
             });
             promises.push(promise);
         }

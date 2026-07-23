@@ -82,11 +82,11 @@ describe("MenuManager", () => {
             change_count++;
         });
 
-        checkbox.on_click({ x: 50, y: 50 });
+        checkbox.click({ x: 50, y: 50 });
         expect(checkbox.checked).toBe(true);
         expect(change_count).toBe(1);
 
-        checkbox.on_click({ x: 50, y: 50 });
+        checkbox.click({ x: 50, y: 50 });
         expect(checkbox.checked).toBe(false);
         expect(change_count).toBe(2);
     });
