@@ -1,7 +1,7 @@
 import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundException";
 import { RectI, Rect } from "../geometries";
 
-let depth = 0;
+const depth = 0;
 export class QuadTree<T extends RectI> {
     private root_branch: QuadTreeBranch<T>;
     constructor(base_rect: RectI) {

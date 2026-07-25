@@ -19,9 +19,9 @@ export class CheckBox extends Element {
         this.type = "checkbox";
     }
 
-    public override dispatch_click_event(coords: Vector2I) {
+    public override dispatch_click_event() {
         this.checked = !this.checked;
-        super.dispatch_click_event(coords);
+        super.dispatch_click_event();
         this.dispatch_change_event();
     }
 

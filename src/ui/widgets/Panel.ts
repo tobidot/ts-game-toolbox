@@ -52,8 +52,8 @@ export class Panel extends Group {
             ctx.stroke();
         }
 
-        super.draw(ctx);
-
         ctx.restore(); // transform
+
+        super.draw(ctx);
     }
 }

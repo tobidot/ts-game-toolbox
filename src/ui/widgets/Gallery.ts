@@ -21,9 +21,9 @@ export class Gallery extends Element {
         this.type = "gallery";
     }
 
-    public override dispatch_click_event(coords: Vector2I) {
+    public override dispatch_click_event() {
         this.next();
-        super.dispatch_click_event(coords);
+        super.dispatch_click_event();
     }
 
     public next(): void {

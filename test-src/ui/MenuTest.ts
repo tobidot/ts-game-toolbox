@@ -1,7 +1,7 @@
 import { TestClass } from "../../src";
 import {
     UiManager,
-    Group,
+    UiPage,
     Button,
     CheckBox,
     Slider,
@@ -66,13 +66,16 @@ export class MenuTest extends TestClass {
             height: 30,
         });
 
-        const group = new Group([button, checkbox, slider, valuelabel], {
-            left: 0,
-            top: 0,
-            width: 400,
-            height: 300,
-        });
-        manager.active_menu = group;
+        const page = new UiPage(
+            { x: 400, y: 300 },
+            { left: 0, top: 0, width: 1, height: 1 },
+            { left: 0, top: 0, width: 400, height: 300 },
+        );
+        page.add(button);
+        page.add(checkbox);
+        page.add(slider);
+        page.add(valuelabel);
+        manager.active_menu = page;
 
         const render = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);

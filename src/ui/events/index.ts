@@ -15,7 +15,7 @@ export class ElementClickEvent extends EventBase {
 
     constructor(
         public readonly element: Element,
-        public readonly coords: Vector2I,
+        public readonly coords: Vector2I|null = null,
     ) {
         super(ElementClickEvent.EVENT_NAME);
     }

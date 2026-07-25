@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { UiManager } from "./UiManager";
-import { Group } from "./Group";
+import { UiPage } from "./UiPage";
 import { Button } from "./widgets/Button";
 import { CheckBox } from "./widgets/CheckBox";
 import { Slider } from "./widgets/Slider";
@@ -22,13 +22,13 @@ describe("MenuManager", () => {
             click_count++;
         });
 
-        const group = new Group([button], {
-            left: 0,
-            top: 0,
-            width: 200,
-            height: 200,
-        });
-        manager.active_menu = group;
+        const page = new UiPage(
+            { x: 200, y: 200 },
+            { left: 0, top: 0, width: 1, height: 1 },
+            { left: 0, top: 0, width: 200, height: 200 },
+        );
+        page.add(button);
+        manager.active_menu = page;
 
         // Pointer down on button
         const pos: Vector2I = { x: 15, y: 15 };
@@ -53,13 +53,13 @@ describe("MenuManager", () => {
             width: 100,
             height: 50,
         });
-        const group = new Group([button], {
-            left: 0,
-            top: 0,
-            width: 200,
-            height: 200,
-        });
-        manager.active_menu = group;
+        const page = new UiPage(
+            { x: 200, y: 200 },
+            { left: 0, top: 0, width: 1, height: 1 },
+            { left: 0, top: 0, width: 200, height: 200 },
+        );
+        page.add(button);
+        manager.active_menu = page;
 
         // Move over button
         manager.pointer_move({ x: 15, y: 15 });
@@ -82,11 +82,11 @@ describe("MenuManager", () => {
             change_count++;
         });
 
-        checkbox.click({ x: 50, y: 50 });
+        checkbox.click();
         expect(checkbox.checked).toBe(true);
         expect(change_count).toBe(1);
 
-        checkbox.click({ x: 50, y: 50 });
+        checkbox.click();
         expect(checkbox.checked).toBe(false);
         expect(change_count).toBe(2);
     });

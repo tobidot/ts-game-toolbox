@@ -179,8 +179,8 @@ export class Element {
         return false;
     }
 
-    public click(coords: Vector2I): void {
-        this.dispatch_click_event(coords);
+    public click(): void {
+        this.dispatch_click_event();
     }
 
     public update_mouse_down_status(is_down: boolean): boolean {
@@ -205,8 +205,8 @@ export class Element {
      * Event Dispatcher
      */
 
-    public dispatch_click_event(coords: Vector2I): void {
-        this.events.dispatch(new ElementClickEvent(this, coords));
+    public dispatch_click_event(): void {
+        this.events.dispatch(new ElementClickEvent(this));
     }
 
     public dispatch_change_event(): void {
@@ -216,6 +216,14 @@ export class Element {
     /*
      * Drawing
      */
+
+    /**
+     * Apply canvas transforms so subsequent drawing is in local element space.
+     * Widgets call this at the start of their draw() method.
+     */
+    public apply_transforms(ctx: CanvasRenderingContext2D): void {
+        this.context_transform_to_local(ctx);
+    }
 
     /**
      * Draw this element to the render context
