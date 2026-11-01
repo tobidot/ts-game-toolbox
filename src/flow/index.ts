@@ -7,3 +7,5 @@ export * from "./types/Guards";
 export * from "./decorators/Throttler";
 export * from "./async/Sleep";
 export * from "./helpers/Progress";
+export * from "./state/StateMachine";
+export * from "./timers/Timer";
