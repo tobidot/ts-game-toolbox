@@ -11,3 +11,6 @@ export * from "./dom";
 export * from "./ui";
 export * from "./random";
 export * from "./input";
+export * from "./camera";
+export * from "./world";
+export * from "./canvas";
