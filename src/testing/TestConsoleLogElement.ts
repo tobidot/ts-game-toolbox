@@ -39,15 +39,12 @@ export class TestConsoleLogElement {
 
     protected window_on_error_func: OnErrorEventHandlerNonNull = (
         event: Event | string,
-        source?: string,
-        lineno?: number,
-        colno?: number,
+        _source?: string,
+        _lineno?: number,
+        _colno?: number,
         error?: Error,
     ): any => {
         if (event instanceof ErrorEvent) {
-            source = event.filename;
-            lineno = event.lineno;
-            colno = event.colno;
             error = event.error;
         }
         if (error instanceof Error) {
