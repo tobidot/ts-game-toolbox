@@ -101,15 +101,15 @@ export class Image extends Element {
 
                     const old_smoothing = ctx.imageSmoothingEnabled;
                     ctx.imageSmoothingEnabled = false;
-                    // @ts-expect-error - vendor-prefixed property not in standard lib types
-                    if (ctx.mozImageSmoothingEnabled !== undefined)
-                        ctx.mozImageSmoothingEnabled = false;
-                    // @ts-expect-error - vendor-prefixed property not in standard lib types
-                    if (ctx.webkitImageSmoothingEnabled !== undefined)
-                        ctx.webkitImageSmoothingEnabled = false;
-                    // @ts-expect-error - vendor-prefixed property not in standard lib types
-                    if (ctx.msImageSmoothingEnabled !== undefined)
-                        ctx.msImageSmoothingEnabled = false;
+                    // Vendor-prefixed flags of older engines, absent from the standard lib types.
+                    const prefixed = ctx as unknown as Record<string, unknown>;
+                    for (const key of [
+                        "mozImageSmoothingEnabled",
+                        "webkitImageSmoothingEnabled",
+                        "msImageSmoothingEnabled",
+                    ]) {
+                        if (prefixed[key] !== undefined) prefixed[key] = false;
+                    }
 
                     ctx.drawImage(
                         offscreen.canvas,

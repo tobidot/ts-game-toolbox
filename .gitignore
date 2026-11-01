@@ -3,4 +3,5 @@ node_modules
 /test-dist
 .cache
 /.idea
-/yarn-error.log
+/yarn-error.logrelease/
+release/
