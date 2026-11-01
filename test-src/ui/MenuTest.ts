@@ -33,9 +33,7 @@ export class MenuTest extends TestClass {
         const canvas = document.createElement("canvas");
         canvas.width = 400;
         canvas.height = 300;
-        canvas.style.border = "1px solid black";
-        canvas.style.display = "block";
-        canvas.style.marginTop = "10px";
+        canvas.className = "test-dashboard__demo-canvas";
         test_container.appendChild(canvas);
 
         const ctx = canvas.getContext("2d")!;
@@ -47,7 +45,7 @@ export class MenuTest extends TestClass {
             width: 120,
             height: 40,
         });
-        const checkbox = new CheckBox("Toggle Feature", false, {
+        const checkbox = new CheckBox(false, {
             left: 20,
             top: 80,
             width: 200,

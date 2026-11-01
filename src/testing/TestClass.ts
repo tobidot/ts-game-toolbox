@@ -8,6 +8,15 @@ export abstract class TestClass {
     public set_up() {
         console.log(this);
     }
+    /**
+     * Called when this test instance is being replaced/removed (e.g. the
+     * dashboard is about to show another test, or run this one again).
+     * Tests that start a long-running effect (e.g. a `requestAnimationFrame`
+     * loop) should stop it here. This is intentionally NOT called right
+     * after the test method returns, since that would immediately cancel
+     * any animation the test just scheduled before it ever gets a chance
+     * to render a single frame.
+     */
     public tear_down() {}
     public set_class_up() {}
     public tear_class_down() {}
@@ -28,7 +37,6 @@ export abstract class TestClass {
                 );
                 this.set_up();
                 test_statement.call(this);
-                this.tear_down();
                 console.log("%c < Done ", "background: blue; color: green;");
             }
         }

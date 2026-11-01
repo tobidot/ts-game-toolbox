@@ -81,10 +81,10 @@ module.exports = defineConfig([
                     leadingUnderscore: "allow",
                 },
                 {
-                    selector: ["method", "property"],
+                    selector: ["method", "property", "accessor"],
                     filter: {
                         // These are standard DOM/JS methods/properties that use camelCase
-                        regex: "^(querySelector|getElementById|getElementsByClassName|toString|item|toJSON|valueOf)$",
+                        regex: "^(querySelector|getElementById|getElementsByClassName|toString|item|toJSON|valueOf|addEventListener|removeEventListener|crossOrigin)$",
                         match: true,
                     },
                     format: null,

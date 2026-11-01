@@ -1,5 +1,4 @@
 import { RectI } from "../../geometries";
-import { Vector2I } from "../../geometries";
 import { Element } from "../Element";
 import { ThemeRule } from "../theme/Theme";
 
@@ -20,12 +19,8 @@ export class Button extends Element {
     public override draw(ctx: CanvasRenderingContext2D): void {
         if (!this.is_visible) return;
 
-        const {
-            text_color,
-            font_size,
-            font_family,
-            text_baseline,
-        } = this.theme_instance.get_all()
+        const { text_color, font_size, font_family, text_baseline } =
+            this.theme_instance.get_all();
 
         ctx.save();
 

@@ -20,7 +20,7 @@ export class Video extends Element {
         this.video = video;
         this.type = "video";
         this.pixel_size = pixel_size;
-        
+
         const element = this.video.element;
         if (element) {
             element.loop = true;
@@ -34,7 +34,10 @@ export class Video extends Element {
         const element = this.video.element;
         if (element && element.paused) {
             const play_promise = element.play();
-            if (play_promise !== undefined && typeof play_promise.catch === "function") {
+            if (
+                play_promise !== undefined &&
+                typeof play_promise.catch === "function"
+            ) {
                 play_promise.catch(() => {});
             }
         }
@@ -47,13 +50,19 @@ export class Video extends Element {
         }
     }
 
-    private get_offscreen(width: number, height: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+    private get_offscreen(
+        width: number,
+        height: number,
+    ): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
         if (typeof document === "undefined") return null;
         if (!this.offscreen_canvas) {
             this.offscreen_canvas = document.createElement("canvas");
             this.offscreen_ctx = this.offscreen_canvas.getContext("2d");
         }
-        if (this.offscreen_canvas.width !== width || this.offscreen_canvas.height !== height) {
+        if (
+            this.offscreen_canvas.width !== width ||
+            this.offscreen_canvas.height !== height
+        ) {
             this.offscreen_canvas.width = width;
             this.offscreen_canvas.height = height;
         }
@@ -74,16 +83,19 @@ export class Video extends Element {
         const video_asset = this.video;
         const border_box = this.get_local_border_box_size();
         const content_box = this.get_local_content_box_size();
-        
+
         if (video_asset.ready && video_asset.element) {
             const el = video_asset.element;
             if (el.paused && !el.ended) {
                 const play_promise = el.play();
-                if (play_promise !== undefined && typeof play_promise.catch === "function") {
+                if (
+                    play_promise !== undefined &&
+                    typeof play_promise.catch === "function"
+                ) {
                     play_promise.catch(() => {});
                 }
             }
-            
+
             ctx.save();
             ctx.beginPath();
             if (border_radius > 0) {
@@ -106,8 +118,14 @@ export class Video extends Element {
 
             const pixel_size = Math.max(1, Math.round(this.pixel_size));
             if (pixel_size > 1) {
-                const low_width = Math.max(1, Math.floor(content_box.width / pixel_size));
-                const low_height = Math.max(1, Math.floor(content_box.height / pixel_size));
+                const low_width = Math.max(
+                    1,
+                    Math.floor(content_box.width / pixel_size),
+                );
+                const low_height = Math.max(
+                    1,
+                    Math.floor(content_box.height / pixel_size),
+                );
 
                 const offscreen = this.get_offscreen(low_width, low_height);
                 if (offscreen) {
@@ -116,12 +134,15 @@ export class Video extends Element {
 
                     const old_smoothing = ctx.imageSmoothingEnabled;
                     ctx.imageSmoothingEnabled = false;
-                    // @ts-ignore
-                    if (ctx.mozImageSmoothingEnabled !== undefined) ctx.mozImageSmoothingEnabled = false;
-                    // @ts-ignore
-                    if (ctx.webkitImageSmoothingEnabled !== undefined) ctx.webkitImageSmoothingEnabled = false;
-                    // @ts-ignore
-                    if (ctx.msImageSmoothingEnabled !== undefined) ctx.msImageSmoothingEnabled = false;
+                    // @ts-expect-error - vendor-prefixed property not in standard lib types
+                    if (ctx.mozImageSmoothingEnabled !== undefined)
+                        ctx.mozImageSmoothingEnabled = false;
+                    // @ts-expect-error - vendor-prefixed property not in standard lib types
+                    if (ctx.webkitImageSmoothingEnabled !== undefined)
+                        ctx.webkitImageSmoothingEnabled = false;
+                    // @ts-expect-error - vendor-prefixed property not in standard lib types
+                    if (ctx.msImageSmoothingEnabled !== undefined)
+                        ctx.msImageSmoothingEnabled = false;
 
                     ctx.drawImage(
                         offscreen.canvas,

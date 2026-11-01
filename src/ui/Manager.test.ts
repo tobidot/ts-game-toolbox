@@ -71,7 +71,7 @@ describe("MenuManager", () => {
     });
 
     it("should handle CheckBox toggle", () => {
-        const checkbox = new CheckBox("Test", false, {
+        const checkbox = new CheckBox(false, {
             left: 0,
             top: 0,
             width: 100,

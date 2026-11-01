@@ -1,7 +1,6 @@
 import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundException";
 import { RectI, Rect } from "../geometries";
 
-const depth = 0;
 export class QuadTree<T extends RectI> {
     private root_branch: QuadTreeBranch<T>;
     constructor(base_rect: RectI) {
@@ -79,6 +78,15 @@ export class QuadTree<T extends RectI> {
 
     public clear() {
         this.root_branch.clear(8);
+    }
+
+    /**
+     * Collect the bounding rects of every leaf branch of this tree.
+     * Mainly useful to visualize how the tree subdivides its space.
+     */
+    public collect_leaf_rects(result: Array<RectI> = []): Array<RectI> {
+        this.root_branch.collect_leaf_rects(result);
+        return result;
     }
 }
 
@@ -207,6 +215,22 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
 
     public is_self_empty(): boolean {
         return this.elements.length === 0;
+    }
+
+    public collect_leaf_rects(result: Array<RectI>): Array<RectI> {
+        if (this.child_branch_nodes === null) {
+            result.push({
+                left: this.left,
+                top: this.top,
+                width: this.width,
+                height: this.height,
+            });
+            return result;
+        }
+        for (const branch of this.child_branch_nodes) {
+            branch.collect_leaf_rects(result);
+        }
+        return result;
     }
 
     public clear(max_levels_deep: number) {

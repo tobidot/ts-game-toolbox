@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Element } from "../Element";
-import { RgbColor } from "../../data";
-import { ThemeInstance, ThemeRule } from "./Theme";
+import { ThemeRule } from "./Theme";
 import { theme_rules_from } from "./ThemeRuleBuilder";
 
 describe("Theme Selectors", () => {

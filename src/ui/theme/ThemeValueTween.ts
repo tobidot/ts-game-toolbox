@@ -1,13 +1,12 @@
 import { ThemeValueProxy } from "./ThemeValueProxy";
-import {
-    theme_property_definition_equals,
-    theme_property_value_equals, ThemePropertyValue,
-} from "./Theme";
+import { theme_property_definition_equals, ThemePropertyValue } from "./Theme";
 
 /**
  * Represents a transition between two values.
  */
-export abstract class ThemeValueTween<T extends ThemePropertyValue> extends ThemeValueProxy<T> {
+export abstract class ThemeValueTween<
+    T extends ThemePropertyValue,
+> extends ThemeValueProxy<T> {
     public start: number = performance.now();
 
     protected constructor(
@@ -31,7 +30,8 @@ export abstract class ThemeValueTween<T extends ThemePropertyValue> extends Them
     public abstract interpolate(start_value: T, end_value: T, t: number): T;
 
     public get(): T {
-        const t = (performance.now() - this.start) / 1000 / this.seconds;
+        const raw_t = (performance.now() - this.start) / 1000 / this.seconds;
+        const t = Math.max(0, Math.min(1, raw_t));
         return this.interpolate(
             this.start_value,
             this.end_value,
@@ -57,6 +57,15 @@ export abstract class ThemeValueTween<T extends ThemePropertyValue> extends Them
 }
 
 export class ThemeValueTweenNumber extends ThemeValueTween<number> {
+    public constructor(
+        start_value: number,
+        end_value: number,
+        seconds: number,
+        easing: (t: number) => number = (t) => t,
+    ) {
+        super(start_value, end_value, seconds, easing);
+    }
+
     public cpy(): this {
         return new ThemeValueTweenNumber(
             this.start_value,
@@ -71,6 +80,6 @@ export class ThemeValueTweenNumber extends ThemeValueTween<number> {
         end_value: number,
         t: number,
     ): number {
-        return start_value * t + end_value * (t - 1);
+        return start_value * (1 - t) + end_value * t;
     }
 }

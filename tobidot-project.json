@@ -1,0 +1,31 @@
+{
+    "$schema": "https://game-object.com/tobidot-project-schema.json",
+    "namespace": "tobidot",
+    "name": "ts-game-toolbox",
+    "title": "Ts Game Toolbox",
+    "informal": {
+        "description": "Build-time game toolbox (TypeScript source): geometry, seeded random, signals, assets, canvas UI, trees, physics helpers. Vendored into TCE projects like the SDK; grows by one small module per Spielwerk step.",
+        "categories": [
+            "tce",
+            "sdk",
+            "library-source"
+        ]
+    },
+    "development": {
+        "status": "in_progress"
+    },
+    "execution": {
+        "type": "npm",
+        "resources": "src",
+        "index": "index.ts"
+    },
+    "resolution": {
+        "width": 0,
+        "height": 0
+    },
+    "history": [],
+    "code": {
+        "language": "typescript"
+    },
+    "dependencies": []
+}

@@ -1,7 +1,9 @@
 import { ThemeValueProxy } from "./ThemeValueProxy";
 import { ThemePropertyValue } from "./Theme";
 
-export class ThemeValueAnimator<T extends ThemePropertyValue> extends ThemeValueProxy<T> {
+export class ThemeValueAnimator<
+    T extends ThemePropertyValue,
+> extends ThemeValueProxy<T> {
     public start: number = performance.now();
 
     constructor(
@@ -12,7 +14,10 @@ export class ThemeValueAnimator<T extends ThemePropertyValue> extends ThemeValue
     }
 
     public cpy(): this {
-        return new ThemeValueAnimator<T>(this.interval_seconds, this.callback) as this;
+        return new ThemeValueAnimator<T>(
+            this.interval_seconds,
+            this.callback,
+        ) as this;
     }
 
     public get(): T {

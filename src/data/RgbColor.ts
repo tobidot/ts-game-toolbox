@@ -29,6 +29,11 @@ export class RgbColor {
     }
 
     public equals(other: RgbColor): boolean {
-        return this.r === other.r && this.g === other.g && this.b === other.b && this.a === other.a;
+        return (
+            this.r === other.r &&
+            this.g === other.g &&
+            this.b === other.b &&
+            this.a === other.a
+        );
     }
 }

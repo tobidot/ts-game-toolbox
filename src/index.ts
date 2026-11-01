@@ -1,6 +1,7 @@
 export * from "./signals";
 export * from "./assets";
 export * from "./geometries";
+export * from "./physics";
 export * from "./testing";
 export * from "./trees";
 export * from "./data";

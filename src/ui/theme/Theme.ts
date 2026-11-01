@@ -1,5 +1,4 @@
 import { RgbColor } from "../../data";
-import { Nullable } from "../../flow/types/Nullable";
 import { ThemeValueAnimator } from "./ThemeValueAnimator";
 import { ThemeValueTween } from "./ThemeValueTween";
 import { ThemeValueProxy } from "./ThemeValueProxy";
@@ -261,7 +260,6 @@ export class ThemeInstance implements ThemePropertyDefinitions {
     public text_baseline!: ThemePropertyDefinition<ThemeTextBaseline>;
 
     public transform!: ThemePropertyDefinition<ThemeTransformValue | null>;
-
 
     constructor(theme?: Partial<ThemePropertyDefinitions>) {
         Object.assign(this, DEFAULT_THEME, theme);

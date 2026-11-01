@@ -11,6 +11,7 @@ interface TestDashboardElements {
 export class TestDashboard {
     private tests: Array<TestClass> = [];
     private elements: TestDashboardElements;
+    private active_tests: Array<TestClass> = [];
 
     constructor() {
         this.elements = this.create_dashboard_elements();
@@ -72,11 +73,17 @@ export class TestDashboard {
         return this.create_element_button(test.get_name(), () => {
             this.clear_test_container();
             this.elements.console_log.clear();
+            this.active_tests.push(test);
             test.run_all_test_cases();
         });
     }
 
     protected clear_test_container(): void {
+        // Tear down any previously running test (e.g. stop its animation
+        // loop) only now, right before its canvas/elements are actually
+        // removed, instead of immediately after the test method returned.
+        this.active_tests.forEach((test) => test.tear_down());
+        this.active_tests = [];
         this.elements.test_container.innerHTML = "";
     }
 
@@ -112,6 +119,7 @@ export class TestDashboard {
         this.elements.console_log.clear();
         console.log("Starting Tests ... ");
         for (const test of this.tests) {
+            this.active_tests.push(test);
             test.run_all_test_cases();
         }
         console.log(" ... Tests finished");

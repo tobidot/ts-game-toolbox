@@ -1,4 +1,4 @@
-import { RectI } from "../../geometries/Rect";
+import { RectI } from "../../geometries";
 import { Element } from "../Element";
 import { ThemeRule } from "../theme/Theme";
 
@@ -36,7 +36,6 @@ export class ValueLabel extends Element {
         this.draw_background(ctx);
 
         const content_box = this.get_local_content_box_size();
-        const border_box = this.get_local_border_box_size();
 
         ctx.fillStyle = text_color.toString();
         ctx.font = `${font_size}px ${font_family}`;

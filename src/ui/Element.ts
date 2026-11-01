@@ -1,5 +1,5 @@
 import { EventSocket } from "../signals";
-import {Rect, RectI, Vector2} from "../geometries";
+import { Rect, RectI, Vector2 } from "../geometries";
 import { Vector2I } from "../geometries";
 import { ElementChangeEvent, ElementClickEvent } from "./events";
 import type { Group } from "./Group";
@@ -79,9 +79,9 @@ export class Element {
 
     public collect_theme_rules(): Array<ThemeRule> {
         // Traverse up the tree to get all rules applied to this element
-        const elements: Element[] = [];
+        const elements: Element[] = [this];
         for (
-            let current: Element | null = this;
+            let current: Element | null = this.parent;
             current;
             current = current.parent
         ) {
@@ -111,7 +111,10 @@ export class Element {
      * @param world_coords
      */
     public get_local_coordinates_at(world_coords: Vector2I): Vector2 {
-        return new Vector2(world_coords).sub({ x: this.rect.left, y: this.rect.top });
+        return new Vector2(world_coords).sub({
+            x: this.rect.left,
+            y: this.rect.top,
+        });
     }
 
     public get_local_content_box_size(): RectI {
@@ -275,5 +278,4 @@ export class Element {
             ctx.stroke();
         }
     }
-
 }

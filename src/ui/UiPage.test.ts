@@ -71,7 +71,7 @@ describe("ResolutionAgnostic UI", () => {
         );
 
         const button_theme = theme_rules_from([
-            ["", {  background_color: new RgbColor(0, 0, 255) } ],
+            ["", { background_color: new RgbColor(0, 0, 255) }],
         ]);
         const button = new Button(
             "Test",
@@ -121,7 +121,9 @@ describe("ResolutionAgnostic UI", () => {
     });
 
     it("should allow overriding inherited theme properties", () => {
-        const root_theme = theme_rules_from([["", { text_color: new RgbColor(255, 0, 0) }]]);
+        const root_theme = theme_rules_from([
+            ["", { text_color: new RgbColor(255, 0, 0) }],
+        ]);
         const root = new Group(
             [],
             { left: 0, top: 0, width: 100, height: 100 },
@@ -129,7 +131,9 @@ describe("ResolutionAgnostic UI", () => {
             root_theme,
         );
 
-        const mid_theme = theme_rules_from([["", { text_color: new RgbColor(0, 128, 0) }]]);
+        const mid_theme = theme_rules_from([
+            ["", { text_color: new RgbColor(0, 128, 0) }],
+        ]);
         const mid = new Group(
             [],
             { left: 0, top: 0, width: 50, height: 50 },

@@ -8,7 +8,13 @@ export interface PendingAsset {
     finished_at: number | null;
 }
 
-export interface Asset<T extends HTMLAudioElement | HTMLImageElement | HTMLVideoElement | SVGElement> {
+export interface Asset<
+    T extends
+        | HTMLAudioElement
+        | HTMLImageElement
+        | HTMLVideoElement
+        | SVGElement,
+> {
     element: T;
     url: string;
     ready: boolean;
@@ -48,7 +54,9 @@ export class AssetManager {
         const sub_progress = progress.make_child_progress(count);
         const image_progress = sub_progress.make_child_progress(1);
         const audio_progress = sub_progress.make_child_progress(1);
-        const video_progress = assets.videos ? sub_progress.make_child_progress(1) : null;
+        const video_progress = assets.videos
+            ? sub_progress.make_child_progress(1)
+            : null;
 
         const promises = [
             this.load_images(assets.images ?? {}, image_progress),
@@ -151,7 +159,9 @@ export class AssetManager {
             progress,
             async (single_progress, path, url) => {
                 return new Promise<void>((resolve, reject) => {
-                    const is_jsdom = typeof window !== "undefined" && window.navigator?.userAgent?.includes("jsdom");
+                    const is_jsdom =
+                        typeof window !== "undefined" &&
+                        window.navigator?.userAgent?.includes("jsdom");
                     if (is_jsdom) {
                         // Avoid loading media elements in JSDOM tests
                         const video = document.createElement("video");
@@ -241,11 +251,13 @@ export class AssetManager {
                 finished_at: null,
             });
             const pending_index = this.pending.length - 1;
-            promise.then(() => {
-                this.pending[pending_index].finished_at = performance.now();
-            }).catch(() => {
-                // Rejection handled by Promise.all caller
-            });
+            promise
+                .then(() => {
+                    this.pending[pending_index].finished_at = performance.now();
+                })
+                .catch(() => {
+                    // Rejection handled by Promise.all caller
+                });
             promises.push(promise);
         }
         return Promise.all(promises);

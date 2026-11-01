@@ -1,11 +1,11 @@
-import {RectI, Rect, Vector2I} from "../geometries";
-import {Group} from "./Group";
-import {Element} from "./Element";
-import {ThemeRule} from "./theme/Theme";
+import { RectI, Rect, Vector2I } from "../geometries";
+import { Group } from "./Group";
+import { Element } from "./Element";
+import { ThemeRule } from "./theme/Theme";
 
 export class UiPage extends Group {
     public reference_rect: Rect;
-    public window_resolution: Vector2I = {x: 800, y: 600};
+    public window_resolution: Vector2I = { x: 800, y: 600 };
 
     public constructor(
         window_resolution: Vector2I,
@@ -20,20 +20,22 @@ export class UiPage extends Group {
         this.type = "page";
     }
 
-    public enter() {
-    }
+    public enter() {}
 
-    public leave() {
-    }
+    public leave() {}
 
-    private transform_window_to_unit_coordinates(window_coords: Vector2I): Vector2I {
+    private transform_window_to_unit_coordinates(
+        window_coords: Vector2I,
+    ): Vector2I {
         return {
             x: window_coords.x / this.window_resolution.x,
             y: window_coords.y / this.window_resolution.y,
         };
     }
 
-    private transform_unit_to_reference_coordinates(unit_coords: Vector2I): Vector2I {
+    private transform_unit_to_reference_coordinates(
+        unit_coords: Vector2I,
+    ): Vector2I {
         // Uniform to reference space
         // rel_x/rel_y is 0-1 within this page's uniform rect
         const rel_x = (unit_coords.x - this.rect.left) / this.rect.width;
@@ -45,20 +47,23 @@ export class UiPage extends Group {
         };
     }
 
-    public override hit(unit_coords: Vector2I): Array<Element> {
+    public override hit(window_coords: Vector2I): Array<Element> {
         if (!this.is_visible) {
             return [];
         }
-        const reference_coords = this.transform_unit_to_reference_coordinates(unit_coords);
+        const unit_coords =
+            this.transform_window_to_unit_coordinates(window_coords);
+        const reference_coords =
+            this.transform_unit_to_reference_coordinates(unit_coords);
 
         return super.hit(reference_coords);
     }
 
     /**
      * The page is always hit in its own reference space
-     * @param refernce_coords
+     * @param _reference_coords
      */
-    public override is_hit(refernce_coords: Vector2I): boolean {
+    public override is_hit(_reference_coords: Vector2I): boolean {
         return true;
     }
 
@@ -66,7 +71,7 @@ export class UiPage extends Group {
         if (!this.is_visible) return;
 
         // Update container_res from context
-        this.window_resolution = {x: ctx.canvas.width, y: ctx.canvas.height};
+        this.window_resolution = { x: ctx.canvas.width, y: ctx.canvas.height };
 
         const actual_left = this.rect.left * this.window_resolution.x;
         const actual_top = this.rect.top * this.window_resolution.y;

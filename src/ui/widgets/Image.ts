@@ -22,13 +22,19 @@ export class Image extends Element {
         this.pixel_size = pixel_size;
     }
 
-    private get_offscreen(width: number, height: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+    private get_offscreen(
+        width: number,
+        height: number,
+    ): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
         if (typeof document === "undefined") return null;
         if (!this.offscreen_canvas) {
             this.offscreen_canvas = document.createElement("canvas");
             this.offscreen_ctx = this.offscreen_canvas.getContext("2d");
         }
-        if (this.offscreen_canvas.width !== width || this.offscreen_canvas.height !== height) {
+        if (
+            this.offscreen_canvas.width !== width ||
+            this.offscreen_canvas.height !== height
+        ) {
             this.offscreen_canvas.width = width;
             this.offscreen_canvas.height = height;
         }
@@ -73,22 +79,37 @@ export class Image extends Element {
 
             const pixel_size = Math.max(1, Math.round(this.pixel_size));
             if (pixel_size > 1) {
-                const low_width = Math.max(1, Math.floor(content_box.width / pixel_size));
-                const low_height = Math.max(1, Math.floor(content_box.height / pixel_size));
+                const low_width = Math.max(
+                    1,
+                    Math.floor(content_box.width / pixel_size),
+                );
+                const low_height = Math.max(
+                    1,
+                    Math.floor(content_box.height / pixel_size),
+                );
 
                 const offscreen = this.get_offscreen(low_width, low_height);
                 if (offscreen) {
                     offscreen.ctx.clearRect(0, 0, low_width, low_height);
-                    offscreen.ctx.drawImage(img.element, 0, 0, low_width, low_height);
+                    offscreen.ctx.drawImage(
+                        img.element,
+                        0,
+                        0,
+                        low_width,
+                        low_height,
+                    );
 
                     const old_smoothing = ctx.imageSmoothingEnabled;
                     ctx.imageSmoothingEnabled = false;
-                    // @ts-ignore
-                    if (ctx.mozImageSmoothingEnabled !== undefined) ctx.mozImageSmoothingEnabled = false;
-                    // @ts-ignore
-                    if (ctx.webkitImageSmoothingEnabled !== undefined) ctx.webkitImageSmoothingEnabled = false;
-                    // @ts-ignore
-                    if (ctx.msImageSmoothingEnabled !== undefined) ctx.msImageSmoothingEnabled = false;
+                    // @ts-expect-error - vendor-prefixed property not in standard lib types
+                    if (ctx.mozImageSmoothingEnabled !== undefined)
+                        ctx.mozImageSmoothingEnabled = false;
+                    // @ts-expect-error - vendor-prefixed property not in standard lib types
+                    if (ctx.webkitImageSmoothingEnabled !== undefined)
+                        ctx.webkitImageSmoothingEnabled = false;
+                    // @ts-expect-error - vendor-prefixed property not in standard lib types
+                    if (ctx.msImageSmoothingEnabled !== undefined)
+                        ctx.msImageSmoothingEnabled = false;
 
                     ctx.drawImage(
                         offscreen.canvas,

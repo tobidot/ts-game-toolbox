@@ -1,5 +1,4 @@
 import { RectI } from "../../geometries";
-import { Vector2I } from "../../geometries";
 import { Element } from "../Element";
 import { ThemeRule } from "../theme/Theme";
 

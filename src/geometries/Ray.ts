@@ -1,85 +1,93 @@
-import { MathHelper } from "../helpers/MathHelper";
+import { Line, LineI } from "./Line";
+import { Segment } from "./Segment";
 import { Vector2, Vector2I } from "./Vector2";
+import type { PolygonI } from "./Polygon";
 
-export interface RayI {
-    point: Vector2I;
-    direction: Vector2I;
+export type RayI = LineI;
+
+/**
+ * A single intersection between a ray and a polygon edge.
+ */
+export interface RayHitI {
+    /**
+     * The point in world space where the ray hit the polygon edge.
+     */
+    point: Vector2;
+    /**
+     * The distance along the ray's direction to the hit point.
+     * (Assumes the ray's direction is normalized, e.g. via Ray.from_points)
+     */
+    distance: number;
+    /**
+     * The outward facing normal of the edge that was hit.
+     */
+    normal: Vector2;
 }
 
-export class Ray {
-    public point: Vector2;
-    public direction: Vector2;
-
-    public constructor(point: Vector2I, direction: Vector2I) {
-        this.point = new Vector2(point);
-        this.direction = new Vector2(direction);
-    }
-
+/**
+ * A `Ray` is a half-line: it shares `Line`'s `point + t * direction`
+ * formula, but restricts `t` to `[0, ∞)`, i.e. it only extends forward from
+ * `point` in the direction of `direction`. See the class doc on `Line` for
+ * how `Line`/`Ray`/`Segment` relate to each other.
+ */
+export class Ray extends Line {
     public static from_points(start: Vector2I, end: Vector2I): Ray {
         return new Ray(
             new Vector2(start),
-            new Vector2(end.x - start.x, start.y - end.y),
+            new Vector2(end.x - start.x, end.y - start.y).normalize(),
         );
     }
 
-    public get_vector_projection(other: Vector2I): number {
-        const diff = new Vector2(other).sub(this.point);
-        const dot = this.direction.dot(diff);
-        const magnitude = this.direction.len();
-        return dot / magnitude;
+    public cpy(): Ray {
+        return new Ray(this.point, this.direction);
     }
 
-    public get_ray_projection(other: Ray): number | null {
-        // Line defintion
-        // L1(t) = P1 + t * D1
-        // L2(u) = P2 + u * D2
-
-        // Equal them
-        // P1 + t * D1 = P2 + u * D2
-        // t * D1 - u * D2 = P2 - P2
-
-        // To Matrix
-        // t * d1x - u * d2x = p2x - p1x
-        // t * d1y - u * d2y = p2y - p1y
-        // [d1x -d2x] * [t] = [p2x - p1x]
-        // [d1y -d2y]   [u]   [p2y - p1y]
-
-        // Cramer
-        // A * v = b    => t = det(At) / det(A)
-        // with
-        // v = [t]
-        //     [u]
-        // b = [(p2x-p1x)]
-        //     [(p2y-p1y)]
-        // A = [d1x -d2x]
-        //     [d1y -d2y]
-        // At = [(p2x-p1x) -d2x]
-        //      [(p2y-p1y) -d2y]
-
-        // det(A) = (d1x * -d2y) - (d1y * -d2x)
-        // det(At) = ((p2x-p1x) * -d2y) - ((p2y-p1y) * -d2x)
-        // t = ((d1x * -d2y) - (d1y * -d2x)) / (((p2x-p1x) * -d2y) - ((p2y-p1y) * -d2x))
-
-        const det_a =
-            this.direction.x * -other.direction.y -
-            this.direction.y * -other.direction.x;
-
-        if (MathHelper.float_equals(det_a, 0)) {
-            // no intersection, because rays are parallel
-            return null;
+    /**
+     * Cast this ray against every edge of the given polygon and collect all hits,
+     * sorted from nearest to farthest.
+     * @param polygon The polygon to test against
+     */
+    public get_polygon_hit(polygon: PolygonI): Array<RayHitI> {
+        const points = polygon.points;
+        const hits: Array<RayHitI> = [];
+        if (points.length < 2) {
+            return hits;
         }
 
-        const det_at =
-            (other.point.x - this.point.x) * -other.direction.y -
-            (other.point.y - this.point.y) * -other.direction.x;
-        return det_at / det_a;
+        for (let i = 0; i < points.length; i++) {
+            const p1 = new Vector2(points[i]);
+            const p2 = new Vector2(points[(i + 1) % points.length]);
+            // Use the raw (non-normalized) edge segment, so the projected
+            // parameter `u` maps cleanly onto the [0, 1] segment bounds.
+            const edge = new Segment(p1, p2);
+
+            const t = this.get_ray_projection(edge);
+            if (t === null || t < 0) {
+                continue;
+            }
+            const u = edge.get_ray_projection(this);
+            if (u === null || u < 0 || u > 1) {
+                continue;
+            }
+
+            const point = this.get_vector_at(t);
+            const normal = new Vector2(
+                edge.direction.y,
+                -edge.direction.x,
+            ).normalize();
+            hits.push({ point, distance: t, normal });
+        }
+
+        hits.sort((a, b) => a.distance - b.distance);
+        return hits;
     }
 
-    public get_ray_intersections(other: Ray): Array<Vector2> {
-        const t = this.get_ray_projection(other);
-        if (t === null) {
-            return [];
-        }
-        return [this.point.cpy().add(this.direction.cpy().mul(t))];
+    /**
+     * Cast this ray against the given polygon and return the nearest hit, if any.
+     * @param polygon The polygon to test against
+     */
+    public get_nearest_polygon_hit(polygon: PolygonI): RayHitI | null {
+        const hits = this.get_polygon_hit(polygon);
+        return hits.length > 0 ? hits[0] : null;
     }
 }

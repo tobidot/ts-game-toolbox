@@ -1,20 +1,17 @@
-import { RectI, Vector2I } from "../../geometries";
+import { RectI } from "../../geometries";
 import { Element } from "../Element";
 import { ThemeRule } from "../theme/Theme";
 
 export class CheckBox extends Element {
-    public title: string;
     public checked: boolean;
 
     public constructor(
-        title: string,
         checked: boolean,
         rect: RectI,
         is_visible: boolean = true,
         theme_rules?: Array<ThemeRule>,
     ) {
         super(rect, is_visible, theme_rules);
-        this.title = title;
         this.checked = checked;
         this.type = "checkbox";
     }
@@ -34,9 +31,6 @@ export class CheckBox extends Element {
             border_width,
             border_radius,
             text_color,
-            font_size,
-            font_family,
-            text_baseline,
         } = this.theme_instance.get_all();
 
         ctx.save();
@@ -76,20 +70,6 @@ export class CheckBox extends Element {
             ctx.fillStyle = text_color.toString();
             ctx.fillRect(box_x + 4, box_y + 4, box_size - 8, box_size - 8);
         }
-
-        ctx.fillStyle = text_color.toString();
-        ctx.font = `${font_size}px ${font_family}`;
-        ctx.textAlign = "left";
-        ctx.textBaseline = text_baseline;
-        ctx.fillText(
-            this.title,
-            box_x + box_size + 10,
-            text_baseline === "middle"
-                ? content_box.top + content_box.height / 2
-                : text_baseline === "top"
-                  ? content_box.top
-                  : content_box.top + content_box.height,
-        );
 
         ctx.restore(); // transform
     }

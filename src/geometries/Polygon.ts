@@ -1,5 +1,5 @@
-import { Line } from "./Line";
 import { Ray } from "./Ray";
+import { Segment } from "./Segment";
 import { Vector2, Vector2I } from "./Vector2";
 
 export interface PolygonI {
@@ -21,15 +21,15 @@ export class Polygon implements PolygonI {
         return this._points;
     }
 
-    public get lines(): Array<Line> {
+    public get lines(): Array<Segment> {
         if (this.points.length < 2) {
             return [];
         }
-        const lines: Array<Line> = [];
+        const lines: Array<Segment> = [];
         for (let i = 1; i <= this.points.length; ++i) {
             const a = this.points[i - 1];
             const b = this._points[i % this.points.length];
-            lines.push(new Line(a, b));
+            lines.push(new Segment(a, b));
         }
         return lines;
     }
