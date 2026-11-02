@@ -1,3 +1,5 @@
+import { HsvColor } from "./HsvColor";
+
 export class RgbColor {
     public constructor(
         public r: number = 0,
@@ -26,6 +28,10 @@ export class RgbColor {
 
     public toString(): string {
         return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a / 255})`;
+    }
+
+    public to_hsv(): HsvColor {
+        return HsvColor.from_rgb(this);
     }
 
     public equals(other: RgbColor): boolean {
