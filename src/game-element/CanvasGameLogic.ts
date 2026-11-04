@@ -1,3 +1,4 @@
+import { AudioPlayer } from "../audio/AudioPlayer";
 import { Progress } from "../flow";
 import { Vector2I } from "../geometries";
 import { IntroState } from "../stage/IntroGate";
@@ -111,7 +112,9 @@ export abstract class CanvasGameLogic<
         public readonly properties: P,
         protected readonly renderer: CanvasGameRenderer<G, S, F>,
         protected readonly settings: S,
-    ) {}
+    ) {
+        properties.audio = new AudioPlayer(references.assets);
+    }
 
     // ---- lifecycle ----
 
@@ -135,6 +138,7 @@ export abstract class CanvasGameLogic<
             properties.intro_enabled = read("init-intro", parse_boolean, true);
             this.read_attributes(read);
             this.load_images();
+            this.load_sounds();
         }
 
         const stage = references.stage;
@@ -187,6 +191,7 @@ export abstract class CanvasGameLogic<
             },
         );
         properties.keyboard.attach(host, signal);
+        this.bind_music_resume(signal);
         stage.attach(properties.page);
         stage.observe(signal, () => {
             if (stage.layout !== properties.layout) {
@@ -213,9 +218,12 @@ export abstract class CanvasGameLogic<
                         ? this.ready_status(game)
                         : this.intro_status(state),
                 );
+                this.start_music();
                 mark_dirty();
             },
         });
+        // A reconnected element whose intro is long over gets no state change.
+        this.start_music();
         this.on_start(signal);
         mark_dirty();
     }
@@ -224,6 +232,7 @@ export abstract class CanvasGameLogic<
     public stop(): void {
         this.properties.abort_controller?.abort();
         this.properties.abort_controller = null;
+        this.properties.audio.destroy();
         this.on_stop();
     }
 
@@ -459,6 +468,32 @@ export abstract class CanvasGameLogic<
         this.references.assets.load_images(images, progress).catch(() => {
             // Already warned about; the game runs on without that picture.
         });
+    }
+
+    /** Loads `settings.sounds`, once; one that fails stays silent (`AssetManager` warns). */
+    private load_sounds(): void {
+        const sounds = this.settings.sounds;
+        if (Object.keys(sounds).length === 0) {
+            return;
+        }
+        this.references.assets.load_audio(sounds, new Progress()).catch(() => {
+            // Already warned about; the game runs on without that sound.
+        });
+    }
+
+    /** Starts `settings.music`, but never before the intro is over. */
+    private start_music(): void {
+        const music = this.settings.music;
+        if (music !== null && this.is_playing) {
+            this.properties.audio.play_music(music);
+        }
+    }
+
+    /** A track the browser refused (no intro, so no click yet) gets another try from every gesture. */
+    private bind_music_resume(signal: AbortSignal): void {
+        const resume = (): void => this.properties.audio.resume_music();
+        this.host.addEventListener("pointerdown", resume, { signal });
+        this.host.addEventListener("keydown", resume, { signal });
     }
 
     private tick(time_ms: number): void {

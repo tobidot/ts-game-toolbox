@@ -1,3 +1,4 @@
+import { AudioPlayer } from "../audio/AudioPlayer";
 import { RectI, Vector2I } from "../geometries";
 import { KeyboardState } from "../input/KeyboardState";
 import { IntroGate } from "../stage/IntroGate";
@@ -135,6 +136,11 @@ export class CanvasGameProperties<
     public readonly page: UiPage;
     /** Every key, collected on the host; read it in `update()`. Empty until the intro is done. */
     public readonly keyboard = new KeyboardState();
+    /**
+     * Plays `settings.sounds` by name. The shell builds it over the loaded assets and stops it on
+     * a disconnect; its volumes and mutes stay, like all properties.
+     */
+    public audio!: AudioPlayer;
     /** The last pointer position over the canvas in layout coordinates; null when it left. */
     public pointer: Vector2I | null = null;
     /** The layout widgets are placed in; the stage's choice. */

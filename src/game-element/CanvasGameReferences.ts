@@ -73,7 +73,7 @@ export function adopt_css(shadow: ShadowRoot, css: string): void {
 /**
  * Every DOM node a canvas game touches, built once: the shadow root, the stage (where an intro
  * video plays on top of the canvas), the `CanvasStage` that fits the canvas into it, a status
- * line for assistive technology, and the loaded images. A game that needs more DOM subclasses
+ * line for assistive technology, and the loaded images and sounds. A game that needs more DOM subclasses
  * this; most don't.
  */
 export class CanvasGameReferences<L extends StageLayout = StageLayout> {
@@ -82,7 +82,7 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
     public readonly $stage: HTMLDivElement;
     public readonly stage: CanvasStage<L>;
     public readonly $status: HTMLDivElement;
-    /** Holds `settings.images` once they are loaded; `CanvasGameRenderer.paint_image()` reads them. */
+    /** Holds `settings.images` and `settings.sounds` as they load; `paint_image()` and `properties.audio` read them. */
     public readonly assets = new AssetManager();
 
     public constructor(

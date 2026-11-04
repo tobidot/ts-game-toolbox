@@ -75,6 +75,16 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
      * the renderer's `paint_image()` paints them by name.
      */
     public readonly images: Readonly<Record<string, string>> = {};
+    /**
+     * The game's sounds and music tracks, name to imported file. The shell loads them when the
+     * element starts; `properties.audio` plays them by name.
+     */
+    public readonly sounds: Readonly<Record<string, string>> = {};
+    /**
+     * The track from `sounds` that loops while the game can be played: the shell starts it when
+     * the intro is over and stops it when the element disconnects. Null for none.
+     */
+    public readonly music: string | null = null;
     /** The start screen's texts. */
     public readonly start_button: string = "▶ Starten";
     public readonly start_hint: string =
