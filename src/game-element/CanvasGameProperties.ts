@@ -8,6 +8,7 @@ import { UiManager } from "../ui/UiManager";
 import { Element } from "../ui/Element";
 import { UiPage } from "../ui/UiPage";
 import { CanvasGameSettings, LayoutOf } from "./CanvasGameSettings";
+import { SessionBest } from "./SessionBest";
 
 /** The rect a widget is built with when `CanvasGameProperties.place()` positions it anyway. */
 export const UNPLACED: Readonly<RectI> = {
@@ -119,6 +120,13 @@ export class CanvasGameProperties<
     public intro_enabled = true;
     /** How many games came after the first: the n in `seed + n`. */
     public restarts = 0;
+    /**
+     * The best result of this session; the shell settles it on every new game. A game offers its
+     * result in `on_round_finished()`, and overrides this field where lower wins.
+     */
+    public readonly best: SessionBest = new SessionBest();
+    /** Whether `on_round_finished()` already ran for the current game. */
+    public is_round_reported = false;
     public last_tick_ms: number | null = null;
     public is_dirty = true;
 

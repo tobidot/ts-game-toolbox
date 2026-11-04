@@ -151,7 +151,9 @@ export abstract class CanvasGameLogic<
             {
                 on_press: (point, event) => {
                     properties.pointer = point;
-                    this.on_press(point, event);
+                    if (!this.next_round_if_finished()) {
+                        this.on_press(point, event);
+                    }
                 },
                 on_move: (point, event) => {
                     // A hover painted from `properties.pointer` follows without a hook.
@@ -166,6 +168,14 @@ export abstract class CanvasGameLogic<
                     this.on_leave(event);
                 },
                 on_key_down: (event) => {
+                    if (
+                        !event.repeat &&
+                        settings.next_round_keys.includes(event.key) &&
+                        this.next_round_if_finished()
+                    ) {
+                        event.preventDefault();
+                        return;
+                    }
                     this.on_key_down(event);
                     if (!event.repeat) {
                         this.on_key_press(event);
@@ -232,12 +242,16 @@ export abstract class CanvasGameLogic<
     public new_game(): void {
         const properties = this.properties;
         properties.game = this.create_game(this.game_seed);
+        properties.best.settle();
+        properties.is_round_reported = false;
         this.on_new_game(properties.game);
         properties.is_dirty = true;
     }
 
     /** The next game of the series ("Neues Spiel"), and the status line says it is ready. */
     public restart(): void {
+        // A game that ended on input since the last frame still counts.
+        this.report_finished_round();
         this.properties.restarts += 1;
         this.new_game();
         const game = this.properties.game;
@@ -264,6 +278,29 @@ export abstract class CanvasGameLogic<
 
     protected on_new_game(game: G): void {
         void game;
+    }
+
+    /**
+     * Whether `game` has ended. A game that says so gets the end of a round from the shell:
+     * `on_round_finished()` once, and a press or a `settings.next_round_keys` key starts the next
+     * round instead of reaching `on_press()` or the key hooks. Default: the game never ends.
+     */
+    protected is_round_finished(game: G): boolean {
+        void game;
+        return false;
+    }
+
+    /**
+     * Exactly once per finished round, before the frame that shows the end is painted: offer the
+     * result to `properties.best`, say it in the status line.
+     */
+    protected on_round_finished(game: G): void {
+        void game;
+    }
+
+    /** A press or key on a finished round. Default: `restart()`. */
+    protected start_next_round(): void {
+        this.restart();
     }
 
     /** The stage picked another layout; widgets added with `properties.place()` have moved already. */
@@ -380,6 +417,32 @@ export abstract class CanvasGameLogic<
         this.renderer.set_status(text);
     }
 
+    /** Runs `on_round_finished()` when the current game has just ended. */
+    private report_finished_round(): void {
+        const properties = this.properties;
+        const game = properties.game;
+        if (
+            game === null ||
+            properties.is_round_reported ||
+            !this.is_round_finished(game)
+        ) {
+            return;
+        }
+        properties.is_round_reported = true;
+        this.on_round_finished(game);
+        properties.is_dirty = true;
+    }
+
+    /** Starts the next round when the current one is finished; returns whether it did. */
+    private next_round_if_finished(): boolean {
+        const game = this.properties.game;
+        if (game === null || !this.is_round_finished(game)) {
+            return false;
+        }
+        this.start_next_round();
+        return true;
+    }
+
     /**
      * Loads `settings.images`, once. Every image that arrives repaints, because a still game
      * repaints only when something changed; one that fails stays unpainted (`AssetManager` warns).
@@ -416,6 +479,7 @@ export abstract class CanvasGameLogic<
             if (this.update(game, delta_seconds)) {
                 properties.is_dirty = true;
             }
+            this.report_finished_round();
             keyboard.end_frame();
         }
         if (!properties.is_dirty) {

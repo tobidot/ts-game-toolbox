@@ -68,6 +68,8 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     public readonly intro_hold_ms: number = 1500;
     /** Keys whose browser default (scrolling, navigating) the game blocks once it runs. */
     public readonly game_keys: readonly string[] = [];
+    /** The keys that start the next round on a finished one, see `is_round_finished()`. */
+    public readonly next_round_keys: readonly string[] = [" ", "Enter"];
     /**
      * The game's images, name to imported file. The shell loads them when the element starts;
      * the renderer's `paint_image()` paints them by name.
