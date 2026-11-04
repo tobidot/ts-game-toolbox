@@ -14,5 +14,6 @@ export * from "./input";
 export * from "./camera";
 export * from "./world";
 export * from "./canvas";
+export * from "./audio";
 export * from "./stage";
 export * from "./game-element";
