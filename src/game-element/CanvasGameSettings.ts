@@ -1,4 +1,4 @@
-import { StageLayout } from "../stage/StageLayout";
+import { LayoutRect, StageLayout } from "../stage/StageLayout";
 
 /** The house palette; a game may reference it but rarely needs to change it. */
 export const HOUSE_COLORS = {
@@ -39,6 +39,17 @@ export interface HeaderLayout extends StageLayout {
         /** Default `settings.rule`; a narrow layout may say it shorter. */
         readonly text?: string;
     };
+}
+
+/**
+ * Layouts that show the shell's mute buttons: a rect here is all a game does for them. A layout
+ * without a rect hides that button while it is the stage's choice.
+ */
+export interface MuteButtonsLayout extends StageLayout {
+    /** Where `properties.sound_button` goes; ignored when the game has no sounds. */
+    readonly sound_button?: LayoutRect;
+    /** Where `properties.music_button` goes; ignored when the game has no `settings.music`. */
+    readonly music_button?: LayoutRect;
 }
 
 /**
@@ -85,6 +96,15 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
      * the intro is over and stops it when the element disconnects. Null for none.
      */
     public readonly music: string | null = null;
+    /**
+     * The key that does what the sound button does, while that button shows; it never reaches
+     * the game's key hooks then. Null for none, or another letter, when the game needs this one.
+     */
+    public readonly sound_mute_key: string | null = "s";
+    /** The same for the music button. */
+    public readonly music_mute_key: string | null = "m";
+    /** The sound a mute button answers with; none when `sounds` doesn't list it. */
+    public readonly mute_answer_sound: string = "select";
     /** The start screen's texts. */
     public readonly start_button: string = "▶ Starten";
     public readonly start_hint: string =

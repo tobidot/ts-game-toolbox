@@ -8,7 +8,12 @@ import { ThemeRule } from "../ui/theme/Theme";
 import { UiManager } from "../ui/UiManager";
 import { Element } from "../ui/Element";
 import { UiPage } from "../ui/UiPage";
-import { CanvasGameSettings, LayoutOf } from "./CanvasGameSettings";
+import {
+    CanvasGameSettings,
+    LayoutOf,
+    MuteButtonsLayout,
+} from "./CanvasGameSettings";
+import { MuteButton } from "./MuteButton";
 import { SessionBest } from "./SessionBest";
 
 /** The rect a widget is built with when `CanvasGameProperties.place()` positions it anyway. */
@@ -32,8 +37,8 @@ export function hex_color(hex: string): RgbColor {
  * The house look of the toolbox UI. Plain buttons: monospace on panel grey, hover white, active
  * turquoise. Class `primary`: turquoise, hover white, active orange (the "Neues Spiel" button).
  * Class `accent`: orange, hover white, active turquoise (the one action that counts: "Raten").
- * Class `secondary`: quiet, white on the line color, hover grey, active white. A game adds only
- * what differs.
+ * Class `secondary`: quiet, white on the line color, hover grey, active white. Class `off`: grey,
+ * hover panel grey (a mute button that is off). A game adds only what differs.
  */
 export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
     const colors = settings.colors;
@@ -100,6 +105,14 @@ export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
                 text_color: hex_color(colors.black),
             },
         },
+        {
+            selectors: [{ class: "off" }],
+            properties: background(colors.gray),
+        },
+        {
+            selectors: [{ class: "off", state: "hover" }],
+            properties: background(colors.panel),
+        },
     ];
 }
 
@@ -141,6 +154,13 @@ export class CanvasGameProperties<
      * a disconnect; its volumes and mutes stay, like all properties.
      */
     public audio!: AudioPlayer;
+    /**
+     * Mutes the sounds. Null unless the game has sounds and a layout has a `sound_button` rect;
+     * the shell places it, wires it and keeps it showing what `audio` says.
+     */
+    public readonly sound_button: MuteButton | null;
+    /** Mutes the music. Null unless the game has `settings.music` and a layout places it. */
+    public readonly music_button: MuteButton | null;
     /** The last pointer position over the canvas in layout coordinates; null when it left. */
     public pointer: Vector2I | null = null;
     /** The layout widgets are placed in; the stage's choice. */
@@ -165,6 +185,16 @@ export class CanvasGameProperties<
             [...default_theme(settings), ...theme_rules],
         );
         this.ui.active_menu = this.page;
+        const has_sounds = Object.keys(settings.sounds).some(
+            (name) => name !== settings.music,
+        );
+        this.sound_button = has_sounds
+            ? this.place_mute_button((rects) => rects.sound_button)
+            : null;
+        this.music_button =
+            settings.music !== null
+                ? this.place_mute_button((rects) => rects.music_button)
+                : null;
     }
 
     /**
@@ -190,6 +220,21 @@ export class CanvasGameProperties<
         for (const { widget, rect_of } of this.placements) {
             this.move(widget, rect_of(layout));
         }
+    }
+
+    /** A mute button when some layout has a rect for it; hidden in a layout that has none. */
+    private place_mute_button(
+        rect_in: (layout: MuteButtonsLayout) => RectI | undefined,
+    ): MuteButton | null {
+        if (!this.settings.layouts.some((layout) => rect_in(layout))) {
+            return null;
+        }
+        const button = new MuteButton();
+        return this.place(button, (layout) => {
+            const rect = rect_in(layout);
+            button.is_visible = rect !== undefined;
+            return rect ?? UNPLACED;
+        });
     }
 
     private move(widget: Element, rect: RectI): void {

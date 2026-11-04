@@ -14,6 +14,13 @@ import {
     GameFrame,
 } from "./CanvasGameRenderer";
 import { CanvasGameSettings, LayoutOf } from "./CanvasGameSettings";
+import { MUTE_ICONS } from "./MuteIcons";
+
+/** The mute buttons' pictures among the loaded images. */
+const MUTE_ICON_NAMES = {
+    sound: "shell-mute-sound",
+    music: "shell-mute-music",
+} as const;
 
 /** The largest seed; seeds wrap around after it. */
 export const MAX_SEED = 2147483647;
@@ -172,6 +179,9 @@ export abstract class CanvasGameLogic<
                     this.on_leave(event);
                 },
                 on_key_down: (event) => {
+                    if (!event.repeat && this.mute_by_key(event)) {
+                        return;
+                    }
                     if (
                         !event.repeat &&
                         settings.next_round_keys.includes(event.key) &&
@@ -192,6 +202,7 @@ export abstract class CanvasGameLogic<
         );
         properties.keyboard.attach(host, signal);
         this.bind_music_resume(signal);
+        this.bind_mute_buttons();
         stage.attach(properties.page);
         stage.observe(signal, () => {
             if (stage.layout !== properties.layout) {
@@ -453,11 +464,17 @@ export abstract class CanvasGameLogic<
     }
 
     /**
-     * Loads `settings.images`, once. Every image that arrives repaints, because a still game
-     * repaints only when something changed; one that fails stays unpainted (`AssetManager` warns).
+     * Loads `settings.images` and the icons of the mute buttons there are, once. Every image that
+     * arrives repaints, because a still game repaints only when something changed; one that fails
+     * stays unpainted (`AssetManager` warns).
      */
     private load_images(): void {
-        const images = this.settings.images;
+        const { sound_button, music_button } = this.properties;
+        const images = {
+            ...this.settings.images,
+            ...(sound_button && { [MUTE_ICON_NAMES.sound]: MUTE_ICONS.sound }),
+            ...(music_button && { [MUTE_ICON_NAMES.music]: MUTE_ICONS.music }),
+        };
         if (Object.keys(images).length === 0) {
             return;
         }
@@ -468,6 +485,13 @@ export abstract class CanvasGameLogic<
         this.references.assets.load_images(images, progress).catch(() => {
             // Already warned about; the game runs on without that picture.
         });
+        const assets = this.references.assets.images;
+        if (sound_button !== null) {
+            sound_button.icon = assets.get(MUTE_ICON_NAMES.sound) ?? null;
+        }
+        if (music_button !== null) {
+            music_button.icon = assets.get(MUTE_ICON_NAMES.music) ?? null;
+        }
     }
 
     /** Loads `settings.sounds`, once; one that fails stays silent (`AssetManager` warns). */
@@ -494,6 +518,69 @@ export abstract class CanvasGameLogic<
         const resume = (): void => this.properties.audio.resume_music();
         this.host.addEventListener("pointerdown", resume, { signal });
         this.host.addEventListener("keydown", resume, { signal });
+    }
+
+    private bind_mute_buttons(): void {
+        const { sound_button, music_button } = this.properties;
+        if (sound_button !== null) {
+            this.on_click(sound_button, () => this.toggle_sound_mute());
+        }
+        if (music_button !== null) {
+            this.on_click(music_button, () => this.toggle_music_mute());
+        }
+    }
+
+    /** The key of a showing mute button does what the button does; returns whether it was one. */
+    private mute_by_key(event: KeyboardEvent): boolean {
+        const { settings, properties } = this;
+        const key = event.key.toLowerCase();
+        if (
+            properties.sound_button?.is_visible &&
+            key === settings.sound_mute_key
+        ) {
+            this.toggle_sound_mute();
+            return true;
+        }
+        if (
+            properties.music_button?.is_visible &&
+            key === settings.music_mute_key
+        ) {
+            this.toggle_music_mute();
+            return true;
+        }
+        return false;
+    }
+
+    private toggle_sound_mute(): void {
+        const audio = this.properties.audio;
+        audio.is_sound_muted = !audio.is_sound_muted;
+        this.answer_mute_toggle();
+    }
+
+    private toggle_music_mute(): void {
+        const audio = this.properties.audio;
+        audio.is_music_muted = !audio.is_music_muted;
+        this.answer_mute_toggle();
+    }
+
+    /** A sound, unless the sounds are muted, and the buttons repaint in their new state. */
+    private answer_mute_toggle(): void {
+        const name = this.settings.mute_answer_sound;
+        if (name in this.settings.sounds) {
+            this.properties.audio.play_sound(name);
+        }
+        this.properties.is_dirty = true;
+    }
+
+    /** The mute buttons show what `audio` says, however it got changed. */
+    private sync_mute_buttons(): void {
+        const { sound_button, music_button, audio } = this.properties;
+        if (sound_button !== null) {
+            sound_button.is_off = audio.is_sound_muted;
+        }
+        if (music_button !== null) {
+            music_button.is_off = audio.is_music_muted;
+        }
     }
 
     private tick(time_ms: number): void {
@@ -527,6 +614,7 @@ export abstract class CanvasGameLogic<
             this.renderer.render_start(current);
             return;
         }
+        this.sync_mute_buttons();
         this.sync(current);
         this.renderer.render({
             ...this.frame(current),

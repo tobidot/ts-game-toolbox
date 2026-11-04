@@ -6,3 +6,4 @@ export * from "./CanvasGameLogic";
 export * from "./CanvasGameElement";
 export * from "./SessionBest";
 export * from "./HouseSlider";
+export * from "./MuteButton";
