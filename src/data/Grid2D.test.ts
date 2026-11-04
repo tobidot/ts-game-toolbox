@@ -50,7 +50,9 @@ describe("Grid2D", () => {
         expect(keys).toContain("00-01-02"); // left column
         expect(keys).toContain("00-11-22"); // main diagonal
         expect(keys).toContain("02-11-20"); // anti diagonal
-        for (const line of lines) expect(line).toHaveLength(3);
+        for (const line of lines) {
+            expect(line).toHaveLength(3);
+        }
         expect(grid.lines(4)).toHaveLength(0);
         expect(grid.lines(1)).toHaveLength(9);
         expect(new Grid2D(7, 6, 0).lines(4)).toHaveLength(69);

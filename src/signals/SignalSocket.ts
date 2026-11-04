@@ -43,7 +43,9 @@ export class SignalSocket<T> implements Observable<Listener<T>, number, T> {
      * @return {boolean} TRUE if the handle was found and removed, FALSE otherwise
      */
     public detach(handle: number): boolean {
-        if (!(handle in this.listeners)) return false;
+        if (!(handle in this.listeners)) {
+            return false;
+        }
         delete this.listeners[handle];
         return true;
     }

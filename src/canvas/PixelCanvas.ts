@@ -66,13 +66,17 @@ export class PixelCanvas {
 
     /** The index at `x`, `y`; `transparent` outside the buffer. */
     public get(x: number, y: number): number {
-        if (!this.is_inside(x, y)) return this.transparent;
+        if (!this.is_inside(x, y)) {
+            return this.transparent;
+        }
         return this.pixels[y * this.width + x];
     }
 
     /** Writes one pixel; `false` when the pixel is outside. */
     public set(x: number, y: number, index: number): boolean {
-        if (!this.is_inside(x, y)) return false;
+        if (!this.is_inside(x, y)) {
+            return false;
+        }
         this.pixels[y * this.width + x] = index;
         return true;
     }
@@ -105,7 +109,9 @@ export class PixelCanvas {
         let error = dx + dy;
         for (;;) {
             this.set(x, y, index);
-            if (x === end_x && y === end_y) break;
+            if (x === end_x && y === end_y) {
+                break;
+            }
             const doubled = 2 * error;
             if (doubled >= dy) {
                 error += dy;
@@ -148,23 +154,37 @@ export class PixelCanvas {
      * the start is outside or already has the index.
      */
     public flood_fill(x: number, y: number, index: number): number {
-        if (!this.is_inside(x, y)) return 0;
+        if (!this.is_inside(x, y)) {
+            return 0;
+        }
         const target = this.get(x, y);
-        if (target === index) return 0;
+        if (target === index) {
+            return 0;
+        }
         const width = this.width;
         const pixels = this.pixels;
         const stack: number[] = [y * width + x];
         let changed = 0;
         while (stack.length > 0) {
             const offset = stack.pop() as number;
-            if (pixels[offset] !== target) continue;
+            if (pixels[offset] !== target) {
+                continue;
+            }
             pixels[offset] = index;
             changed++;
             const column = offset % width;
-            if (column > 0) stack.push(offset - 1);
-            if (column < width - 1) stack.push(offset + 1);
-            if (offset >= width) stack.push(offset - width);
-            if (offset + width < pixels.length) stack.push(offset + width);
+            if (column > 0) {
+                stack.push(offset - 1);
+            }
+            if (column < width - 1) {
+                stack.push(offset + 1);
+            }
+            if (offset >= width) {
+                stack.push(offset - width);
+            }
+            if (offset + width < pixels.length) {
+                stack.push(offset + width);
+            }
         }
         return changed;
     }
@@ -210,7 +230,9 @@ export class PixelCanvas {
             const index = pixels[offset];
             const color =
                 index === this.transparent ? undefined : palette[index];
-            if (color === undefined) continue;
+            if (color === undefined) {
+                continue;
+            }
             const byte = offset * 4;
             data[byte] = color.r;
             data[byte + 1] = color.g;

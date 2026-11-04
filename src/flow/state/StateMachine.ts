@@ -98,7 +98,9 @@ export class StateMachine<S extends string, C> {
         this.listeners.push(listener);
         return () => {
             const index = this.listeners.indexOf(listener);
-            if (index >= 0) this.listeners.splice(index, 1);
+            if (index >= 0) {
+                this.listeners.splice(index, 1);
+            }
         };
     }
 
@@ -108,6 +110,8 @@ export class StateMachine<S extends string, C> {
 
     private notify(from: S | null, to: S): void {
         // Copy: a listener may unsubscribe itself while being called.
-        for (const listener of [...this.listeners]) listener(from, to);
+        for (const listener of [...this.listeners]) {
+            listener(from, to);
+        }
     }
 }

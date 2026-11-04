@@ -173,7 +173,9 @@ export class SweepingSatWorldTest extends TestClass {
 
             if (mode === "naive") {
                 for (const bullet of bullets) {
-                    if (bullet.blocked) continue;
+                    if (bullet.blocked) {
+                        continue;
+                    }
                     step_naive(bullet, dt);
                 }
             } else {
@@ -181,7 +183,9 @@ export class SweepingSatWorldTest extends TestClass {
             }
 
             bullets = bullets.filter((bullet) => {
-                if (bullet.body.position.x > canvas.width + 20) return false;
+                if (bullet.body.position.x > canvas.width + 20) {
+                    return false;
+                }
                 if (
                     bullet.blocked &&
                     bullet.blocked_at !== null &&

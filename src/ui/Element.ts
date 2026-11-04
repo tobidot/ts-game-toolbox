@@ -233,7 +233,9 @@ export class Element {
      * @param _ctx
      */
     public draw(_ctx: CanvasRenderingContext2D): void {
-        if (!this.is_visible) return;
+        if (!this.is_visible) {
+            return;
+        }
         // Default implementation just draws a box if needed or nothing
     }
 

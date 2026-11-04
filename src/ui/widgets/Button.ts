@@ -17,7 +17,9 @@ export class Button extends Element {
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {
-        if (!this.is_visible) return;
+        if (!this.is_visible) {
+            return;
+        }
 
         const { text_color, font_size, font_family, text_baseline } =
             this.theme_instance.get_all();

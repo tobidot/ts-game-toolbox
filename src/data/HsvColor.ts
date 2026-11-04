@@ -45,9 +45,13 @@ export class HsvColor {
         const chroma = max - min;
         let hue = 0;
         if (chroma > 0) {
-            if (max === r) hue = ((g - b) / chroma) % 6;
-            else if (max === g) hue = (b - r) / chroma + 2;
-            else hue = (r - g) / chroma + 4;
+            if (max === r) {
+                hue = ((g - b) / chroma) % 6;
+            } else if (max === g) {
+                hue = (b - r) / chroma + 2;
+            } else {
+                hue = (r - g) / chroma + 4;
+            }
             hue *= 60;
         }
         const saturation = max === 0 ? 0 : chroma / max;
@@ -116,7 +120,9 @@ export class HsvColor {
     /** A CSS color: "rgb(r, g, b)" or "rgba(r, g, b, a)". CSS has hsl(), not hsv, so this converts. */
     public to_css(): string {
         const rgb = this.to_rgb();
-        if (rgb.a === 255) return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+        if (rgb.a === 255) {
+            return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+        }
         return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.alpha})`;
     }
 
@@ -187,13 +193,17 @@ export class HsvColor {
 
     /** Any number onto 0 <= hue < 360. */
     public static wrap_hue(hue: number): number {
-        if (!Number.isFinite(hue)) return 0;
+        if (!Number.isFinite(hue)) {
+            return 0;
+        }
         const wrapped = hue % 360;
         return wrapped < 0 ? wrapped + 360 : wrapped;
     }
 
     private static clamp(value: number): number {
-        if (!Number.isFinite(value)) return 0;
+        if (!Number.isFinite(value)) {
+            return 0;
+        }
         return Math.max(0, Math.min(1, value));
     }
 }

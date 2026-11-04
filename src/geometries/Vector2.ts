@@ -135,7 +135,9 @@ export class Vector2 {
      */
     public normalize(): this {
         const len = this.len();
-        if (len < 0.000001) return this;
+        if (len < 0.000001) {
+            return this;
+        }
         this.x /= len;
         this.y /= len;
         return this;
@@ -170,7 +172,9 @@ export class Vector2 {
     }
 
     public rotate_right_angles_clockwise(count: number = 1): this {
-        if (count < 1) return this;
+        if (count < 1) {
+            return this;
+        }
         const new_x = this.y;
         this.y = -this.x;
         this.x = new_x;

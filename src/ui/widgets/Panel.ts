@@ -15,7 +15,9 @@ export class Panel extends Group {
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {
-        if (!this.is_visible) return;
+        if (!this.is_visible) {
+            return;
+        }
 
         const { border_color, border_width, border_radius, background_color } =
             this.theme_instance.get_all();

@@ -58,7 +58,9 @@ describe("Spawner", () => {
             });
             const times: number[] = [];
             for (let frame = 0; frame < 600; frame++) {
-                if (spawner.update(1 / 60).length > 0) times.push(frame);
+                if (spawner.update(1 / 60).length > 0) {
+                    times.push(frame);
+                }
             }
             return times;
         };
@@ -159,8 +161,9 @@ describe("weighted_pick", () => {
             { item: "bomb" as const, weight: 12 },
         ];
         const total = 20000;
-        for (let i = 0; i < total; i++)
+        for (let i = 0; i < total; i++) {
             counts[weighted_pick(random, entries)]++;
+        }
         expect(counts.normal / total).toBeCloseTo(0.8, 1);
         expect(counts.golden / total).toBeCloseTo(0.08, 1);
         expect(counts.bomb / total).toBeCloseTo(0.12, 1);

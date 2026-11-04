@@ -96,8 +96,12 @@ export class Rect implements RectI {
         } else {
             this.left = left;
             this.top = top as number;
-            if (width !== undefined) this.width = width;
-            if (height !== undefined) this.height = height;
+            if (width !== undefined) {
+                this.width = width;
+            }
+            if (height !== undefined) {
+                this.height = height;
+            }
         }
         return this;
     }
@@ -138,7 +142,9 @@ export class Rect implements RectI {
      * @param target
      */
     public expand_to(target: Readonly<Vector2I>): this {
-        if (this.contains(target)) return this;
+        if (this.contains(target)) {
+            return this;
+        }
         const left = Math.min(this.left, target.x);
         const top = Math.min(this.top, target.y);
         const right = Math.max(this.get_right(), target.x);
@@ -171,7 +177,9 @@ export class Rect implements RectI {
         if (typeof x === "object") {
             return Rect.contains(this, x);
         }
-        if (typeof y !== "number") throw new Error("Unexpected type error");
+        if (typeof y !== "number") {
+            throw new Error("Unexpected type error");
+        }
         return Rect.contains(this, { x, y });
     }
 

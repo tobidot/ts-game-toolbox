@@ -112,7 +112,9 @@ export class QuadTreePerformanceTest extends TestClass {
 
         let pointer: Vector2I | null = null;
         this.mouse_move_listener = (e: MouseEvent) => {
-            if (!this.canvas) return;
+            if (!this.canvas) {
+                return;
+            }
             const rect = this.canvas.getBoundingClientRect();
             pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
         };

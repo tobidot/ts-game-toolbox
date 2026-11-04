@@ -26,7 +26,9 @@ export class SessionBest {
         this._is_new =
             best === null ||
             (this.direction === "higher" ? result > best : result < best);
-        if (this._is_new) this._value = result;
+        if (this._is_new) {
+            this._value = result;
+        }
         return this._is_new;
     }
 

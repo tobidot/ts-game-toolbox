@@ -30,7 +30,9 @@ class Logic extends CanvasGameLogic<Game> {
     public key_presses = 0;
     public syncs = 0;
     protected override update(): boolean {
-        if (this.properties.keyboard.was_pressed(" ")) this.spaces += 1;
+        if (this.properties.keyboard.was_pressed(" ")) {
+            this.spaces += 1;
+        }
         return false;
     }
     protected create_game(seed: number): Game {
@@ -40,7 +42,9 @@ class Logic extends CanvasGameLogic<Game> {
         this.goal = read("init-goal", Number, 3);
     }
     protected override on_press(): void {
-        if (this.properties.game) this.properties.game.clicks += 1;
+        if (this.properties.game) {
+            this.properties.game.clicks += 1;
+        }
     }
     protected override on_key_press(): void {
         this.key_presses += 1;
@@ -199,7 +203,9 @@ describe("CanvasGameElement", () => {
         $element.setAttribute("init-intro", "false");
         document.body.append($element);
         const game = $element.logic.properties.game;
-        if (game) game.clicks = 2;
+        if (game) {
+            game.clicks = 2;
+        }
         frames[frames.length - 1](1000);
         expect($element.logic.syncs).toBe(1);
         const $status = $element.shadowRoot?.querySelector(".game__status");

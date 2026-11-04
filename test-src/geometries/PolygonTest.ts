@@ -121,7 +121,9 @@ export class PolygonTest extends TestClass {
 
             balls.forEach((ball) => {
                 const inside = polygon.contains(ball.position);
-                if (inside) inside_count++;
+                if (inside) {
+                    inside_count++;
+                }
                 ctx.fillStyle = inside ? "#16a34a" : "#dc2626";
                 ctx.beginPath();
                 ctx.arc(

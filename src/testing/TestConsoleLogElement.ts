@@ -64,7 +64,9 @@ export class TestConsoleLogElement {
     }
 
     public log(...args: any[]) {
-        if (args.length === 0) return;
+        if (args.length === 0) {
+            return;
+        }
 
         const format_or_log = args.shift();
         if (typeof format_or_log === "string" && format_or_log.includes("%")) {
@@ -97,7 +99,9 @@ export class TestConsoleLogElement {
             }
             while (text.indexOf("%s") !== -1) {
                 const next = args.shift();
-                if (next === null) throw Error("argument mismatch");
+                if (next === null) {
+                    throw Error("argument mismatch");
+                }
                 text = text.replace("%s", next.toString());
             }
             this.print(text, style);
@@ -107,7 +111,9 @@ export class TestConsoleLogElement {
 
     public print(text: string, style?: string) {
         const span = document.createElement("span");
-        if (style) span.style.cssText = style;
+        if (style) {
+            span.style.cssText = style;
+        }
         span.innerText = text;
         this.container.append(span);
     }

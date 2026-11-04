@@ -60,8 +60,12 @@ export function bind_stage_input(
         // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
         host.focus({ preventScroll: true });
         // The click that leaves the start screen only starts the intro; it presses nothing.
-        if (intro?.leave()) return changed();
-        if (!is_playing()) return;
+        if (intro?.leave()) {
+            return changed();
+        }
+        if (!is_playing()) {
+            return;
+        }
         // A drag keeps reporting outside the canvas until the button is released.
         try {
             $canvas.setPointerCapture?.(event.pointerId);
@@ -72,29 +76,41 @@ export function bind_stage_input(
         changed();
         // A `UiPage` counts as hit everywhere: the UI took the press only if a widget holds it.
         const locked = ui.mouse_locked_element;
-        if (locked !== null && locked !== ui.active_menu) return;
+        if (locked !== null && locked !== ui.active_menu) {
+            return;
+        }
         handlers.on_press?.(stage.to_layout(event), event);
     });
     listen($canvas, "pointermove", (event) => {
-        if (ui.pointer_move(stage.to_canvas(event))) changed();
-        if (is_playing()) handlers.on_move?.(stage.to_layout(event), event);
+        if (ui.pointer_move(stage.to_canvas(event))) {
+            changed();
+        }
+        if (is_playing()) {
+            handlers.on_move?.(stage.to_layout(event), event);
+        }
     });
     listen($canvas, "pointerup", (event) => {
         ui.pointer_up(stage.to_canvas(event));
         changed();
-        if (is_playing()) handlers.on_release?.(stage.to_layout(event), event);
+        if (is_playing()) {
+            handlers.on_release?.(stage.to_layout(event), event);
+        }
     });
     // A cancelled pointer (a scroll took over, the touch was lost) releases nothing in the UI:
     // `pointer_up` would click the held widget.
     listen($canvas, "pointercancel", (event) => {
         ui.pointer_exit();
         changed();
-        if (is_playing()) handlers.on_release?.(stage.to_layout(event), event);
+        if (is_playing()) {
+            handlers.on_release?.(stage.to_layout(event), event);
+        }
     });
     listen($canvas, "pointerleave", (event) => {
         ui.pointer_exit();
         changed();
-        if (is_playing()) handlers.on_leave?.(event);
+        if (is_playing()) {
+            handlers.on_leave?.(event);
+        }
     });
 
     listen(host, "keydown", (event) => {
@@ -107,11 +123,18 @@ export function bind_stage_input(
         if (!is_shortcut && targets.blocked_keys?.includes(event.key)) {
             event.preventDefault();
         }
-        if (!is_playing()) return;
-        if (is_shortcut) handlers.on_shortcut?.(event);
-        else handlers.on_key_down?.(event);
+        if (!is_playing()) {
+            return;
+        }
+        if (is_shortcut) {
+            handlers.on_shortcut?.(event);
+        } else {
+            handlers.on_key_down?.(event);
+        }
     });
     listen(host, "keyup", (event) => {
-        if (is_playing()) handlers.on_key_up?.(event);
+        if (is_playing()) {
+            handlers.on_key_up?.(event);
+        }
     });
 }

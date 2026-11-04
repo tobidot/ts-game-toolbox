@@ -20,7 +20,9 @@ export class ValueLabel extends Element {
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {
-        if (!this.is_visible) return;
+        if (!this.is_visible) {
+            return;
+        }
 
         const {
             text_color,

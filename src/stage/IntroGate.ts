@@ -70,10 +70,16 @@ export class IntroGate {
         this.signal = signal;
         this.on_change = options.on_change;
         signal.addEventListener("abort", () => this.on_abort(), { once: true });
-        if (this._state !== "pending") return;
-        if (options.is_enabled === false) this.set_state("done");
-        else if (IntroGate.has_user_activation()) void this.play();
-        else this.set_state("waiting");
+        if (this._state !== "pending") {
+            return;
+        }
+        if (options.is_enabled === false) {
+            this.set_state("done");
+        } else if (IntroGate.has_user_activation()) {
+            void this.play();
+        } else {
+            this.set_state("waiting");
+        }
     }
 
     /**
@@ -81,7 +87,9 @@ export class IntroGate {
      * waiting); that gesture is what allows the sound, and it must not also act in the game.
      */
     public leave(): boolean {
-        if (this._state !== "waiting") return false;
+        if (this._state !== "waiting") {
+            return false;
+        }
         void this.play();
         return true;
     }
@@ -95,11 +103,15 @@ export class IntroGate {
     private async play(): Promise<void> {
         const $container = this.$container;
         const signal = this.signal;
-        if ($container === null || signal === null || signal.aborted) return;
+        if ($container === null || signal === null || signal.aborted) {
+            return;
+        }
         this.set_state("playing");
         try {
             const url = await this.options.load_url();
-            if (signal.aborted) return;
+            if (signal.aborted) {
+                return;
+            }
             const options = {
                 timeout_ms: this.options.timeout_ms ?? 6000,
                 hold_ms: this.options.hold_ms ?? 1500,
@@ -114,20 +126,28 @@ export class IntroGate {
             if (outcome === "blocked") {
                 outcome = await play_video_splash($container, url, options);
             }
-            if (outcome === "aborted") return;
+            if (outcome === "aborted") {
+                return;
+            }
         } catch (error) {
             this.options.on_error?.(error);
         }
-        if (signal.aborted) return;
+        if (signal.aborted) {
+            return;
+        }
         this.set_state("done");
     }
 
     private on_abort(): void {
-        if (this._state === "playing") this.set_state("pending");
+        if (this._state === "playing") {
+            this.set_state("pending");
+        }
     }
 
     private set_state(state: IntroState): void {
-        if (this._state === state) return;
+        if (this._state === state) {
+            return;
+        }
         this._state = state;
         this.on_change?.(state);
     }

@@ -37,8 +37,12 @@ export class EventSocket<T extends EventBase> implements Observable<
      */
     public dispatch(event: T): void {
         this.listeners.forEach((next: Listener<T> | undefined) => {
-            if (!next) return;
-            if (event.event_name !== next.type.EVENT_NAME) return;
+            if (!next) {
+                return;
+            }
+            if (event.event_name !== next.type.EVENT_NAME) {
+                return;
+            }
             next.callback(event);
         });
     }
@@ -83,15 +87,21 @@ export class EventSocket<T extends EventBase> implements Observable<
         identifier: EventClass<EVENT> | number,
     ): boolean {
         if (typeof identifier === "number") {
-            if (!(identifier in this.listeners)) return false;
+            if (!(identifier in this.listeners)) {
+                return false;
+            }
             delete this.listeners[identifier];
             return true;
         }
         let one_hit = false;
         for (let i = 0; i < this.listeners.length; ++i) {
             const listener = this.listeners[i];
-            if (!listener) continue;
-            if (listener.type.EVENT_NAME !== identifier.EVENT_NAME) continue;
+            if (!listener) {
+                continue;
+            }
+            if (listener.type.EVENT_NAME !== identifier.EVENT_NAME) {
+                continue;
+            }
             delete this.listeners[i];
             one_hit = true;
         }

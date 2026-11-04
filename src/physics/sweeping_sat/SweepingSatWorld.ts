@@ -154,12 +154,16 @@ export class SweepingSatWorld {
         const epsilon = 0.0001;
         const static_bodies = this.bodies.filter((body) => body.is_static);
         for (const body of this.bodies) {
-            if (body.is_static) continue;
+            if (body.is_static) {
+                continue;
+            }
             const movement: Vector2I = {
                 x: body.velocity.x * dt,
                 y: body.velocity.y * dt,
             };
-            if (movement.x === 0 && movement.y === 0) continue;
+            if (movement.x === 0 && movement.y === 0) {
+                continue;
+            }
 
             const moving_box = this.get_aabb(body);
             let earliest_hit: SweptAabbResult | null = null;
@@ -183,8 +187,12 @@ export class SweepingSatWorld {
             const safe_time = Math.max(0, earliest_hit.time - epsilon);
             body.position.x += movement.x * safe_time;
             body.position.y += movement.y * safe_time;
-            if (earliest_hit.normal.x !== 0) body.velocity.x = 0;
-            if (earliest_hit.normal.y !== 0) body.velocity.y = 0;
+            if (earliest_hit.normal.x !== 0) {
+                body.velocity.x = 0;
+            }
+            if (earliest_hit.normal.y !== 0) {
+                body.velocity.y = 0;
+            }
         }
     }
 }

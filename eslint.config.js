@@ -33,6 +33,8 @@ module.exports = defineConfig([
         ),
 
         rules: {
+            // Every condition and loop body is a block, never one line.
+            curly: ["error", "all"],
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/explicit-module-boundary-types": "off",
             "no-unused-vars": "off",

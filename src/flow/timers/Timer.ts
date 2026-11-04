@@ -33,7 +33,9 @@ export class Timer {
         }
         this.duration = duration_seconds;
         this.repeat = options.repeat ?? false;
-        if (options.autostart) this.start();
+        if (options.autostart) {
+            this.start();
+        }
     }
 
     /** Seconds into the current run, 0..duration. */
@@ -76,7 +78,9 @@ export class Timer {
 
     /** Runs (again); a finished one-shot timer starts over from 0. */
     public start(): void {
-        if (this._is_done) this.reset();
+        if (this._is_done) {
+            this.reset();
+        }
         this._is_running = true;
     }
 
@@ -97,9 +101,13 @@ export class Timer {
      * 0, 1, or more when repeating and the delta spans several durations.
      */
     public update(delta_seconds: number): number {
-        if (!this._is_running || !(delta_seconds > 0)) return 0;
+        if (!this._is_running || !(delta_seconds > 0)) {
+            return 0;
+        }
         this._elapsed += delta_seconds;
-        if (this._elapsed < this.duration) return 0;
+        if (this._elapsed < this.duration) {
+            return 0;
+        }
         if (!this.repeat) {
             this._elapsed = this.duration;
             this._completions += 1;
@@ -141,19 +149,25 @@ export class Cooldown {
 
     /** 0 right after a use, 1 when ready again: the fill of a recharge bar. */
     public get progress(): number {
-        if (this.seconds <= 0) return 1;
+        if (this.seconds <= 0) {
+            return 1;
+        }
         return Math.min(1, Math.max(0, 1 - this._remaining / this.seconds));
     }
 
     /** Runs the wait down by a frame delta. */
     public update(delta_seconds: number): void {
-        if (!(delta_seconds > 0) || this._remaining <= 0) return;
+        if (!(delta_seconds > 0) || this._remaining <= 0) {
+            return;
+        }
         this._remaining = Math.max(0, this._remaining - delta_seconds);
     }
 
     /** `true` and starts the wait when ready; `false` (and nothing else) while blocked. */
     public try_use(): boolean {
-        if (!this.is_ready) return false;
+        if (!this.is_ready) {
+            return false;
+        }
         this._remaining = this.seconds;
         return true;
     }

@@ -121,8 +121,9 @@ export class RectTest extends TestClass {
             let overlap_count = 0;
             for (let i = 0; i < boxes.length; i++) {
                 for (let j = i + 1; j < boxes.length; j++) {
-                    if (boxes[i].rect.overlaps_with(boxes[j].rect))
+                    if (boxes[i].rect.overlaps_with(boxes[j].rect)) {
                         overlap_count++;
+                    }
                 }
             }
 

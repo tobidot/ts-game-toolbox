@@ -157,7 +157,9 @@ export class TileMap<T> {
     /** The value of `layer` under the world point, or `null` outside the map. */
     public tile_at(layer: string, world_x: number, world_y: number): T | null {
         const tile = this.world_to_tile(world_x, world_y);
-        if (!this.is_inside(tile.x, tile.y)) return null;
+        if (!this.is_inside(tile.x, tile.y)) {
+            return null;
+        }
         return this.layer(layer).get(tile.x, tile.y);
     }
 
@@ -219,7 +221,9 @@ export class TileMap<T> {
             this._fill,
         );
         copy._layers.length = 0;
-        for (const layer of this._layers) copy._layers.push(layer.clone());
+        for (const layer of this._layers) {
+            copy._layers.push(layer.clone());
+        }
         return copy;
     }
 }

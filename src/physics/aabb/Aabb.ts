@@ -43,7 +43,9 @@ export function aabb_resolve(
     mover: RectI,
     wall: RectI,
 ): { x: number; y: number } | null {
-    if (!aabb_overlaps(mover, wall)) return null;
+    if (!aabb_overlaps(mover, wall)) {
+        return null;
+    }
     const mover_center_x = mover.left + mover.width / 2;
     const mover_center_y = mover.top + mover.height / 2;
     const wall_center_x = wall.left + wall.width / 2;
@@ -56,7 +58,9 @@ export function aabb_resolve(
         mover_center_y < wall_center_y
             ? wall.top - (mover.top + mover.height)
             : wall.top + wall.height - mover.top;
-    if (Math.abs(push_x) < Math.abs(push_y)) return { x: push_x, y: 0 };
+    if (Math.abs(push_x) < Math.abs(push_y)) {
+        return { x: push_x, y: 0 };
+    }
     return { x: 0, y: push_y };
 }
 
@@ -128,7 +132,9 @@ export function aabb_sweep(
     );
     const entry = Math.max(x.entry, y.entry);
     const exit = Math.min(x.exit, y.exit);
-    if (entry >= exit || entry < 0 || entry > 1) return null;
+    if (entry >= exit || entry < 0 || entry > 1) {
+        return null;
+    }
     const normal =
         x.entry > y.entry
             ? { x: delta.x > 0 ? -1 : 1, y: 0 }
@@ -174,24 +180,32 @@ export function aabb_move(
         rect.left += remaining.x * first.time + first.overlap.x;
         rect.top += remaining.y * first.time + first.overlap.y;
         // snap to the face that was hit, so rounding never leaves the box inside
-        if (first.normal.x < 0) rect.left = first_wall.left - rect.width;
-        else if (first.normal.x > 0)
+        if (first.normal.x < 0) {
+            rect.left = first_wall.left - rect.width;
+        } else if (first.normal.x > 0) {
             rect.left = first_wall.left + first_wall.width;
-        if (first.normal.y < 0) rect.top = first_wall.top - rect.height;
-        else if (first.normal.y > 0)
+        }
+        if (first.normal.y < 0) {
+            rect.top = first_wall.top - rect.height;
+        } else if (first.normal.y > 0) {
             rect.top = first_wall.top + first_wall.height;
+        }
         remaining = {
             x: first.normal.x !== 0 ? 0 : remaining.x * (1 - first.time),
             y: first.normal.y !== 0 ? 0 : remaining.y * (1 - first.time),
         };
-        if (remaining.x === 0 && remaining.y === 0) return { rect, hits };
+        if (remaining.x === 0 && remaining.y === 0) {
+            return { rect, hits };
+        }
     }
     return { rect, hits };
 }
 
 /** The union box of several boxes (for broad phases); an empty list is a zero box at the origin. */
 export function aabb_union(boxes: readonly RectI[]): RectI {
-    if (boxes.length === 0) return { left: 0, top: 0, width: 0, height: 0 };
+    if (boxes.length === 0) {
+        return { left: 0, top: 0, width: 0, height: 0 };
+    }
     let left = Infinity;
     let top = Infinity;
     let right = -Infinity;

@@ -47,7 +47,9 @@ export class Spawner<T> {
             Math.floor(options.max_per_update ?? 3),
         );
         this._seconds_until_next = this.roll_interval();
-        if (options.autostart ?? true) this.start();
+        if (options.autostart ?? true) {
+            this.start();
+        }
     }
 
     /** `true` while `update()` advances towards the next spawn. */
@@ -91,7 +93,9 @@ export class Spawner<T> {
      */
     public update(delta_seconds: number): T[] {
         const spawned: T[] = [];
-        if (!this._is_running || !(delta_seconds > 0)) return spawned;
+        if (!this._is_running || !(delta_seconds > 0)) {
+            return spawned;
+        }
         this._seconds_until_next -= delta_seconds;
         // A microsecond of tolerance: 60 frames of 1/60 s add up to "almost" one second.
         while (this._seconds_until_next <= 1e-6) {
@@ -159,7 +163,9 @@ export function weighted_pick<T>(
 ): T {
     let total = 0;
     for (const entry of entries) {
-        if (entry.weight > 0) total += entry.weight;
+        if (entry.weight > 0) {
+            total += entry.weight;
+        }
     }
     if (!(total > 0)) {
         throw new Error("weighted_pick: no entry has a positive weight");
@@ -167,10 +173,14 @@ export function weighted_pick<T>(
     let roll = random.next() * total;
     let last: T | undefined;
     for (const entry of entries) {
-        if (!(entry.weight > 0)) continue;
+        if (!(entry.weight > 0)) {
+            continue;
+        }
         last = entry.item;
         roll -= entry.weight;
-        if (roll < 0) return entry.item;
+        if (roll < 0) {
+            return entry.item;
+        }
     }
     // Rounding at the very end of the range: the last positive entry.
     return last as T;

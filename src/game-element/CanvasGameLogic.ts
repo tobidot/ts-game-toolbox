@@ -18,8 +18,12 @@ export const MAX_SEED = 2147483647;
 
 /** `"true"` or `"false"`, as boolean attributes are written; anything else throws. */
 export function parse_boolean(raw: string): boolean {
-    if (raw === "true") return true;
-    if (raw === "false") return false;
+    if (raw === "true") {
+        return true;
+    }
+    if (raw === "false") {
+        return false;
+    }
     throw new Error('"true" or "false" expected');
 }
 
@@ -37,7 +41,9 @@ export function read_attribute<T>(
     fallback: T,
 ): T {
     const raw = host.getAttribute(name);
-    if (raw === null) return fallback;
+    if (raw === null) {
+        return fallback;
+    }
     try {
         return parse(raw);
     } catch (error) {
@@ -63,7 +69,9 @@ export function start_frame_loop(
     let due_ms = Number.NEGATIVE_INFINITY;
     let handle = 0;
     const on_frame = (time_ms: number): void => {
-        if (signal.aborted) return;
+        if (signal.aborted) {
+            return;
+        }
         if (time_ms >= due_ms) {
             due_ms = Math.max(due_ms + interval_ms, time_ms - interval_ms / 2);
             tick(time_ms);
@@ -112,7 +120,9 @@ export abstract class CanvasGameLogic<
         const properties = this.properties;
         const references = this.references;
         const settings = this.settings;
-        if (!host.hasAttribute("tabindex")) host.tabIndex = 0;
+        if (!host.hasAttribute("tabindex")) {
+            host.tabIndex = 0;
+        }
         properties.abort_controller = new AbortController();
         const signal = properties.abort_controller.signal;
 
@@ -155,7 +165,9 @@ export abstract class CanvasGameLogic<
                 },
                 on_key_down: (event) => {
                     this.on_key_down(event);
-                    if (!event.repeat) this.on_key_press(event);
+                    if (!event.repeat) {
+                        this.on_key_press(event);
+                    }
                 },
                 on_key_up: (event) => this.on_key_up(event),
                 on_shortcut: (event) => this.on_shortcut(event),
@@ -177,7 +189,9 @@ export abstract class CanvasGameLogic<
             this.tick(time_ms),
         );
 
-        if (properties.game === null) this.new_game();
+        if (properties.game === null) {
+            this.new_game();
+        }
         properties.intro.start(references.$stage, signal, {
             is_enabled: properties.intro_enabled,
             on_change: (state) => {
@@ -367,7 +381,9 @@ export abstract class CanvasGameLogic<
     private tick(time_ms: number): void {
         const properties = this.properties;
         const game = properties.game;
-        if (game === null) return;
+        if (game === null) {
+            return;
+        }
         const last = properties.last_tick_ms;
         const delta_seconds =
             last === null ? 0 : Math.min(0.1, (time_ms - last) / 1000);
@@ -377,10 +393,14 @@ export abstract class CanvasGameLogic<
             // The key that left the start screen, or one pressed during the logo, is no move.
             keyboard.clear();
         } else {
-            if (this.update(game, delta_seconds)) properties.is_dirty = true;
+            if (this.update(game, delta_seconds)) {
+                properties.is_dirty = true;
+            }
             keyboard.end_frame();
         }
-        if (!properties.is_dirty) return;
+        if (!properties.is_dirty) {
+            return;
+        }
         properties.is_dirty = false;
         // `update()` may have started the next game: paint that one, not the old.
         const current = properties.game ?? game;
@@ -396,7 +416,9 @@ export abstract class CanvasGameLogic<
         } as F);
         if (this.is_playing) {
             const status = this.live_status(current);
-            if (status !== null) this.set_status(status);
+            if (status !== null) {
+                this.set_status(status);
+            }
         }
     }
 }

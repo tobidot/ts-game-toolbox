@@ -106,7 +106,9 @@ export class PlaygroundTest extends TestClass {
                 ),
             );
         };
-        for (let i = 0; i < 12; i++) spawn_ball();
+        for (let i = 0; i < 12; i++) {
+            spawn_ball();
+        }
 
         const gravity_slider = new Slider("Gravity", 0, 600, 220, {
             left: 20,
@@ -145,8 +147,12 @@ export class PlaygroundTest extends TestClass {
 
         ball_count_slider.events.attach(ElementChangeEvent, () => {
             const target = Math.round(ball_count_slider.value);
-            while (balls.length < target) spawn_ball();
-            while (balls.length > target) balls.pop();
+            while (balls.length < target) {
+                spawn_ball();
+            }
+            while (balls.length > target) {
+                balls.pop();
+            }
         });
 
         let query_rect: RectI = {

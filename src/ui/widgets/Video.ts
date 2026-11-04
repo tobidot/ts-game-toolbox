@@ -54,7 +54,9 @@ export class Video extends Element {
         width: number,
         height: number,
     ): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
-        if (typeof document === "undefined") return null;
+        if (typeof document === "undefined") {
+            return null;
+        }
         if (!this.offscreen_canvas) {
             this.offscreen_canvas = document.createElement("canvas");
             this.offscreen_ctx = this.offscreen_canvas.getContext("2d");
@@ -66,12 +68,16 @@ export class Video extends Element {
             this.offscreen_canvas.width = width;
             this.offscreen_canvas.height = height;
         }
-        if (!this.offscreen_ctx) return null;
+        if (!this.offscreen_ctx) {
+            return null;
+        }
         return { canvas: this.offscreen_canvas, ctx: this.offscreen_ctx };
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {
-        if (!this.is_visible) return;
+        if (!this.is_visible) {
+            return;
+        }
 
         const { border_color, border_width, border_radius } =
             this.theme_instance.get_all();
@@ -141,7 +147,9 @@ export class Video extends Element {
                         "webkitImageSmoothingEnabled",
                         "msImageSmoothingEnabled",
                     ]) {
-                        if (prefixed[key] !== undefined) prefixed[key] = false;
+                        if (prefixed[key] !== undefined) {
+                            prefixed[key] = false;
+                        }
                     }
 
                     ctx.drawImage(

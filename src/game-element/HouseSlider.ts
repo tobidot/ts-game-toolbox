@@ -68,7 +68,9 @@ export class HouseSlider extends Slider {
     }
 
     public override draw(context: CanvasRenderingContext2D): void {
-        if (!this.is_visible) return;
+        if (!this.is_visible) {
+            return;
+        }
         const colors = this.colors;
         const font = this.theme.font_family;
         context.save();

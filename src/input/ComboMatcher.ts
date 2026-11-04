@@ -70,7 +70,9 @@ export class ComboMatcher<T> {
      * `max_gap_seconds`; without it the gap rule is never applied.
      */
     public input(value: T, now_seconds?: number): ComboResult {
-        if (this.is_complete) return "ignored";
+        if (this.is_complete) {
+            return "ignored";
+        }
         const had_progress = this._position > 0;
         if (had_progress && this.is_too_late(now_seconds)) {
             this._position = 0;
@@ -79,7 +81,9 @@ export class ComboMatcher<T> {
         if (this.equals(this.sequence[this._position], value)) {
             const was_timed_out = had_progress && this._position === 0;
             this._position += 1;
-            if (was_timed_out) return "broken";
+            if (was_timed_out) {
+                return "broken";
+            }
             return this.is_complete ? "complete" : "progress";
         }
         this._position = this.restart_position(value);
@@ -119,7 +123,9 @@ export class ComboMatcher<T> {
                     break;
                 }
             }
-            if (is_prefix) return length;
+            if (is_prefix) {
+                return length;
+            }
         }
         return 0;
     }
@@ -175,6 +181,8 @@ export class ComboList<T> {
 
     /** Every matcher back to the start. */
     public reset(): void {
-        for (const { matcher } of this.matchers) matcher.reset();
+        for (const { matcher } of this.matchers) {
+            matcher.reset();
+        }
     }
 }

@@ -74,7 +74,9 @@ export class SeededRandom {
     }
 
     private static normalize(seed: number): number {
-        if (!Number.isFinite(seed)) return 0;
+        if (!Number.isFinite(seed)) {
+            return 0;
+        }
         return Math.floor(Math.abs(seed)) >>> 0;
     }
 }

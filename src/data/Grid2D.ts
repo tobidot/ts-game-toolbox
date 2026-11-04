@@ -112,7 +112,9 @@ export class Grid2D<T> {
      * 69 lines of length 4. Each line lists its positions in order from its start cell.
      */
     public lines(length: number): GridPosition[][] {
-        if (!Number.isInteger(length) || length < 1) return [];
+        if (!Number.isInteger(length) || length < 1) {
+            return [];
+        }
         // A run of one cell has no direction: every cell once, not four times.
         const directions: GridPosition[] =
             length === 1
@@ -129,7 +131,9 @@ export class Grid2D<T> {
                 for (let x = 0; x < this.width; x++) {
                     const end_x = x + direction.x * (length - 1);
                     const end_y = y + direction.y * (length - 1);
-                    if (!this.is_inside(end_x, end_y)) continue;
+                    if (!this.is_inside(end_x, end_y)) {
+                        continue;
+                    }
                     const line: GridPosition[] = [];
                     for (let i = 0; i < length; i++) {
                         line.push({
@@ -152,11 +156,17 @@ export class Grid2D<T> {
         const result: GridCell<T>[] = [];
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
-                if (dx === 0 && dy === 0) continue;
-                if (!diagonal && dx !== 0 && dy !== 0) continue;
+                if (dx === 0 && dy === 0) {
+                    continue;
+                }
+                if (!diagonal && dx !== 0 && dy !== 0) {
+                    continue;
+                }
                 const nx = x + dx;
                 const ny = y + dy;
-                if (!this.is_inside(nx, ny)) continue;
+                if (!this.is_inside(nx, ny)) {
+                    continue;
+                }
                 result.push({ x: nx, y: ny, value: this.get(nx, ny) });
             }
         }
@@ -184,7 +194,9 @@ export class Grid2D<T> {
     public count(predicate: (value: T) => boolean): number {
         let total = 0;
         for (const value of this._cells) {
-            if (predicate(value)) total++;
+            if (predicate(value)) {
+                total++;
+            }
         }
         return total;
     }

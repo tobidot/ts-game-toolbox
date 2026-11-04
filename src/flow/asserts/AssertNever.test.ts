@@ -30,10 +30,15 @@ describe("assert_never", () => {
     it("should work with if statement narrowing", () => {
         const foo = Foo.B as Foo;
         let result = "";
-        if (foo === Foo.A) result = "A";
-        else if (foo === Foo.B) result = "B";
-        else if (foo === Foo.C) result = "C";
-        else assert_never(foo);
+        if (foo === Foo.A) {
+            result = "A";
+        } else if (foo === Foo.B) {
+            result = "B";
+        } else if (foo === Foo.C) {
+            result = "C";
+        } else {
+            assert_never(foo);
+        }
 
         expect(result).toBe("B");
     });
@@ -41,10 +46,15 @@ describe("assert_never", () => {
     it("should work with string narrowing", () => {
         const foo = "C" as "A" | "B" | "C";
         let result = "";
-        if (foo === "A") result = "A";
-        else if (foo === "B") result = "B";
-        else if (foo === "C") result = "C";
-        else assert_never(foo);
+        if (foo === "A") {
+            result = "A";
+        } else if (foo === "B") {
+            result = "B";
+        } else if (foo === "C") {
+            result = "C";
+        } else {
+            assert_never(foo);
+        }
 
         expect(result).toBe("C");
     });

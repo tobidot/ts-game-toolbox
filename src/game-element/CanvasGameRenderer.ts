@@ -338,7 +338,9 @@ export abstract class CanvasGameRenderer<
         } = {},
     ): void {
         this.card(rect, this.settings.colors.card);
-        if (style.is_outlined) this.outline(rect);
+        if (style.is_outlined) {
+            this.outline(rect);
+        }
         this.caption(label, rect.left + 16, rect.top + 12, {
             size: style.label_size ?? 14,
         });
@@ -473,7 +475,9 @@ export abstract class CanvasGameRenderer<
     ): void {
         const radius = rect.height / 2;
         this.card(rect, track, radius);
-        if (fraction <= 0) return;
+        if (fraction <= 0) {
+            return;
+        }
         const width = Math.max(rect.height, rect.width * Math.min(1, fraction));
         this.card({ ...rect, width }, fill, radius);
     }
@@ -495,7 +499,9 @@ export abstract class CanvasGameRenderer<
                 line = candidate;
             }
         }
-        if (line !== "") lines.push(line);
+        if (line !== "") {
+            lines.push(line);
+        }
         return lines;
     }
 

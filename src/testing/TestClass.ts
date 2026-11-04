@@ -54,7 +54,9 @@ export abstract class TestClass {
                 "Expected an exception from " + String(callback).substr(0, 255),
             );
         } catch (error) {
-            if (!(error instanceof exception)) throw error;
+            if (!(error instanceof exception)) {
+                throw error;
+            }
             this.success();
         }
     }

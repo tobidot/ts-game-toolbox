@@ -120,7 +120,9 @@ export class Camera2D {
     /** Keeps the view inside the bounds; a world smaller than the view is centered in it. */
     public clamp(): void {
         const bounds = this.bounds;
-        if (bounds === null) return;
+        if (bounds === null) {
+            return;
+        }
         const view = this.view;
         this.position.x = clamp_axis(
             this.position.x,
@@ -197,7 +199,9 @@ export class Camera2D {
 
     /** How much of the remaining distance one frame of `delta_seconds` covers. */
     private blend(delta_seconds: number): number {
-        if (this.smoothing <= 0) return 1;
+        if (this.smoothing <= 0) {
+            return 1;
+        }
         return 1 - Math.pow(this.smoothing, Math.max(0, delta_seconds) * 60);
     }
 }
@@ -213,7 +217,9 @@ function clamp_axis(
     bounds_start: number,
     bounds_size: number,
 ): number {
-    if (size >= bounds_size) return bounds_start + (bounds_size - size) / 2;
+    if (size >= bounds_size) {
+        return bounds_start + (bounds_size - size) / 2;
+    }
     return Math.min(
         Math.max(start, bounds_start),
         bounds_start + bounds_size - size,
@@ -235,9 +241,15 @@ function push_into_zone(
     const right = left + zone.width;
     const top = center.y + zone.top;
     const bottom = top + zone.height;
-    if (point.x < left) wanted.x += point.x - left;
-    else if (point.x > right) wanted.x += point.x - right;
-    if (point.y < top) wanted.y += point.y - top;
-    else if (point.y > bottom) wanted.y += point.y - bottom;
+    if (point.x < left) {
+        wanted.x += point.x - left;
+    } else if (point.x > right) {
+        wanted.x += point.x - right;
+    }
+    if (point.y < top) {
+        wanted.y += point.y - top;
+    } else if (point.y > bottom) {
+        wanted.y += point.y - bottom;
+    }
     return wanted;
 }

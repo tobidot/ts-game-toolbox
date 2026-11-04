@@ -34,7 +34,9 @@ export class BranchingResponse<RESPONSE, STATES, PARAMETERS> {
         callback: BranchingResponseCallback<RESPONSE, PARAMETERS>,
         state: STATES,
     ): this {
-        if (state === this.state) return this;
+        if (state === this.state) {
+            return this;
+        }
         this.response = callback(this.params, this.response);
         return this;
     }
@@ -42,7 +44,9 @@ export class BranchingResponse<RESPONSE, STATES, PARAMETERS> {
         callback: BranchingResponseCallback<RESPONSE, PARAMETERS>,
         states: STATES[],
     ): this {
-        if (!states.includes(this.state)) return this;
+        if (!states.includes(this.state)) {
+            return this;
+        }
         this.response = callback(this.params, this.response);
         return this;
     }
@@ -55,8 +59,9 @@ export class BranchingResponse<RESPONSE, STATES, PARAMETERS> {
                 (none_fit, state) => none_fit && this.state !== state,
                 true,
             )
-        )
+        ) {
             return this;
+        }
         this.response = callback(this.params, this.response);
         return this;
     }

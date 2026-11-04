@@ -18,7 +18,9 @@ import { SweepingSatWorldTest } from "./physics/SweepingSatWorldTest";
 import { PlaygroundTest } from "./PlaygroundTest";
 
 const element = document.getElementById("test-dashboard");
-if (!element) throw new Error("Element not found");
+if (!element) {
+    throw new Error("Element not found");
+}
 const dashboard = new TestDashboard();
 element.append(dashboard.get_element());
 

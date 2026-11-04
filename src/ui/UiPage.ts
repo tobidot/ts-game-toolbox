@@ -75,7 +75,9 @@ export class UiPage extends Group {
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {
-        if (!this.is_visible) return;
+        if (!this.is_visible) {
+            return;
+        }
 
         // Update container_res from context
         this.window_resolution = { x: ctx.canvas.width, y: ctx.canvas.height };

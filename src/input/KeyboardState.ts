@@ -20,19 +20,27 @@ export class KeyboardState {
     private controller: AbortController | null = null;
 
     private readonly on_key_down = (event: Event): void => {
-        if (!is_keyboard_event(event)) return;
+        if (!is_keyboard_event(event)) {
+            return;
+        }
         const key = event.key;
         if (!event.repeat && !this.down_keys.has(key)) {
             this.pressed_keys.add(key);
         }
         this.down_keys.add(key);
-        if (is_printable(event)) this.typed_characters.push(key);
+        if (is_printable(event)) {
+            this.typed_characters.push(key);
+        }
     };
 
     private readonly on_key_up = (event: Event): void => {
-        if (!is_keyboard_event(event)) return;
+        if (!is_keyboard_event(event)) {
+            return;
+        }
         const key = event.key;
-        if (this.down_keys.delete(key)) this.released_keys.add(key);
+        if (this.down_keys.delete(key)) {
+            this.released_keys.add(key);
+        }
     };
 
     private readonly on_blur = (): void => {
@@ -46,7 +54,9 @@ export class KeyboardState {
      */
     public attach(target: EventTarget, signal?: AbortSignal): void {
         this.detach();
-        if (signal?.aborted) return;
+        if (signal?.aborted) {
+            return;
+        }
         const controller = new AbortController();
         this.controller = controller;
         const options = { signal: controller.signal };
@@ -105,8 +115,12 @@ function is_keyboard_event(event: Event): event is KeyboardEvent {
 }
 
 function is_printable(event: KeyboardEvent): boolean {
-    if (event.key.length !== 1) return false;
-    if (event.metaKey) return false;
+    if (event.key.length !== 1) {
+        return false;
+    }
+    if (event.metaKey) {
+        return false;
+    }
     // Ctrl alone is a shortcut; Ctrl+Alt is AltGr on Windows keyboards and types a character.
     return !event.ctrlKey || event.altKey;
 }

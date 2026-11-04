@@ -52,7 +52,9 @@ export class QuadTree<T extends RectI> {
     ) {
         const wrapper_node = new QuadTreeBranch<T>(rect);
         wrapper_node.create_child_branches();
-        if (!wrapper_node.child_branch_nodes) throw new Error();
+        if (!wrapper_node.child_branch_nodes) {
+            throw new Error();
+        }
         wrapper_node.child_branch_nodes[node_pos] = this.root_branch;
         this.root_branch = wrapper_node;
     }
@@ -113,8 +115,9 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
             },
             [],
         );
-        if (overlapping_branches.length === 0)
+        if (overlapping_branches.length === 0) {
             throw Error("Inconsistent Result");
+        }
         if (overlapping_branches.length === 1) {
             overlapping_branches[0].add(element);
         } else {
@@ -131,7 +134,9 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
     }
 
     public create_child_branches_if_necessary() {
-        if (this.elements.length < 10) return;
+        if (this.elements.length < 10) {
+            return;
+        }
         this.create_child_branches();
         this.readd_own_elements();
     }
@@ -168,14 +173,20 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
     }
 
     public pick(rect: RectI, result: Array<T> = []): Array<T> {
-        if (!this.intersects(rect)) return result;
+        if (!this.intersects(rect)) {
+            return result;
+        }
         result.push(
             ...this.elements.filter((element) =>
                 Rect.intersects(rect, element),
             ),
         );
-        if (this.child_branch_nodes === null) return result;
-        if (this.is_within(rect)) return this.pick_all(result);
+        if (this.child_branch_nodes === null) {
+            return result;
+        }
+        if (this.is_within(rect)) {
+            return this.pick_all(result);
+        }
         for (const branch of this.child_branch_nodes) {
             branch.pick(rect, result);
         }
@@ -184,7 +195,9 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
 
     public pick_all(result: Array<T>): Array<T> {
         result.push(...this.elements);
-        if (this.child_branch_nodes === null) return result;
+        if (this.child_branch_nodes === null) {
+            return result;
+        }
         for (const branch of this.child_branch_nodes) {
             branch.pick_all(result);
         }
@@ -197,18 +210,28 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
             this.elements.splice(id, 1);
             return true;
         }
-        if (this.child_branch_nodes === null) return false;
+        if (this.child_branch_nodes === null) {
+            return false;
+        }
         for (const branch of this.child_branch_nodes) {
-            if (branch.remove(element)) return true;
+            if (branch.remove(element)) {
+                return true;
+            }
         }
         return false;
     }
 
     public is_empty(): boolean {
-        if (!this.is_self_empty()) return false;
-        if (this.child_branch_nodes === null) return true;
+        if (!this.is_self_empty()) {
+            return false;
+        }
+        if (this.child_branch_nodes === null) {
+            return true;
+        }
         for (const branch of this.child_branch_nodes) {
-            if (!branch.is_empty()) return false;
+            if (!branch.is_empty()) {
+                return false;
+            }
         }
         return true;
     }

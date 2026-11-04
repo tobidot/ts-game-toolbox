@@ -26,8 +26,12 @@ describe("SeededRandom", () => {
             expect(value).toBeGreaterThanOrEqual(3);
             expect(value).toBeLessThanOrEqual(7);
             expect(Number.isInteger(value)).toBe(true);
-            if (value === 3) seen_min = true;
-            if (value === 7) seen_max = true;
+            if (value === 3) {
+                seen_min = true;
+            }
+            if (value === 7) {
+                seen_max = true;
+            }
         }
         expect(seen_min && seen_max).toBe(true);
     });
@@ -70,7 +74,11 @@ describe("SeededRandom", () => {
     it("chance() follows the probability roughly", () => {
         const random = new SeededRandom(2024);
         let hits = 0;
-        for (let i = 0; i < 10000; i++) if (random.chance(0.25)) hits++;
+        for (let i = 0; i < 10000; i++) {
+            if (random.chance(0.25)) {
+                hits++;
+            }
+        }
         expect(hits).toBeGreaterThan(2200);
         expect(hits).toBeLessThan(2800);
     });

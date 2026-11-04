@@ -73,7 +73,9 @@ function distance(a: PointerPoint, b: PointerPoint): number {
 
 function pointer_type_of(event: PointerEvent): PointerType {
     const type = event.pointerType;
-    if (type === "touch" || type === "pen" || type === "mouse") return type;
+    if (type === "touch" || type === "pen" || type === "mouse") {
+        return type;
+    }
     return "mouse";
 }
 
@@ -118,7 +120,9 @@ export class PointerInput {
      */
     public attach(target: HTMLElement, signal?: AbortSignal): void {
         this.detach();
-        if (signal?.aborted) return;
+        if (signal?.aborted) {
+            return;
+        }
         const controller = new AbortController();
         this.controller = controller;
         this.target = target;
@@ -184,7 +188,9 @@ export class PointerInput {
         pointer_type: PointerType = "mouse",
     ): void {
         const state = this.current;
-        if (state.is_down) return;
+        if (state.is_down) {
+            return;
+        }
         state.position = point;
         state.down_position = point;
         state.is_down = true;
@@ -197,7 +203,9 @@ export class PointerInput {
     public handle_move(point: PointerPoint): void {
         const state = this.current;
         state.position = point;
-        if (!state.is_down || state.down_position === null) return;
+        if (!state.is_down || state.down_position === null) {
+            return;
+        }
         if (
             state.drag === null &&
             distance(state.down_position, point) < this.drag_threshold
@@ -216,7 +224,9 @@ export class PointerInput {
     public handle_up(point: PointerPoint): void {
         const state = this.current;
         state.position = point;
-        if (!state.is_down || state.down_position === null) return;
+        if (!state.is_down || state.down_position === null) {
+            return;
+        }
         if (state.drag === null) {
             this.frame_taps.push(state.down_position);
         } else {
@@ -237,7 +247,9 @@ export class PointerInput {
 
     /** The pointer left the target: the position is unknown unless a press keeps it. */
     public handle_leave(): void {
-        if (!this.current.is_down) this.current.position = null;
+        if (!this.current.is_down) {
+            this.current.position = null;
+        }
     }
 
     /** One wheel event; only the direction of `delta_y` counts. */
@@ -248,21 +260,28 @@ export class PointerInput {
     // ---- DOM listeners: map the event, call the core ----
 
     private point_of_event(event: MouseEvent): PointerPoint | null {
-        if (this.target === null) return null;
+        if (this.target === null) {
+            return null;
+        }
         return this.transform(event.clientX, event.clientY, this.target);
     }
 
     /** Only the primary pointer counts, and while pressed only that one. */
     private is_tracked(event: PointerEvent): boolean {
-        if (this.pressed_id !== null)
+        if (this.pressed_id !== null) {
             return event.pointerId === this.pressed_id;
+        }
         return event.isPrimary !== false;
     }
 
     private readonly on_pointer_down = (event: PointerEvent): void => {
-        if (!this.is_tracked(event) || this.current.is_down) return;
+        if (!this.is_tracked(event) || this.current.is_down) {
+            return;
+        }
         const point = this.point_of_event(event);
-        if (point === null) return;
+        if (point === null) {
+            return;
+        }
         this.pressed_id = event.pointerId;
         this.handle_down(point, event.button, pointer_type_of(event));
         try {
@@ -273,9 +292,13 @@ export class PointerInput {
     };
 
     private readonly on_pointer_move = (event: PointerEvent): void => {
-        if (!this.is_tracked(event)) return;
+        if (!this.is_tracked(event)) {
+            return;
+        }
         const point = this.point_of_event(event);
-        if (point === null) return;
+        if (point === null) {
+            return;
+        }
         if (this.current.pointer_type === "none") {
             this.current.pointer_type = pointer_type_of(event);
         }
@@ -283,21 +306,29 @@ export class PointerInput {
     };
 
     private readonly on_pointer_up = (event: PointerEvent): void => {
-        if (!this.is_tracked(event)) return;
+        if (!this.is_tracked(event)) {
+            return;
+        }
         const point = this.point_of_event(event);
-        if (point === null) return;
+        if (point === null) {
+            return;
+        }
         this.pressed_id = null;
         this.handle_up(point);
     };
 
     private readonly on_pointer_cancel = (event: PointerEvent): void => {
-        if (!this.is_tracked(event)) return;
+        if (!this.is_tracked(event)) {
+            return;
+        }
         this.pressed_id = null;
         this.handle_cancel();
     };
 
     private readonly on_pointer_leave = (event: PointerEvent): void => {
-        if (!this.is_tracked(event)) return;
+        if (!this.is_tracked(event)) {
+            return;
+        }
         this.handle_leave();
     };
 
@@ -306,6 +337,8 @@ export class PointerInput {
     };
 
     private readonly on_context_menu = (event: Event): void => {
-        if (this.prevent_context_menu) event.preventDefault();
+        if (this.prevent_context_menu) {
+            event.preventDefault();
+        }
     };
 }

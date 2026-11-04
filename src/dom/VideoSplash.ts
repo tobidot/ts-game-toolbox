@@ -60,7 +60,9 @@ export function play_video_splash(
         $video.setAttribute("playsinline", "");
         $video.preload = "auto";
         $video.tabIndex = -1;
-        if (options.poster) $video.poster = options.poster;
+        if (options.poster) {
+            $video.poster = options.poster;
+        }
         const style = $video.style;
         style.position = "absolute";
         style.inset = "0";
@@ -79,9 +81,13 @@ export function play_video_splash(
         let is_holding = false;
         let timer: ReturnType<typeof setTimeout> | null = null;
         const finish = (outcome: VideoSplashOutcome) => {
-            if (done) return;
+            if (done) {
+                return;
+            }
             done = true;
-            if (timer !== null) clearTimeout(timer);
+            if (timer !== null) {
+                clearTimeout(timer);
+            }
             $video.removeEventListener("ended", on_ended);
             $video.removeEventListener("error", on_error);
             $video.removeEventListener("click", on_skip);
@@ -103,12 +109,16 @@ export function play_video_splash(
             }
             // An ended video keeps showing its last frame: leave it there for the hold.
             is_holding = true;
-            if (timer !== null) clearTimeout(timer);
+            if (timer !== null) {
+                clearTimeout(timer);
+            }
             timer = setTimeout(() => finish("ended"), hold_ms);
         };
         const on_error = () => finish("error");
         const on_skip = () => {
-            if (skippable) finish(is_holding ? "ended" : "skipped");
+            if (skippable) {
+                finish(is_holding ? "ended" : "skipped");
+            }
         };
         const on_key = (event: KeyboardEvent) => {
             if (
@@ -131,7 +141,9 @@ export function play_video_splash(
         timer = setTimeout(() => finish("timeout"), timeout_ms);
 
         $container.appendChild($video);
-        if (skippable) $video.focus();
+        if (skippable) {
+            $video.focus();
+        }
 
         const playing = $video.play();
         if (playing && typeof playing.then === "function") {

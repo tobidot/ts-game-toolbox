@@ -62,12 +62,16 @@ export function flight_time(
     const height = ground_y - origin.y; // positive: the ground is below the origin
     if (gravity <= 0) {
         // no gravity: a straight line, hits the ground only when moving towards it
-        if (velocity.y <= 0 || height < 0) return 0;
+        if (velocity.y <= 0 || height < 0) {
+            return 0;
+        }
         return height / velocity.y;
     }
     // ½·g·t² + vy·t - height = 0, the larger root is the landing
     const discriminant = velocity.y * velocity.y + 2 * gravity * height;
-    if (discriminant < 0) return 0;
+    if (discriminant < 0) {
+        return 0;
+    }
     const t = (-velocity.y + Math.sqrt(discriminant)) / gravity;
     return t > 0 ? t : 0;
 }
@@ -91,7 +95,9 @@ export function apex(
     velocity: Vector2I,
     gravity: number,
 ): Vector2 {
-    if (gravity <= 0 || velocity.y >= 0) return new Vector2(origin);
+    if (gravity <= 0 || velocity.y >= 0) {
+        return new Vector2(origin);
+    }
     const t = -velocity.y / gravity;
     return projectile_position(origin, velocity, gravity, t);
 }

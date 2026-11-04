@@ -154,7 +154,9 @@ describe("integrate", () => {
         expect(fine).toBeLessThan(0.02);
         // the x axis has no acceleration: exact at every step size
         const state = { position: new Vector2(), velocity: new Vector2(3, 0) };
-        for (let index = 0; index < 7; index++) integrate(state, gravity, 0.2);
+        for (let index = 0; index < 7; index++) {
+            integrate(state, gravity, 0.2);
+        }
         expect(state.position.x).toBeCloseTo(3 * 1.4);
     });
 });
