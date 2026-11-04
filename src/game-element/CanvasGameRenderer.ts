@@ -35,6 +35,16 @@ export const CENTRED = {
     baseline: "middle",
 } as const satisfies TextStyle;
 
+/** How `CanvasGameRenderer.message_card()` sets its text. Size 18 on lines of 26, regular, white. */
+export interface MessageCardStyle {
+    size?: number;
+    line_height?: number;
+    is_bold?: boolean;
+    color?: string;
+    /** How far the text stays from the card's edges. Default 20. */
+    inset?: number;
+}
+
 /** How `CanvasGameRenderer.paint_image()` fits a picture into its rect. */
 export interface ImageStyle {
     /** Keep the picture's proportions, centred in the rect. Default: fill the rect. */
@@ -311,6 +321,27 @@ export abstract class CanvasGameRenderer<
             rect.top + rect.height / 2 - ((lines.length - 1) * line_height) / 2;
         this.fill_lines(lines, rect.left + inset, top, line_height);
         return lines.length;
+    }
+
+    /**
+     * A message on a card of its own, in one call: what happened or what to do next, wrapped to
+     * the card and centred vertically. Returns the number of lines.
+     */
+    protected message_card(
+        rect: RectI,
+        text: string,
+        style: MessageCardStyle = {},
+    ): number {
+        const context = this.context;
+        this.card(rect, this.settings.colors.card);
+        context.font = this.font(style.size ?? 18, style.is_bold);
+        context.fillStyle = style.color ?? this.settings.colors.white;
+        return this.fill_wrapped_in(
+            text,
+            rect,
+            style.line_height ?? 26,
+            style.inset,
+        );
     }
 
     /** A filled circle: a peg, a ball, a dot. */
