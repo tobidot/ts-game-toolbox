@@ -311,6 +311,104 @@ describe("AudioPlayer", () => {
         });
     });
 
+    describe("the hold", () => {
+        function track(): FakeAudio {
+            return assets.audios.get("track-a")
+                ?.element as unknown as FakeAudio;
+        }
+
+        it("pauses the track where it is and goes on from there", () => {
+            player.play_music("track-a");
+            track().currentTime = 42;
+            player.is_music_held = true;
+            expect(track().paused).toBe(true);
+            expect(track().currentTime).toBe(42);
+            expect(player.current_music).toBe("track-a");
+            player.is_music_held = false;
+            expect(track().paused).toBe(false);
+            expect(track().currentTime).toBe(42);
+            expect(track().plays).toBe(2);
+        });
+
+        it("starts nothing when nothing was running", () => {
+            player.is_music_held = true;
+            player.is_music_held = false;
+            expect(track().plays).toBe(0);
+        });
+
+        it("makes a track asked for meanwhile wait for its end", () => {
+            player.is_music_held = true;
+            player.play_music("track-a");
+            expect(track().plays).toBe(0);
+            expect(player.current_music).toBe("track-a");
+            player.is_music_held = false;
+            expect(track().plays).toBe(1);
+            expect(track().paused).toBe(false);
+        });
+
+        it("does not bring back a track stopped meanwhile", () => {
+            player.play_music("track-a");
+            player.is_music_held = true;
+            player.stop_music();
+            player.is_music_held = false;
+            expect(track().paused).toBe(true);
+            expect(player.current_music).toBe(null);
+        });
+
+        it("does not restart a track that had ended", () => {
+            player.play_music("track-a", { loop: false });
+            track().finish();
+            player.is_music_held = true;
+            player.is_music_held = false;
+            expect(track().plays).toBe(1);
+        });
+
+        it("does nothing the second time", () => {
+            player.play_music("track-a");
+            player.is_music_held = true;
+            player.is_music_held = true;
+            player.is_music_held = false;
+            player.is_music_held = false;
+            expect(track().plays).toBe(2);
+            expect(track().cuts).toBe(1);
+        });
+
+        it("leaves a refused track for the next gesture, which waits for the end of the hold", async () => {
+            FakeAudio.next_play = refused;
+            player.play_music("track-a");
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            expect(player.is_music_blocked).toBe(true);
+            player.is_music_held = true;
+            FakeAudio.next_play = () => Promise.resolve();
+            player.resume_music();
+            expect(track().paused).toBe(true);
+            player.is_music_held = false;
+            expect(track().paused).toBe(false);
+            expect(player.is_music_blocked).toBe(false);
+        });
+
+        it("runs on silently under a mute, stands still under a hold", () => {
+            player.play_music("track-a");
+            player.is_music_muted = true;
+            expect(track().paused).toBe(false);
+            player.is_music_held = true;
+            expect(track().paused).toBe(true);
+            player.is_music_held = false;
+            expect(track().paused).toBe(false);
+            expect(track().muted).toBe(true);
+        });
+
+        it("stays set across destroy, like the mutes", () => {
+            player.is_music_held = true;
+            player.destroy();
+            expect(player.is_music_held).toBe(true);
+            player.play_music("track-a");
+            expect(track().plays).toBe(0);
+        });
+    });
+
     describe("unknown names", () => {
         it("warn once and play nothing", () => {
             player.play_sound("nope");

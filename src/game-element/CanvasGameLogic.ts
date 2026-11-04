@@ -202,6 +202,7 @@ export abstract class CanvasGameLogic<
         );
         properties.keyboard.attach(host, signal);
         this.bind_music_resume(signal);
+        this.bind_music_hold(signal);
         this.bind_mute_buttons();
         stage.attach(properties.page);
         stage.observe(signal, () => {
@@ -518,6 +519,15 @@ export abstract class CanvasGameLogic<
         const resume = (): void => this.properties.audio.resume_music();
         this.host.addEventListener("pointerdown", resume, { signal });
         this.host.addEventListener("keydown", resume, { signal });
+    }
+
+    /** A hidden tab stops the frame loop, so the game stands still: the track stands still with it. */
+    private bind_music_hold(signal: AbortSignal): void {
+        const follow_tab = (): void => {
+            this.properties.audio.is_music_held = document.hidden;
+        };
+        follow_tab();
+        document.addEventListener("visibilitychange", follow_tab, { signal });
     }
 
     private bind_mute_buttons(): void {

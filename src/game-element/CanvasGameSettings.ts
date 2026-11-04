@@ -93,7 +93,8 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     public readonly sounds: Readonly<Record<string, string>> = {};
     /**
      * The track from `sounds` that loops while the game can be played: the shell starts it when
-     * the intro is over and stops it when the element disconnects. Null for none.
+     * the intro is over, holds it while the tab is hidden and stops it when the element
+     * disconnects. Null for none.
      */
     public readonly music: string | null = null;
     /**

@@ -49,6 +49,9 @@ export class AudioPlayer {
     private $music: HTMLAudioElement | null = null;
     private music_name: string | null = null;
     private _is_music_blocked = false;
+    private _is_music_held = false;
+    /** Whether the end of the hold starts the track: it was running, or was asked for meanwhile. */
+    private is_music_due = false;
 
     public constructor(
         private readonly assets: AssetManager,
@@ -99,6 +102,29 @@ export class AudioPlayer {
     public set is_music_muted(is_muted: boolean) {
         this._is_music_muted = is_muted;
         this.apply_music_settings();
+    }
+
+    /**
+     * While true the track stands still (a hidden tab). Unlike a mute it really pauses, and when
+     * this turns false again it goes on from that spot. A track asked for during the hold waits
+     * for its end; one that wasn't running stays as it was. Stays set across `destroy()`.
+     */
+    public get is_music_held(): boolean {
+        return this._is_music_held;
+    }
+
+    public set is_music_held(is_held: boolean) {
+        if (is_held === this._is_music_held) {
+            return;
+        }
+        this._is_music_held = is_held;
+        if (is_held) {
+            this.is_music_due = this.$music !== null && !this.$music.paused;
+            this.$music?.pause();
+        } else if (this.is_music_due) {
+            this.is_music_due = false;
+            this.start_music();
+        }
     }
 
     /** The name of the track playing or wanted; null when none is. */
@@ -175,6 +201,7 @@ export class AudioPlayer {
         this.$music = null;
         this.music_name = null;
         this._is_music_blocked = false;
+        this.is_music_due = false;
     }
 
     /**
@@ -245,6 +272,10 @@ export class AudioPlayer {
     private start_music(): void {
         const $music = this.$music;
         if ($music === null) {
+            return;
+        }
+        if (this._is_music_held) {
+            this.is_music_due = true;
             return;
         }
         this.apply_music_settings();

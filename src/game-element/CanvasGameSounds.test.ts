@@ -293,6 +293,109 @@ describe("the shell's sounds", () => {
         });
     });
 
+    describe("a hidden tab", () => {
+        let is_hidden = false;
+
+        function switch_tab(hidden: boolean): void {
+            is_hidden = hidden;
+            document.dispatchEvent(new Event("visibilitychange"));
+        }
+
+        beforeEach(() => {
+            is_hidden = false;
+            vi.spyOn(document, "hidden", "get").mockImplementation(
+                () => is_hidden,
+            );
+        });
+
+        it("holds the music where it is, and it goes on from there on return", () => {
+            connect_playing();
+            const song = loaded("song.mp3");
+            song.currentTime = 42;
+            switch_tab(true);
+            expect(song.paused).toBe(true);
+            expect(song.currentTime).toBe(42);
+            switch_tab(false);
+            expect(song.paused).toBe(false);
+            expect(song.currentTime).toBe(42);
+        });
+
+        it("keeps the mutes through it", () => {
+            const $element = connect_playing();
+            const song = loaded("song.mp3");
+            $element.logic.properties.audio.is_music_muted = true;
+            switch_tab(true);
+            switch_tab(false);
+            expect(song.paused).toBe(false);
+            expect(song.muted).toBe(true);
+        });
+
+        it("does not start the track before the intro is over", () => {
+            const $element = document.createElement(
+                "test-sounds",
+            ) as SoundElement;
+            document.body.append($element);
+            switch_tab(true);
+            switch_tab(false);
+            expect(loaded("song.mp3").plays).toBe(0);
+        });
+
+        it("makes a track due while hidden wait: an intro that ends there, a start there", async () => {
+            const $element = document.createElement(
+                "test-sounds",
+            ) as SoundElement;
+            document.body.append($element);
+            $element.logic.properties.intro.leave();
+            switch_tab(true);
+            await flush();
+            expect($element.logic.properties.intro.state).toBe("done");
+            expect(loaded("song.mp3").plays).toBe(0);
+            switch_tab(false);
+            expect(loaded("song.mp3").plays).toBe(1);
+        });
+
+        it("starts held when the element connects in a hidden tab", () => {
+            is_hidden = true;
+            connect_playing();
+            const song = loaded("song.mp3");
+            expect(song.plays).toBe(0);
+            switch_tab(false);
+            expect(song.paused).toBe(false);
+        });
+
+        it("hears no more of the tab after the element is gone", () => {
+            const $element = connect_playing();
+            const song = loaded("song.mp3");
+            $element.remove();
+            switch_tab(true);
+            switch_tab(false);
+            expect(song.paused).toBe(true);
+            expect($element.logic.properties.audio.is_music_held).toBe(false);
+        });
+
+        it("a game without music does not mind", () => {
+            const $element = document.createElement(
+                "test-sounds-no-music",
+            ) as SilentElement;
+            $element.setAttribute("init-intro", "false");
+            document.body.append($element);
+            switch_tab(true);
+            switch_tab(false);
+            expect($element.logic.properties.audio.current_music).toBe(null);
+        });
+
+        it("a reconnect in a hidden tab waits too, and a return in a visible one plays", () => {
+            const $element = connect_playing();
+            const song = loaded("song.mp3");
+            $element.remove();
+            is_hidden = true;
+            document.body.append($element);
+            expect(song.paused).toBe(true);
+            switch_tab(false);
+            expect(song.paused).toBe(false);
+        });
+    });
+
     describe("a new game", () => {
         it("keeps the music running and the mutes as they are", () => {
             const $element = connect_playing();
