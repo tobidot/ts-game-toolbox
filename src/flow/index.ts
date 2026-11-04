@@ -9,5 +9,6 @@ export * from "./async/Sleep";
 export * from "./helpers/Progress";
 export * from "./state/StateMachine";
 export * from "./timers/Timer";
+export * from "./timers/FixedStepClock";
 export * from "./tween/Tween";
 export * from "./spawner/Spawner";
