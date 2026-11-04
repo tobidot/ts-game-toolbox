@@ -98,4 +98,77 @@ describe("play_video_splash", () => {
         controller.abort();
         expect(await outcome).toBe("aborted");
     });
+
+    describe("the focus", () => {
+        /** A custom-element-like host with the container in its shadow root. */
+        function host_with_container(): {
+            $host: HTMLElement;
+            $inner: HTMLElement;
+        } {
+            const $host = document.createElement("div");
+            $host.tabIndex = 0;
+            const $inner = document.createElement("div");
+            $host.attachShadow({ mode: "open" }).appendChild($inner);
+            document.body.appendChild($host);
+            return { $host, $inner };
+        }
+
+        it("goes back to the host when the video goes: the keyboard must still reach the game", async () => {
+            const { $host, $inner } = host_with_container();
+            $host.focus();
+            const outcome = play_video_splash($inner, "blob:intro");
+            const $video = $inner.querySelector("video");
+            expect($host.shadowRoot?.activeElement).toBe($video);
+            $video?.dispatchEvent(new Event("ended"));
+            await outcome;
+            expect(document.activeElement).toBe($host);
+            $host.remove();
+        });
+
+        it("goes to the host, too, when nothing had it before", async () => {
+            const { $host, $inner } = host_with_container();
+            const outcome = play_video_splash($inner, "blob:intro");
+            $inner.querySelector("video")?.dispatchEvent(new Event("error"));
+            await outcome;
+            expect(document.activeElement).toBe($host);
+            $host.remove();
+        });
+
+        it("goes back to what had it, somewhere else on the page", async () => {
+            const { $host, $inner } = host_with_container();
+            const $input = document.createElement("input");
+            document.body.appendChild($input);
+            $input.focus();
+            const outcome = play_video_splash($inner, "blob:intro");
+            $inner.querySelector("video")?.dispatchEvent(new Event("ended"));
+            await outcome;
+            expect(document.activeElement).toBe($input);
+            $input.remove();
+            $host.remove();
+        });
+
+        it("stays where the visitor took it during the video", async () => {
+            const { $host, $inner } = host_with_container();
+            const $input = document.createElement("input");
+            document.body.appendChild($input);
+            const outcome = play_video_splash($inner, "blob:intro");
+            $input.focus();
+            $inner.querySelector("video")?.dispatchEvent(new Event("ended"));
+            await outcome;
+            expect(document.activeElement).toBe($input);
+            $input.remove();
+            $host.remove();
+        });
+
+        it("is left alone by a video that can't be skipped", async () => {
+            const { $host, $inner } = host_with_container();
+            const outcome = play_video_splash($inner, "blob:intro", {
+                skippable: false,
+            });
+            $inner.querySelector("video")?.dispatchEvent(new Event("ended"));
+            await outcome;
+            expect(document.activeElement).toBe(document.body);
+            $host.remove();
+        });
+    });
 });

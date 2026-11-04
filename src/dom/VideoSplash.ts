@@ -28,11 +28,40 @@ export interface VideoSplashOptions {
     signal?: AbortSignal;
 }
 
+/** The element that has the focus, down through open shadow roots; null when nothing has. */
+function focused_element(): HTMLElement | null {
+    let $focused = document.activeElement;
+    while ($focused?.shadowRoot?.activeElement) {
+        $focused = $focused.shadowRoot.activeElement;
+    }
+    return $focused instanceof HTMLElement && $focused !== document.body
+        ? $focused
+        : null;
+}
+
+/**
+ * Who gets the focus when the video goes: whoever had it before, else the custom element the
+ * video played in. Without this it falls to the body, and the keyboard reaches nothing.
+ */
+function hand_back_focus(
+    $before: HTMLElement | null,
+    $container: HTMLElement,
+): void {
+    const root = $container.getRootNode();
+    const $host = root instanceof ShadowRoot ? root.host : null;
+    const $next = $before?.isConnected ? $before : $host;
+    if ($next instanceof HTMLElement) {
+        // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
+        $next.focus({ preventScroll: true });
+    }
+}
+
 /**
  * Plays one video on top of `$container` (which gets `position: relative` when it is static)
  * and resolves once it is over: the video ended, the viewer skipped it, it timed out, the
  * browser refused to autoplay it, or it failed to load. The video element is removed before
- * the promise resolves, whatever the outcome, so a caller never has to clean up.
+ * the promise resolves, whatever the outcome, so a caller never has to clean up. A skippable
+ * video takes the focus for its keys and hands it back when it goes.
  */
 export function play_video_splash(
     $container: HTMLElement,
@@ -80,6 +109,7 @@ export function play_video_splash(
         let done = false;
         let is_holding = false;
         let timer: ReturnType<typeof setTimeout> | null = null;
+        let $focused_before: HTMLElement | null = null;
         const finish = (outcome: VideoSplashOutcome) => {
             if (done) {
                 return;
@@ -99,7 +129,12 @@ export function play_video_splash(
                 // a video that never started has nothing to pause
             }
             $video.removeAttribute("src");
+            // Only what the video took: a visitor who moved on keeps their focus.
+            const had_focus = focused_element() === $video;
             $video.remove();
+            if (had_focus) {
+                hand_back_focus($focused_before, $container);
+            }
             resolve(outcome);
         };
         const on_ended = () => {
@@ -142,6 +177,7 @@ export function play_video_splash(
 
         $container.appendChild($video);
         if (skippable) {
+            $focused_before = focused_element();
             $video.focus();
         }
 
