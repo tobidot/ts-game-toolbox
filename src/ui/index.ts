@@ -2,6 +2,7 @@ export * from "./Element";
 export * from "./Group";
 export * from "./UiManager";
 export * from "./UiPage";
+export * from "./menu/Menu";
 export * from "./events";
 export * from "./theme/Theme";
 export * from "./theme/ThemeRuleBuilder";
