@@ -236,6 +236,18 @@ describe("the shell's sounds", () => {
             connect_playing();
             expect(loaded("song.mp3").plays).toBe(1);
         });
+
+        it("asks the browser once, also when it refuses at once and the track stays paused", () => {
+            const play = vi
+                .spyOn(FakeAudio.prototype, "play")
+                .mockImplementation(function (this: FakeAudio) {
+                    this.plays += 1;
+                    return Promise.resolve();
+                });
+            connect_playing();
+            expect(loaded("song.mp3").plays).toBe(1);
+            play.mockRestore();
+        });
     });
 
     describe("disconnecting", () => {

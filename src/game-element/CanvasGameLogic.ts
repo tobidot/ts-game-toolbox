@@ -209,6 +209,8 @@ export abstract class CanvasGameLogic<
         if (properties.game === null) {
             this.new_game();
         }
+        // A reconnected element whose intro is long over gets no state change.
+        this.start_music();
         properties.intro.start(references.$stage, signal, {
             is_enabled: properties.intro_enabled,
             on_change: (state) => {
@@ -222,8 +224,6 @@ export abstract class CanvasGameLogic<
                 mark_dirty();
             },
         });
-        // A reconnected element whose intro is long over gets no state change.
-        this.start_music();
         this.on_start(signal);
         mark_dirty();
     }
