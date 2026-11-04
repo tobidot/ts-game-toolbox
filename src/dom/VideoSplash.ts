@@ -9,6 +9,11 @@ export type VideoSplashOutcome =
 export interface VideoSplashOptions {
     /** Give up after this long, however the video behaves. Default 8000. */
     timeout_ms?: number;
+    /**
+     * Keep the last frame on screen this long after the video ended, before the splash is
+     * removed; a click or key still ends it early. Not counted against `timeout_ms`. Default 0.
+     */
+    hold_ms?: number;
     /** A click or a key on the container ends the splash early. Default true. */
     skippable?: boolean;
     /** Muted videos may autoplay without a user gesture. Default true. */
@@ -39,6 +44,7 @@ export function play_video_splash(
     const muted = options.muted ?? true;
     const background = options.background ?? "#111111";
     const fit = options.fit ?? "contain";
+    const hold_ms = options.hold_ms ?? 0;
 
     return new Promise<VideoSplashOutcome>((resolve) => {
         if (options.signal?.aborted) {
@@ -70,6 +76,7 @@ export function play_video_splash(
         }
 
         let done = false;
+        let is_holding = false;
         let timer: ReturnType<typeof setTimeout> | null = null;
         const finish = (outcome: VideoSplashOutcome) => {
             if (done) return;
@@ -89,10 +96,19 @@ export function play_video_splash(
             $video.remove();
             resolve(outcome);
         };
-        const on_ended = () => finish("ended");
+        const on_ended = () => {
+            if (hold_ms <= 0) {
+                finish("ended");
+                return;
+            }
+            // An ended video keeps showing its last frame: leave it there for the hold.
+            is_holding = true;
+            if (timer !== null) clearTimeout(timer);
+            timer = setTimeout(() => finish("ended"), hold_ms);
+        };
         const on_error = () => finish("error");
         const on_skip = () => {
-            if (skippable) finish("skipped");
+            if (skippable) finish(is_holding ? "ended" : "skipped");
         };
         const on_key = (event: KeyboardEvent) => {
             if (
@@ -102,7 +118,7 @@ export function play_video_splash(
                     event.key === "Escape")
             ) {
                 event.preventDefault();
-                finish("skipped");
+                finish(is_holding ? "ended" : "skipped");
             }
         };
         const on_abort = () => finish("aborted");

@@ -21,8 +21,12 @@ export class UiManager {
         this.mouse_locked_element = element;
         if (this.mouse_locked_element) {
             this.mouse_locked_element.update_mouse_down_status(true);
-            // Trigger drag immediately on pointer-down (e.g. sliders)
-            this.mouse_locked_element.drag(null, unit_coords);
+            // Trigger drag immediately on pointer-down (e.g. sliders), in the widget's own
+            // (reference) coordinates, the same ones hit() tested.
+            this.mouse_locked_element.drag(
+                null,
+                this.to_reference(unit_coords),
+            );
         }
         return !!element;
     }
@@ -65,9 +69,10 @@ export class UiManager {
 
         // Forward drag to the locked element
         if (this.mouse_locked_element) {
+            const start = this.mouse_down_position;
             this.mouse_locked_element.drag(
-                this.mouse_down_position,
-                unit_coords,
+                start === null ? null : new Vector2(this.to_reference(start)),
+                this.to_reference(unit_coords),
             );
         }
 
@@ -85,6 +90,11 @@ export class UiManager {
         }
         this._hovered_elements.clear();
         this.mouse_locked_element = null;
+    }
+
+    /** Pointer coordinates as the active page's widgets see them; unchanged without a page. */
+    private to_reference(coords: Vector2I): Vector2I {
+        return this.active_menu?.to_reference(coords) ?? coords;
     }
 
     public draw(ctx: CanvasRenderingContext2D): void {

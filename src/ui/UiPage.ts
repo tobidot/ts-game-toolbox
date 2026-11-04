@@ -47,6 +47,13 @@ export class UiPage extends Group {
         };
     }
 
+    /** Window (canvas pixel) coordinates in this page's reference coordinates, where its widgets live. */
+    public to_reference(window_coords: Vector2I): Vector2I {
+        return this.transform_unit_to_reference_coordinates(
+            this.transform_window_to_unit_coordinates(window_coords),
+        );
+    }
+
     public override hit(window_coords: Vector2I): Array<Element> {
         if (!this.is_visible) {
             return [];
