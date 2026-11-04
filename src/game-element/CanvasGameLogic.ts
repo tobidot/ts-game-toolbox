@@ -1,3 +1,4 @@
+import { Progress } from "../flow";
 import { Vector2I } from "../geometries";
 import { IntroState } from "../stage/IntroGate";
 import { bind_stage_input } from "../stage/StageInput";
@@ -133,6 +134,7 @@ export abstract class CanvasGameLogic<
             properties.seed = read("init-seed", parse_seed, random_seed());
             properties.intro_enabled = read("init-intro", parse_boolean, true);
             this.read_attributes(read);
+            this.load_images();
         }
 
         const stage = references.stage;
@@ -376,6 +378,24 @@ export abstract class CanvasGameLogic<
 
     protected set_status(text: string): void {
         this.renderer.set_status(text);
+    }
+
+    /**
+     * Loads `settings.images`, once. Every image that arrives repaints, because a still game
+     * repaints only when something changed; one that fails stays unpainted (`AssetManager` warns).
+     */
+    private load_images(): void {
+        const images = this.settings.images;
+        if (Object.keys(images).length === 0) {
+            return;
+        }
+        const progress = new Progress();
+        progress.listen(() => {
+            this.properties.is_dirty = true;
+        });
+        this.references.assets.load_images(images, progress).catch(() => {
+            // Already warned about; the game runs on without that picture.
+        });
     }
 
     private tick(time_ms: number): void {

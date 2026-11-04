@@ -68,6 +68,11 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     public readonly intro_hold_ms: number = 1500;
     /** Keys whose browser default (scrolling, navigating) the game blocks once it runs. */
     public readonly game_keys: readonly string[] = [];
+    /**
+     * The game's images, name to imported file. The shell loads them when the element starts;
+     * the renderer's `paint_image()` paints them by name.
+     */
+    public readonly images: Readonly<Record<string, string>> = {};
     /** The start screen's texts. */
     public readonly start_button: string = "▶ Starten";
     public readonly start_hint: string =

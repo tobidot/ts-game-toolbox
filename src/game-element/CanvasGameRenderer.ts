@@ -35,6 +35,14 @@ export const CENTRED = {
     baseline: "middle",
 } as const satisfies TextStyle;
 
+/** How `CanvasGameRenderer.paint_image()` fits a picture into its rect. */
+export interface ImageStyle {
+    /** Keep the picture's proportions, centred in the rect. Default: fill the rect. */
+    is_contained?: boolean;
+    /** Scale smoothly, for photos. Default off: pixel art stays sharp. */
+    is_smooth?: boolean;
+}
+
 /** The card that ends a round: what `CanvasGameRenderer.result_panel()` shows. */
 export interface ResultPanel {
     /** "Game Over", "Runde vorbei". */
@@ -446,6 +454,46 @@ export abstract class CanvasGameRenderer<
             rect.top + rect.height / 2 + 1,
             { size, is_bold: true, color, align: "center", baseline: "middle" },
         );
+    }
+
+    /**
+     * Paints the image `name` of `settings.images` into `rect`. Until it has loaded (or when it
+     * failed to) this paints nothing and returns false; the shell repaints when it arrives.
+     */
+    protected paint_image(
+        name: string,
+        rect: RectI,
+        style: ImageStyle = {},
+    ): boolean {
+        const asset = this.references.assets.images.get(name);
+        if (asset === undefined || !asset.ready) {
+            return false;
+        }
+        const element = asset.element;
+        const scale = style.is_contained
+            ? Math.min(
+                  rect.width / element.naturalWidth,
+                  rect.height / element.naturalHeight,
+              )
+            : 1;
+        const width = style.is_contained
+            ? element.naturalWidth * scale
+            : rect.width;
+        const height = style.is_contained
+            ? element.naturalHeight * scale
+            : rect.height;
+        const context = this.context;
+        const was_smooth = context.imageSmoothingEnabled;
+        context.imageSmoothingEnabled = style.is_smooth ?? false;
+        context.drawImage(
+            element,
+            rect.left + (rect.width - width) / 2,
+            rect.top + (rect.height - height) / 2,
+            width,
+            height,
+        );
+        context.imageSmoothingEnabled = was_smooth;
+        return true;
     }
 
     /** Runs `paint` clipped to the rounded `rect`: a map or a picture inside a card. */
