@@ -58,7 +58,7 @@ export class ValueLabel extends Element {
             y = content_box.top + content_box.height;
         }
 
-        ctx.fillText(`${this.label}: ${this.value}`, x, y);
+        ctx.fillText(`${this.label}: ${this.value}`, x, y, content_box.width);
 
         ctx.restore(); // transform
     }

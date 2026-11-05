@@ -53,7 +53,8 @@ export class Label extends Element {
             y = content_box.top + content_box.height;
         }
 
-        ctx.fillText(this.text, x, y);
+        // Squeezed rather than running out of the box and over whatever is next to it.
+        ctx.fillText(this.text, x, y, content_box.width);
         ctx.restore(); // transform
     }
 }

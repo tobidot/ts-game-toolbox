@@ -133,6 +133,16 @@ describe("text in its box", () => {
         expect(texts[0]).toEqual({ text: "a: 1", x: -50, y: -20 });
     });
 
+    it("squeezes a text too long for its box instead of letting it run out", () => {
+        const { context, calls } = recording_context();
+        new Label("t", RECT, true, TOP).draw(context);
+        new ValueLabel("a", 1, RECT, true, TOP).draw(context);
+        const widths = calls
+            .filter((call) => call.name === "fillText")
+            .map((call) => call.args[3]);
+        expect(widths).toEqual([100, 100]);
+    });
+
     it("starts a Slider's title at the left of its box, wherever it is", () => {
         const { context, texts } = recording_context();
         new Slider("s", 0, 1, 0.5, RECT).draw(context);
