@@ -66,6 +66,11 @@ export class UiPage extends Group {
         return super.hit(reference_coords);
     }
 
+    /** The children's rects are in reference coordinates; `rect` is in units of the canvas. */
+    public override to_child_coordinates(reference_coords: Vector2I): Vector2I {
+        return reference_coords;
+    }
+
     /**
      * The page is always hit in its own reference space
      * @param _reference_coords

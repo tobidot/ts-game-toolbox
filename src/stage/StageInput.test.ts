@@ -45,6 +45,35 @@ describe("bind_stage_input", () => {
         } as unknown as IntroGate;
     }
 
+    it("gives the wheel to the UI after the intro, and blocks the page's scroll only if taken", () => {
+        const wheel = vi.spyOn(ui, "wheel").mockReturnValue(false);
+        bind_stage_input(controller.signal, {
+            stage,
+            ui,
+            intro: waiting_intro(),
+            host: $host,
+        });
+        const turn = (delta_mode: number = 0): WheelEvent => {
+            const event = new WheelEvent("wheel", {
+                deltaY: 100,
+                deltaMode: delta_mode,
+                cancelable: true,
+            });
+            stage.$canvas.dispatchEvent(event);
+            return event;
+        };
+        expect(turn().defaultPrevented).toBe(false);
+        expect(wheel).not.toHaveBeenCalled();
+        stage.$canvas.dispatchEvent(pointer("pointerdown"));
+        expect(turn().defaultPrevented).toBe(false);
+        expect(wheel).toHaveBeenLastCalledWith(expect.anything(), 100);
+        wheel.mockReturnValue(true);
+        expect(turn().defaultPrevented).toBe(true);
+        // a browser that counts lines scrolls about as far as one that counts pixels
+        turn(WheelEvent.DOM_DELTA_LINE);
+        expect(wheel).toHaveBeenLastCalledWith(expect.anything(), 2000);
+    });
+
     it("gives the first click to the start screen only, later ones to the UI and the game", () => {
         const on_press = vi.fn();
         const on_change = vi.fn();

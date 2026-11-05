@@ -229,6 +229,14 @@ export class Element {
         return false;
     }
 
+    /**
+     * The wheel turned over this element, `delta_y` as in a wheel event. Returns whether it took
+     * it; if not, `UiManager` offers it to the elements under it.
+     */
+    public wheel(_delta_y: number): boolean {
+        return false;
+    }
+
     /** Clicks this element; a disabled one refuses instead. */
     public click(): void {
         if (this.is_disabled) {

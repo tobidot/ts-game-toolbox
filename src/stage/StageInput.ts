@@ -35,9 +35,19 @@ export interface StageInputHandlers {
     on_change?: () => void;
 }
 
+/** How far a line turns, for a browser that reports the wheel in lines. */
+const WHEEL_LINE_PIXELS = 20;
+
+/** How far the wheel turned, in pixels, however the browser reports it. */
+function wheel_pixels(event: WheelEvent): number {
+    return event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? event.deltaY * WHEEL_LINE_PIXELS
+        : event.deltaY;
+}
+
 /**
  * The input wiring every canvas game repeats: pointer events on the stage's canvas go to the
- * toolbox UI in canvas pixels, the first click or key on the start screen goes to the intro
+ * toolbox UI in canvas pixels (the wheel too), the first click or key on the start screen goes to the intro
  * (and nowhere else), and whatever is left goes to the game's handlers. All listeners end
  * when `signal` aborts, so call it once per connection.
  */
@@ -112,6 +122,20 @@ export function bind_stage_input(
             handlers.on_leave?.(event);
         }
     });
+    // A wheel a widget took doesn't scroll the page as well; any other stays the browser's or the game's.
+    $canvas.addEventListener(
+        "wheel",
+        (event) => {
+            if (
+                is_playing() &&
+                ui.wheel(stage.to_canvas(event), wheel_pixels(event))
+            ) {
+                event.preventDefault();
+                changed();
+            }
+        },
+        { signal, passive: false },
+    );
 
     listen(host, "keydown", (event) => {
         const is_shortcut = event.ctrlKey || event.metaKey || event.altKey;

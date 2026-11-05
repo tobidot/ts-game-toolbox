@@ -14,6 +14,7 @@ export * from "./widgets/CheckBox";
 export * from "./widgets/Gallery";
 export * from "./widgets/Label";
 export * from "./widgets/Panel";
+export * from "./widgets/ScrollGroup";
 export * from "./widgets/Slider";
 export * from "./widgets/ValueLabel";
 export * from "./widgets/Image";

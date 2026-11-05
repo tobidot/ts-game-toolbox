@@ -61,7 +61,7 @@ export class Group extends Element {
         }
 
         const hits: Array<Array<Element>> = [[this]];
-        const local_coords = this.get_local_coordinates_at(coords);
+        const local_coords = this.to_child_coordinates(coords);
         // collect the hits of all child elements
         for (let i = 0; i < this.children.length; i++) {
             const child = this.children[i];
@@ -73,6 +73,11 @@ export class Group extends Element {
         // reverse the order so the last child is the first in the list
         // the sub children list should already be sorted correctly
         return hits.reverse().flat();
+    }
+
+    /** A point in this group's parent's coordinates, as its children's rects see it. */
+    public to_child_coordinates(coords: Vector2I): Vector2I {
+        return this.get_local_coordinates_at(coords);
     }
 
     public override drag(

@@ -7,10 +7,17 @@ export class UiManager {
     public is_mouse_down: boolean = false;
     public mouse_position: Vector2 | null = null;
     public mouse_down_position: Vector2 | null = null;
+    /**
+     * How far a press has to move, in reference units, before a parent may take it as a drag. A
+     * shaky tap on a phone stays a tap.
+     */
+    public drag_threshold: number = 10;
 
     /** Elements that were hovered on the last pointer_move call. */
     private _hovered_elements: Set<Element> = new Set();
     private _mouse_locked_element: Element | null = null;
+    /** A parent took the press as a drag, so it isn't a click anymore. */
+    private is_press_taken_by_parent: boolean = false;
 
     /**
      * The element holding the current press. It lets go of one that was taken off the page in the
@@ -42,6 +49,7 @@ export class UiManager {
             }
         }
         this.mouse_locked_element = element;
+        this.is_press_taken_by_parent = false;
         return !!element;
     }
 
@@ -53,7 +61,7 @@ export class UiManager {
             locked.update_mouse_down_status(false);
             // A press that ended elsewhere was a drag, not a click.
             const elements = this.active_menu?.hit(unit_coords) ?? [];
-            if (elements.includes(locked)) {
+            if (!this.is_press_taken_by_parent && elements.includes(locked)) {
                 locked.click();
                 is_hit = true;
             }
@@ -88,16 +96,9 @@ export class UiManager {
         }
         this._hovered_elements = hit_set;
 
-        // Forward drag to the locked element
-        if (
-            this.mouse_locked_element &&
-            !this.mouse_locked_element.is_disabled
-        ) {
-            const start = this.mouse_down_position;
-            this.mouse_locked_element.drag(
-                start === null ? null : new Vector2(this.to_reference(start)),
-                this.to_reference(unit_coords),
-            );
+        const locked = this.mouse_locked_element;
+        if (locked) {
+            this.forward_drag(locked, unit_coords);
         }
 
         return hit_elements.length > 0;
@@ -112,6 +113,46 @@ export class UiManager {
         }
         this._hovered_elements.clear();
         this.mouse_locked_element = null;
+    }
+
+    /**
+     * The turning wheel over `unit_coords`: offered to what's under the pointer, the top element
+     * first. Returns whether one took it.
+     */
+    public wheel(unit_coords: Vector2I, delta_y: number): boolean {
+        const elements = this.active_menu?.hit(unit_coords) ?? [];
+        return elements.some((element) => element.wheel(delta_y));
+    }
+
+    /**
+     * The move goes to the locked element. If it doesn't drag (a button, a row), and the press has
+     * moved far enough, it is offered to its parents; the one that takes it holds the press from
+     * now on, and the release is no click.
+     */
+    private forward_drag(locked: Element, unit_coords: Vector2I): void {
+        const down = this.mouse_down_position;
+        const start =
+            down === null ? null : new Vector2(this.to_reference(down));
+        const current = this.to_reference(unit_coords);
+        if (!locked.is_disabled && locked.drag(start, current)) {
+            return;
+        }
+        if (
+            start === null ||
+            Math.hypot(current.x - start.x, current.y - start.y) <
+                this.drag_threshold
+        ) {
+            return;
+        }
+        for (let parent = locked.parent; parent; parent = parent.parent) {
+            if (!parent.is_disabled && parent.drag(start, current)) {
+                locked.release_pointer();
+                parent.update_mouse_down_status(true);
+                this.mouse_locked_element = parent;
+                this.is_press_taken_by_parent = true;
+                return;
+            }
+        }
     }
 
     /** A removed element has no hover anymore, and must not stay in the set. */
