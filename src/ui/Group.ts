@@ -27,6 +27,29 @@ export class Group extends Element {
     }
 
     /**
+     * Takes `child` out of this group. It and everything inside it lose their press and hover, so
+     * a `UiManager` holding it lets go. Returns false when `child` wasn't in this group.
+     */
+    public remove(child: Element): boolean {
+        const index = this.children.indexOf(child);
+        if (index < 0) {
+            return false;
+        }
+        this.children.splice(index, 1);
+        child.parent = null;
+        child.release_pointer();
+        child.update_theme_instance();
+        return true;
+    }
+
+    public override release_pointer(): void {
+        super.release_pointer();
+        for (const child of this.children) {
+            child.release_pointer();
+        }
+    }
+
+    /**
      *
      * @param coords
      */

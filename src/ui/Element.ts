@@ -247,6 +247,15 @@ export class Element {
         return is_down;
     }
 
+    /**
+     * This element left the page: it holds no press and no hover anymore. A `UiManager` lets go of
+     * an element that isn't down, so a dead widget can't keep its press.
+     */
+    public release_pointer(): void {
+        this.update_mouse_down_status(false);
+        this.update_mouse_hover_status(false);
+    }
+
     public update_mouse_hover_status(is_hovering: boolean): boolean {
         const previous = this.is_hovered;
         this.is_hovered = is_hovering;
