@@ -262,6 +262,8 @@ export class CanvasGameProperties<
     public pointer: Vector2I | null = null;
     /** The layout widgets are placed in; the stage's choice. */
     public layout: LayoutOf<S>;
+    /** The house rules; a theme swap keeps them underneath. */
+    private readonly house_theme_rules: ThemeRule[];
     private readonly placements: Array<{
         widget: Element;
         rect_of: (layout: LayoutOf<S>) => RectI;
@@ -274,12 +276,13 @@ export class CanvasGameProperties<
     ) {
         const layout = settings.layouts[0] as LayoutOf<S>;
         this.layout = layout;
+        this.house_theme_rules = default_theme(settings);
         this.page = new UiPage(
             { x: layout.width, y: layout.height },
             { left: 0, top: 0, width: 1, height: 1 },
             { left: 0, top: 0, width: layout.width, height: layout.height },
             true,
-            [...default_theme(settings), ...theme_rules],
+            [...this.house_theme_rules, ...theme_rules],
         );
         this.ui.active_menu = this.page;
         const has_sounds = Object.keys(settings.sounds).some(
@@ -292,6 +295,16 @@ export class CanvasGameProperties<
             settings.music !== null
                 ? this.place_mute_button((rects) => rects.music_button)
                 : null;
+    }
+
+    /**
+     * Swaps the game's theme rules: the house rules stay underneath, everything on the page follows
+     * at once, and no widget needs to know. Rules a widget has for itself stay too.
+     */
+    public set_theme(rules: readonly ThemeRule[]): void {
+        this.page.theme_rules = [...this.house_theme_rules, ...rules];
+        this.page.update_theme_instance();
+        this.is_dirty = true;
     }
 
     /**
