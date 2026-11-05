@@ -12,7 +12,7 @@ export interface SteerOptions {
     speed: number;
     /** How close counts as there: the radii of both, for something that walks up to a thing. Default 0. */
     stop_distance?: number;
-    /** On this last stretch before `stop_distance` the body slows down evenly. Default 0: it doesn't. */
+    /** On this last stretch before `stop_distance` the body slows down, to a tenth of its speed. Default 0: it doesn't. */
     slow_distance?: number;
 }
 
@@ -23,6 +23,8 @@ export interface SeparatedBody extends Vector2I {
     is_fixed?: boolean;
 }
 
+/** The share of its speed a body keeps at the end of `slow_distance`. */
+const MIN_SLOW_SHARE = 0.1;
 /** How much of an overlap goes per second, by default. */
 const DEFAULT_STIFFNESS = 6;
 /** Turns the index of a pair into a direction, and neighbours into very different ones. */
@@ -47,9 +49,10 @@ export function steer_towards(
         return true;
     }
     const slow_distance = options.slow_distance ?? 0;
+    // Never below the floor: slowing down in proportion alone would halve the way forever and never arrive.
     const speed =
         left < slow_distance
-            ? (options.speed * left) / slow_distance
+            ? options.speed * Math.max(MIN_SLOW_SHARE, left / slow_distance)
             : options.speed;
     const step = Math.min(left, speed * delta_seconds);
     body.x += (to_x / distance) * step;

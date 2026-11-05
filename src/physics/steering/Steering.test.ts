@@ -56,6 +56,18 @@ describe("steer_towards", () => {
         expect(body.x).toBeCloseTo(5);
     });
 
+    it("still arrives after slowing down, in a finite number of steps", () => {
+        const body = { x: 0, y: 0 };
+        const options = { speed: 40, stop_distance: 5, slow_distance: 20 };
+        let steps = 0;
+        while (!steer_towards(body, { x: 100, y: 0 }, STEP, options)) {
+            steps += 1;
+            expect(steps).toBeLessThan(300);
+        }
+        expect(body.x).toBeCloseTo(95);
+        expect(steer_towards(body, { x: 100, y: 0 }, STEP, options)).toBe(true);
+    });
+
     it("is there already on the spot, with no NaN", () => {
         const body = { x: 5, y: 5 };
         expect(steer_towards(body, { x: 5, y: 5 }, STEP, { speed: 10 })).toBe(
