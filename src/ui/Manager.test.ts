@@ -45,6 +45,40 @@ describe("MenuManager", () => {
         expect(manager.mouse_locked_element).toBe(null);
     });
 
+    it("does not click a button when the press ends outside it", () => {
+        const manager = new UiManager();
+        let click_count = 0;
+        const button = new Button("Test", {
+            left: 10,
+            top: 10,
+            width: 100,
+            height: 50,
+        });
+        button.events.attach(ElementClickEvent, () => {
+            click_count++;
+        });
+        const page = new UiPage(
+            { x: 200, y: 200 },
+            { left: 0, top: 0, width: 1, height: 1 },
+            { left: 0, top: 0, width: 200, height: 200 },
+        );
+        page.add(button);
+        manager.active_menu = page;
+
+        manager.pointer_down({ x: 15, y: 15 });
+        manager.pointer_move({ x: 150, y: 150 });
+        expect(manager.pointer_up({ x: 150, y: 150 })).toBe(false);
+        expect(click_count).toBe(0);
+        expect(button.is_down).toBe(false);
+        expect(manager.mouse_locked_element).toBe(null);
+
+        // leaving and coming back is still a click
+        manager.pointer_down({ x: 15, y: 15 });
+        manager.pointer_move({ x: 150, y: 150 });
+        expect(manager.pointer_up({ x: 20, y: 20 })).toBe(true);
+        expect(click_count).toBe(1);
+    });
+
     it("should handle pointer move and hover", () => {
         const manager = new UiManager();
         const button = new Button("Test", {

@@ -36,8 +36,12 @@ export class UiManager {
         let is_hit = false;
         if (this.mouse_locked_element) {
             this.mouse_locked_element.update_mouse_down_status(false);
-            this.mouse_locked_element.click();
-            is_hit = true;
+            // A press that ended elsewhere was a drag, not a click.
+            const elements = this.active_menu?.hit(unit_coords) ?? [];
+            if (elements.includes(this.mouse_locked_element)) {
+                this.mouse_locked_element.click();
+                is_hit = true;
+            }
         }
         this.is_mouse_down = false;
         this.mouse_locked_element = null;
