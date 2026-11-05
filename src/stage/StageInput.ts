@@ -92,12 +92,14 @@ export function bind_stage_input(
         handlers.on_press?.(stage.to_layout(event), event);
     });
     listen($canvas, "pointermove", (event) => {
+        // Nothing can be hovered yet, and hovering a menu row would move its cursor.
+        if (!is_playing()) {
+            return;
+        }
         if (ui.pointer_move(stage.to_canvas(event))) {
             changed();
         }
-        if (is_playing()) {
-            handlers.on_move?.(stage.to_layout(event), event);
-        }
+        handlers.on_move?.(stage.to_layout(event), event);
     });
     listen($canvas, "pointerup", (event) => {
         ui.pointer_up(stage.to_canvas(event));

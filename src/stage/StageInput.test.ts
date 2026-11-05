@@ -108,6 +108,21 @@ describe("bind_stage_input", () => {
         expect(on_press).not.toHaveBeenCalled();
     });
 
+    it("gives the UI no pointer moves before the intro is over", () => {
+        const move = vi.spyOn(ui, "pointer_move");
+        const intro = waiting_intro();
+        bind_stage_input(
+            controller.signal,
+            { stage, ui, intro, host: $host },
+            {},
+        );
+        stage.$canvas.dispatchEvent(pointer("pointermove", 20, 20));
+        expect(move).not.toHaveBeenCalled();
+        stage.$canvas.dispatchEvent(pointer("pointerdown", 20, 20));
+        stage.$canvas.dispatchEvent(pointer("pointermove", 30, 30));
+        expect(move).toHaveBeenCalledTimes(1);
+    });
+
     it("passes keys after the intro, without modifiers, and the start key nowhere", () => {
         const on_key_down = vi.fn();
         bind_stage_input(
