@@ -48,8 +48,8 @@ export abstract class ThemeValueTween<
             other.start_value,
         );
         const end_equals = theme_property_definition_equals(
-            this.start_value,
-            other.start_value,
+            this.end_value,
+            other.end_value,
         );
         const seconds_equals = this.seconds === other.seconds;
         return start_equals && end_equals && seconds_equals;
