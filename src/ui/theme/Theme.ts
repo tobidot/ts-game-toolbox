@@ -162,7 +162,9 @@ export function theme_selector_matches_element(
     return (
         (!selector.type || selector.type === element.type) &&
         (!selector.class || selector.class === element.class) &&
-        (!selector.state || selector.state === element.state)
+        (!selector.state ||
+            selector.state === element.state ||
+            (selector.state === "disabled" && element.state === "refused"))
     );
 }
 

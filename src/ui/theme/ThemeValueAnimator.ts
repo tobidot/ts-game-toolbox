@@ -1,7 +1,10 @@
 import { RgbColor } from "../../data/RgbColor";
 import { theme_now } from "./ThemeClock";
 import { ThemeValueProxy } from "./ThemeValueProxy";
-import { ThemePropertyValue } from "./Theme";
+import { ThemePropertyValue, ThemeTransformValue } from "./Theme";
+
+/** How long an element shows a refusal. */
+export const REFUSED_SECONDS = 0.35;
 
 /**
  * A value that keeps moving: `callback` gets how far the current round is, 0 to 1. Put it in a rule
@@ -50,5 +53,23 @@ export function theme_pulse(
 ): ThemeValueAnimator<RgbColor> {
     return new ThemeValueAnimator(interval_seconds, (t) =>
         from.lerp(to, (1 - Math.cos(t * 2 * Math.PI)) / 2),
+    );
+}
+
+/** A sideways shake of `distance` that dies away over one round: for a `:refused` rule. */
+export function theme_shake(
+    distance: number,
+    seconds: number = REFUSED_SECONDS,
+): ThemeValueAnimator<ThemeTransformValue | null> {
+    return new ThemeValueAnimator<ThemeTransformValue | null>(
+        seconds,
+        (t) =>
+            new ThemeTransformValue([
+                {
+                    type: "translate",
+                    x: distance * (1 - t) * Math.sin(t * 4 * Math.PI),
+                    y: 0,
+                },
+            ]),
     );
 }

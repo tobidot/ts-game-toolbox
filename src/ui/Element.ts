@@ -7,6 +7,8 @@ import {
     ElementRefusedEvent,
 } from "./events";
 import type { Group } from "./Group";
+import { theme_now } from "./theme/ThemeClock";
+import { REFUSED_SECONDS } from "./theme/ThemeValueAnimator";
 import {
     theme_evaluate,
     ThemeInstance,
@@ -33,6 +35,8 @@ export class Element {
     public stays_on_top: boolean = false;
     private _is_selected: boolean = false;
     private _is_disabled: boolean = false;
+    /** When the current refusal is over. */
+    private refused_until: number | null = null;
     private _type: string = "element";
     private _class: string | null = null;
     // properties
@@ -61,8 +65,14 @@ export class Element {
         return this.theme_instance.get_all();
     }
 
-    /** The one state theme selectors match. Priority: disabled, active, selected, hover. */
+    /**
+     * The one state theme selectors match. Priority: refused, disabled, active, selected, hover. A
+     * `:disabled` rule also holds while refused, so `:refused` only says what differs.
+     */
     public get state(): string | null {
+        if (this.refused_until !== null) {
+            return "refused";
+        }
         if (this.is_disabled) {
             return "disabled";
         }
@@ -101,6 +111,20 @@ export class Element {
             this._is_disabled = val;
             this.update_theme_instance();
         }
+    }
+
+    /** Whether it is showing a refusal, for `REFUSED_SECONDS` after one. */
+    public get is_refused(): boolean {
+        return this.refused_until !== null;
+    }
+
+    /**
+     * Shows that this press got nowhere, for a moment, through the theme's `:refused` rules. A
+     * press on a disabled element does this by itself; a key that means this element calls it.
+     */
+    public show_refused(): void {
+        this.refused_until = theme_now() + REFUSED_SECONDS;
+        this.update_theme_instance();
     }
 
     public get type(): string {
@@ -169,7 +193,14 @@ export class Element {
      * element shows nothing, so it asks for nothing. Call it once per frame.
      */
     public poll_animation(): boolean {
-        return this.is_visible && this.theme_instance.poll_animation();
+        if (!this.is_visible) {
+            return false;
+        }
+        if (this.refused_until !== null && theme_now() >= this.refused_until) {
+            this.refused_until = null;
+            this.update_theme_instance();
+        }
+        return this.theme_instance.poll_animation();
     }
 
     /**
@@ -277,6 +308,7 @@ export class Element {
     /** Clicks this element; a disabled one refuses instead. */
     public click(): void {
         if (this.is_disabled) {
+            this.show_refused();
             this.dispatch_refused_event();
             return;
         }

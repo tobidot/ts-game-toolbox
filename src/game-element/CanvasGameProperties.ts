@@ -7,6 +7,7 @@ import { RgbColor } from "../data/RgbColor";
 import { ease_in_out } from "../flow/tween/Tween";
 import { ThemeEasing, ThemeRule } from "../ui/theme/Theme";
 import { blend_table } from "../ui/theme/ThemeBlend";
+import { theme_shake } from "../ui/theme/ThemeValueAnimator";
 import { ThemeValueTweenNumber } from "../ui/theme/ThemeValueTween";
 import { UiManager } from "../ui/UiManager";
 import { Element } from "../ui/Element";
@@ -46,7 +47,8 @@ export function hex_color(hex: string): RgbColor {
  * turquoise. Class `primary`: turquoise, hover white, active orange (the "Neues Spiel" button).
  * Class `accent`: orange, hover white, active turquoise (the one action that counts: "Raten").
  * Class `secondary`: quiet, white on the line color, hover grey, active white. Class `off`: grey,
- * hover panel grey (a mute button that is off). `:selected` is orange and `:disabled` quiet.
+ * hover panel grey (a mute button that is off). `:selected` is orange and `:disabled` quiet, and a
+ * press on a disabled button shakes it.
  *
  * The other widgets look finished with no rules at all: a `panel` is a card with a line around
  * it, a `label` and a `value_label` are white text with no background, a `scroll_group` shows what
@@ -142,6 +144,10 @@ export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
         {
             selectors: [{ type: "button", state: "disabled" }],
             properties: { ...background(colors.line), ...quiet_text },
+        },
+        {
+            selectors: [{ type: "button", state: "refused" }],
+            properties: { transform: theme_shake(3), transition_seconds: 0 },
         },
         {
             selectors: [{ type: "panel" }],

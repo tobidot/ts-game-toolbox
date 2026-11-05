@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RgbColor } from "../data";
 import { Element } from "./Element";
 import { ElementClickEvent, ElementRefusedEvent } from "./events";
+import { set_theme_clock } from "./theme/ThemeClock";
 import { theme_rules_from } from "./theme/ThemeRuleBuilder";
+import { REFUSED_SECONDS, theme_shake } from "./theme/ThemeValueAnimator";
 import { UiManager } from "./UiManager";
 import { UiPage } from "./UiPage";
 import { Button } from "./widgets/Button";
@@ -120,5 +122,82 @@ describe("Element states", () => {
         slider.is_disabled = false;
         ui.pointer_down({ x: 60, y: 20 });
         expect(slider.value).toBeCloseTo(50);
+    });
+});
+
+describe("a refusal", () => {
+    let time = 0;
+    const RED = new RgbColor(200, 0, 0);
+    const QUIET = new RgbColor(40, 40, 40);
+
+    beforeEach(() => {
+        time = 5;
+        set_theme_clock(() => time);
+    });
+
+    afterEach(() => {
+        set_theme_clock(null);
+    });
+
+    function refusing_button(): Button {
+        const button = new Button(
+            "b",
+            { left: 0, top: 0, width: 10, height: 10 },
+            true,
+            theme_rules_from([
+                ["button:disabled", { background_color: QUIET }],
+                ["button:refused", { text_color: RED }],
+            ]),
+        );
+        button.is_disabled = true;
+        return button;
+    }
+
+    it("comes with a press on a disabled element, and goes by itself", () => {
+        const button = refusing_button();
+        expect(button.is_refused).toBe(false);
+        button.click();
+        expect(button.state).toBe("refused");
+        expect(button.poll_animation()).toBe(false);
+        time += REFUSED_SECONDS;
+        button.poll_animation();
+        expect(button.is_refused).toBe(false);
+        expect(button.state).toBe("disabled");
+    });
+
+    it("keeps the :disabled look and adds :refused on it", () => {
+        const button = refusing_button();
+        const before = button.theme.text_color;
+        button.click();
+        expect(button.theme.background_color.equals(QUIET)).toBe(true);
+        expect(button.theme.text_color.equals(RED)).toBe(true);
+        time += REFUSED_SECONDS;
+        button.poll_animation();
+        expect(button.theme.background_color.equals(QUIET)).toBe(true);
+        expect(button.theme.text_color.equals(before)).toBe(true);
+    });
+
+    it("can be shown by a key that means this element, disabled or not", () => {
+        const button = refusing_button();
+        button.is_disabled = false;
+        button.show_refused();
+        expect(button.state).toBe("refused");
+    });
+
+    it("shakes away to nothing", () => {
+        const shake = theme_shake(3, 1);
+        const at = (seconds: number) => {
+            const start = time;
+            const copy = shake.cpy();
+            time = start + seconds;
+            const value = copy.get();
+            time = start;
+            return value?.statements[0];
+        };
+        expect(at(0)).toEqual({ type: "translate", x: 0, y: 0 });
+        const early = at(0.125) as { x: number };
+        const late = at(0.625) as { x: number };
+        expect(early.x).toBeGreaterThan(1.5);
+        expect(Math.abs(late.x)).toBeLessThan(Math.abs(early.x));
     });
 });
