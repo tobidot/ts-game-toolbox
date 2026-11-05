@@ -10,7 +10,11 @@ import { Vector2I } from "../../geometries";
 export interface SteerOptions {
     /** Units per second. */
     speed: number;
-    /** How close counts as there: the radii of both, for something that walks up to a thing. Default 0. */
+    /**
+     * How close counts as there: the radii of both, for something that walks up to a thing.
+     * Several that share a target and are kept apart need room: they can't all reach its middle,
+     * and with less than that the ones in the crowd never arrive. Default 0.
+     */
     stop_distance?: number;
     /** On this last stretch before `stop_distance` the body slows down, to a tenth of its speed. Default 0: it doesn't. */
     slow_distance?: number;
