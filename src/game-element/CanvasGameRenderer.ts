@@ -1,6 +1,7 @@
 import { RectI } from "../geometries";
 import { LayoutRect, StageLayout } from "../stage/StageLayout";
 import { draw_start_screen, start_screen_block } from "../stage/StartScreen";
+import { wrap_text } from "../ui/text";
 import { UiManager } from "../ui/UiManager";
 import { CanvasGameReferences } from "./CanvasGameReferences";
 import {
@@ -563,25 +564,7 @@ export abstract class CanvasGameRenderer<
 
     /** `text` broken into lines no wider than `max_width` in the context's current font. */
     protected wrap(text: string, max_width: number): string[] {
-        const context = this.context;
-        const lines: string[] = [];
-        let line = "";
-        for (const word of text.split(/\s+/).filter(Boolean)) {
-            const candidate = line === "" ? word : `${line} ${word}`;
-            if (
-                line !== "" &&
-                context.measureText(candidate).width > max_width
-            ) {
-                lines.push(line);
-                line = word;
-            } else {
-                line = candidate;
-            }
-        }
-        if (line !== "") {
-            lines.push(line);
-        }
-        return lines;
+        return wrap_text(this.context, text, max_width);
     }
 
     /** Darkens the whole canvas, not only the layout, so the margins stay one with the scene. */

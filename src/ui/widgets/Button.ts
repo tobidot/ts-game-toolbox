@@ -1,5 +1,6 @@
 import { RectI } from "../../geometries";
 import { Element } from "../Element";
+import { ellipsize_text } from "../text";
 import { theme_font, ThemeRule, ThemeTextAlign } from "../theme/Theme";
 
 /** One cell of a button's text, see `Button.columns`. */
@@ -21,6 +22,8 @@ export class Button extends Element {
     public columns: readonly ButtonColumn[] | null = null;
     /** Between the edge and a text that isn't centered. */
     public text_padding: number = 10;
+    /** A text too wide for its place is squeezed, or ends in `…`, which keeps the letters' shape. */
+    public text_overflow: "squeeze" | "ellipsis" = "squeeze";
 
     public constructor(
         label: string,
@@ -119,6 +122,10 @@ export class Button extends Element {
                 : align === "right"
                   ? left + width
                   : left;
-        ctx.fillText(text, x, y, width);
+        if (this.text_overflow === "ellipsis") {
+            ctx.fillText(ellipsize_text(ctx, text, width), x, y);
+        } else {
+            ctx.fillText(text, x, y, width);
+        }
     }
 }
