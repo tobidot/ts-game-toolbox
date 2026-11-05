@@ -1,6 +1,6 @@
 import { RectI } from "../../geometries";
 import { Element } from "../Element";
-import { ThemeRule } from "../theme/Theme";
+import { theme_font, ThemeRule } from "../theme/Theme";
 
 export class Button extends Element {
     public label: string;
@@ -21,8 +21,8 @@ export class Button extends Element {
             return;
         }
 
-        const { text_color, font_size, font_family, text_baseline } =
-            this.theme_instance.get_all();
+        const theme = this.theme_instance.get_all();
+        const { text_color, text_baseline } = theme;
 
         ctx.save();
 
@@ -31,7 +31,7 @@ export class Button extends Element {
 
         const content_rect = this.get_local_content_box_size();
         ctx.fillStyle = text_color.toString();
-        ctx.font = `${font_size}px ${font_family}`;
+        ctx.font = theme_font(theme);
         ctx.textAlign = "center";
         ctx.textBaseline = text_baseline;
         ctx.fillText(

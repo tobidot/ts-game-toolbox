@@ -1,6 +1,6 @@
 import { RectI } from "../../geometries";
 import { Element } from "../Element";
-import { ThemeRule } from "../theme/Theme";
+import { theme_font, ThemeRule } from "../theme/Theme";
 
 export class Gallery extends Element {
     public readonly images: Array<HTMLImageElement> = [];
@@ -50,7 +50,6 @@ export class Gallery extends Element {
             border_radius,
             text_color,
             font_size,
-            font_family,
             text_baseline,
         } = this.theme_instance.get_all();
 
@@ -112,7 +111,7 @@ export class Gallery extends Element {
             ctx.fill();
 
             ctx.fillStyle = text_color.toString();
-            ctx.font = `${font_size}px ${font_family}`;
+            ctx.font = theme_font(this.theme_instance.get_all());
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("No Image", this.rect.width / 2, this.rect.height / 2);
@@ -143,7 +142,7 @@ export class Gallery extends Element {
         }
 
         ctx.fillStyle = text_color.toString();
-        ctx.font = `${font_size}px ${font_family}`;
+        ctx.font = theme_font(this.theme_instance.get_all());
         ctx.textAlign = "left";
         ctx.textBaseline = text_baseline;
         ctx.fillText(

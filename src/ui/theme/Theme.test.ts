@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { Element } from "../Element";
-import { ThemeRule } from "./Theme";
+import { Button } from "../widgets/Button";
+import { CheckBox } from "../widgets/CheckBox";
+import { Label } from "../widgets/Label";
+import { Slider } from "../widgets/Slider";
+import { ValueLabel } from "../widgets/ValueLabel";
+import { theme_font, ThemeRule } from "./Theme";
 import { theme_rules_from } from "./ThemeRuleBuilder";
 
 describe("Theme Selectors", () => {
@@ -207,4 +212,65 @@ describe("Theme Selectors", () => {
     //     // type:hover is missing, so it should use :hover (priority 5) over type (priority 2)
     //     expect(element.theme.font_size).toBe(12);
     // });
+});
+
+describe("theme_font", () => {
+    const base = {
+        font_style: "normal",
+        font_weight: 400,
+        font_size: 20,
+        font_family: "monospace",
+    } as const;
+
+    it("is the plain font for a normal weight, as it always was", () => {
+        expect(theme_font(base)).toBe("20px monospace");
+    });
+
+    it("says the weight and the style", () => {
+        expect(theme_font({ ...base, font_weight: 700 })).toBe(
+            "700 20px monospace",
+        );
+        expect(theme_font({ ...base, font_style: "italic" })).toBe(
+            "italic 20px monospace",
+        );
+        expect(theme_font({ ...base, font_style: "bold" })).toBe(
+            "700 20px monospace",
+        );
+    });
+});
+
+describe("the widgets read font_weight and font_style", () => {
+    const rect = { left: 0, top: 0, width: 200, height: 40 };
+    const rules = [
+        { properties: { font_weight: 700, font_style: "italic" as const } },
+    ];
+    const widgets: Array<[string, Element]> = [
+        ["Button", new Button("x", rect, true, rules)],
+        ["Label", new Label("x", rect, true, rules)],
+        ["ValueLabel", new ValueLabel("x", 1, rect, true, rules)],
+        ["Slider", new Slider("x", 0, 1, 0, rect, true, rules)],
+    ];
+    const box = new CheckBox(false, rect, true, rules);
+    box.label = "x";
+    widgets.push(["CheckBox", box]);
+
+    for (const [name, widget] of widgets) {
+        it(name, () => {
+            let font = "";
+            const context = new Proxy(
+                {},
+                {
+                    get: () => () => undefined,
+                    set: (_, key, value) => {
+                        if (key === "font") {
+                            font = value;
+                        }
+                        return true;
+                    },
+                },
+            ) as unknown as CanvasRenderingContext2D;
+            widget.draw(context);
+            expect(font).toContain("italic 700");
+        });
+    }
 });

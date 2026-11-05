@@ -1,7 +1,7 @@
 import { RectI } from "../../geometries/Rect";
 import { Vector2, Vector2I } from "../../geometries/Vector2";
 import { Element } from "../Element";
-import { ThemeRule } from "../theme/Theme";
+import { theme_font, ThemeRule } from "../theme/Theme";
 
 const TRACK_HEIGHT = 8;
 const THUMB_RADIUS = 10;
@@ -63,15 +63,14 @@ export class Slider extends Element {
             return;
         }
 
+        const theme = this.theme_instance.get_all();
         const {
             background_color,
             accent_color,
             border_color,
             border_width,
             text_color,
-            font_size,
-            font_family,
-        } = this.theme_instance.get_all();
+        } = theme;
 
         ctx.save();
         this.apply_transforms(ctx);
@@ -112,7 +111,7 @@ export class Slider extends Element {
             ctx.stroke();
         }
 
-        ctx.font = `${font_size}px ${font_family}`;
+        ctx.font = theme_font(theme);
         ctx.textBaseline = "top";
         ctx.textAlign = "left";
         ctx.fillText(this.title, box.left, box.top);

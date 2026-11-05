@@ -1,6 +1,6 @@
 import { RectI } from "../../geometries";
 import { Element } from "../Element";
-import { ThemeRule } from "../theme/Theme";
+import { theme_font, ThemeRule } from "../theme/Theme";
 
 /** The largest box of a checkbox without a label; games paint their own text next to it. */
 const UNLABELLED_BOX_SIZE = 20;
@@ -39,6 +39,7 @@ export class CheckBox extends Element {
             return;
         }
 
+        const theme = this.theme_instance.get_all();
         const {
             background_color,
             border_color,
@@ -46,10 +47,8 @@ export class CheckBox extends Element {
             border_radius,
             text_color,
             accent_color,
-            font_size,
-            font_family,
             text_baseline,
-        } = this.theme_instance.get_all();
+        } = theme;
 
         ctx.save();
 
@@ -101,7 +100,7 @@ export class CheckBox extends Element {
 
         if (this.label !== "") {
             ctx.fillStyle = text_color.toString();
-            ctx.font = `${font_size}px ${font_family}`;
+            ctx.font = theme_font(theme);
             ctx.textAlign = "left";
             ctx.textBaseline = text_baseline;
             ctx.fillText(

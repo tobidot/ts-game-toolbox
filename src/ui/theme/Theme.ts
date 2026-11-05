@@ -241,6 +241,22 @@ export function theme_evaluate(
 }
 
 /**
+ * The CSS font of a theme: all widgets set their text through this, so `font_weight` and
+ * `font_style` reach every one of them.
+ */
+export function theme_font(
+    theme: Pick<
+        ThemeProperties,
+        "font_style" | "font_weight" | "font_size" | "font_family"
+    >,
+): string {
+    const style = theme.font_style === "italic" ? "italic " : "";
+    const weight = theme.font_style === "bold" ? 700 : theme.font_weight;
+    const weight_text = weight === 400 ? "" : `${weight} `;
+    return `${style}${weight_text}${theme.font_size}px ${theme.font_family}`;
+}
+
+/**
  * A theme instance is what an element uses to store it current theme properties.
  */
 export class ThemeInstance implements ThemePropertyDefinitions {
@@ -381,7 +397,7 @@ export const DEFAULT_THEME = {
 
     font_style: "normal",
     font_size: 16,
-    font_weight: 600,
+    font_weight: 400,
     font_family: "Arial",
 
     text_color: new RgbColor(0, 0, 0),

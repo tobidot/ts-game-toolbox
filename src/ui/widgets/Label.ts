@@ -1,6 +1,6 @@
 import { RectI } from "../../geometries";
 import { Element } from "../Element";
-import { ThemeRule } from "../theme/Theme";
+import { theme_font, ThemeRule } from "../theme/Theme";
 
 export class Label extends Element {
     public text: string;
@@ -21,20 +21,15 @@ export class Label extends Element {
             return;
         }
 
-        const {
-            text_color,
-            font_size,
-            font_family,
-            text_align,
-            text_baseline,
-        } = this.theme_instance.get_all();
+        const theme = this.theme_instance.get_all();
+        const { text_color, text_align, text_baseline } = theme;
 
         ctx.save();
         this.apply_transforms(ctx);
         this.draw_background(ctx);
 
         ctx.fillStyle = text_color.toString();
-        ctx.font = `${font_size}px ${font_family}`;
+        ctx.font = theme_font(theme);
         ctx.textAlign = text_align;
         ctx.textBaseline = text_baseline;
 
