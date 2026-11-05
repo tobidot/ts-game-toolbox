@@ -615,6 +615,30 @@ describe("MenuView", () => {
             set_theme_clock(null);
         });
 
+        it("is entering for a moment when its level appears, and not at the very start", () => {
+            const menu = new Menu<string>([
+                { label: "A", entries: [{ label: "B", value: "b" }] },
+            ]);
+            const input = new MenuInput(menu);
+            const view = new MenuView(
+                input,
+                { left: 0, top: 0, width: 200, height: 300 },
+                { level: 1 },
+            );
+            const first = new MenuView(
+                input,
+                { left: 0, top: 0, width: 200, height: 300 },
+                { level: 0 },
+            );
+            view.poll_animation();
+            first.poll_animation();
+            expect(first.state).toBe(null);
+            input.handle_key("Enter");
+            view.poll_animation();
+            expect(view.is_visible).toBe(true);
+            expect(view.state).toBe("entering");
+        });
+
         it("is entering for a moment when another level shows in it", () => {
             const { view, input, page } = setup();
             page.draw(fake_context());

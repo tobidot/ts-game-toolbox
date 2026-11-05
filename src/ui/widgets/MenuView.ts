@@ -240,6 +240,8 @@ export class MenuView<T> extends Panel {
     private shown_depth: number = -1;
     private shown_cursor: number = -1;
     private seen_refusals: number;
+    /** What shows from the start hasn't arrived from anywhere. */
+    private is_at_start: boolean = true;
 
     public constructor(
         input: MenuInput<T>,
@@ -272,6 +274,7 @@ export class MenuView<T> extends Panel {
             }
         }
         this.sync();
+        this.is_at_start = false;
     }
 
     /** How high a row is, and the hint and the path. A layout for a phone can ask for more. */
@@ -368,7 +371,6 @@ export class MenuView<T> extends Panel {
     }
 
     private rebuild(entries: readonly MenuEntry<T>[], depth: number): void {
-        const is_another_level = this.shown_entries !== null;
         for (const row of this.rows) {
             this.list.remove(row);
         }
@@ -386,7 +388,7 @@ export class MenuView<T> extends Panel {
         this.shown_depth = depth;
         this.shown_cursor = -1;
         this.list.scroll = 0;
-        if (is_another_level) {
+        if (!this.is_at_start) {
             this.show_entering();
         }
     }
