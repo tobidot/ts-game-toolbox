@@ -171,6 +171,17 @@ describe("settings.themes and theme_name()", () => {
             expect(properties.blended(PAINT).name).toBe("Nacht");
         });
 
+        it("goes on from the middle when a fade cuts another short, with no jump", () => {
+            to_night();
+            const properties = logic.properties;
+            theme_time += 1;
+            const middle = properties.blended(PAINT).board;
+            properties.show_theme("day");
+            expect(properties.blended(PAINT).board).toBe(middle);
+            theme_time += 2;
+            expect(properties.blended(PAINT).board).toBe("#ffffff");
+        });
+
         it("is the plain table entry without a fade", () => {
             run_frames(2);
             expect(logic.properties.blended(PAINT)).toBe(PAINT.day);

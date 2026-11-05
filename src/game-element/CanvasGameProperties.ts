@@ -30,6 +30,16 @@ export const UNPLACED: Readonly<RectI> = {
     height: 0,
 };
 
+/** One of `settings.themes` fading into another. */
+interface ThemeFade {
+    from: string;
+    to: string;
+    progress: ThemeValueTweenNumber;
+    /** The fade this one cut short, and how far that had come. */
+    interrupted: ThemeFade | null;
+    interrupted_at: number;
+}
+
 /** The curve of a whole theme fading into another. `blended()` goes along with it. */
 const THEME_FADE_EASING: ThemeEasing = "ease_in_out";
 
@@ -303,10 +313,7 @@ export class CanvasGameProperties<
     private game_theme_rules: readonly ThemeRule[];
     private _shown_theme: string | null = null;
     /** The fade from one of `settings.themes` to the shown one. */
-    private theme_fade: {
-        from: string;
-        progress: ThemeValueTweenNumber;
-    } | null = null;
+    private theme_fade: ThemeFade | null = null;
     private readonly placements: Array<{
         widget: Element;
         rect_of: (layout: LayoutOf<S>) => RectI;
@@ -382,12 +389,15 @@ export class CanvasGameProperties<
             from !== null && fade_seconds > 0
                 ? {
                       from,
+                      to: name,
                       progress: new ThemeValueTweenNumber(
                           0,
                           1,
                           fade_seconds,
                           ease_in_out,
                       ),
+                      interrupted: this.theme_fade,
+                      interrupted_at: this.theme_fade?.progress.get() ?? 0,
                   }
                 : null;
         this.set_theme(this.settings.themes[name] ?? [], fade_seconds);
@@ -402,7 +412,25 @@ export class CanvasGameProperties<
         const fade = this.theme_fade;
         return fade === null
             ? table[shown]
-            : blend_table(table[fade.from], table[shown], fade.progress.get());
+            : blend_table(
+                  this.fade_start(table, fade),
+                  table[fade.to],
+                  fade.progress.get(),
+              );
+    }
+
+    /** Where `fade` set out from: another fade's middle when it interrupted one, as the widgets do. */
+    private fade_start<T extends object>(
+        table: Readonly<Record<string, T>>,
+        fade: ThemeFade,
+    ): T {
+        return fade.interrupted === null
+            ? table[fade.from]
+            : blend_table(
+                  this.fade_start(table, fade.interrupted),
+                  table[fade.interrupted.to],
+                  fade.interrupted_at,
+              );
     }
 
     /**
