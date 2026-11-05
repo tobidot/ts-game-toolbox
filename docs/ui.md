@@ -117,12 +117,13 @@ this.on_refused(this.properties.go, () => {
 | Widget                      | Constructor                      | Worth knowing                                                                                                                                                          |
 | --------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Button`                    | `(label, rect)`                  | Centered, unless a rule sets `text_align`. `text_padding` keeps other text off the edge. `columns` shows several texts in one row; see below.                          |
-| `Label`                     | `(text, rect)`                   | Text that is too wide gets squeezed into the box.                                                                                                                      |
+| `Label`                     | `(text, rect)`                   | Text that is too wide gets squeezed into the box, or breaks into lines with `is_wrapped` (`line_spacing` a share of the font size). `text_padding` keeps it off the edge.                                                                                                                      |
 | `ValueLabel`                | `(label, value, rect)`           | Shows `label: value`.                                                                                                                                                  |
 | `CheckBox`                  | `(checked, rect)`                | `checked`, and an optional `label`. With a label the rect's height decides the box. Without one the box is at most 20 units, and the game paints what goes next to it. |
 | `Slider`                    | `(title, min, max, value, rect)` | `value`; `format: (value) => string`, default two decimals. Pressing anywhere on it sets the value. `HouseSlider` is the same widget with the house's shape.           |
 | `Panel`                     | `(children, rect)`               | A `Group` with a background.                                                                                                                                           |
 | `ScrollGroup`               | `(children, rect)`               | See below.                                                                                                                                                             |
+| `MenuView`                  | `(input, rect, options?)`        | A `Menu` on the page, in a style. See "Menus".                                                                                       |
 | `Gallery`, `Image`, `Video` |                                  | Not used in the Spielwerk series yet.                                                                                                                                  |
 
 All of them also take `is_visible` and `theme_rules` as the last two arguments. A hidden element isn't hit, and neither is anything inside it.
@@ -139,9 +140,11 @@ row.columns = [
 
 A column without `align` takes the theme's `text_align`. While `columns` isn't null, the label doesn't show.
 
+A long label on a `Button` is squeezed. `text_overflow = "ellipsis"` ends it in `…` instead, for a list where the squeezed rows would differ. `wrap_text(ctx, text, width)` and `ellipsize_text(ctx, text, width)` are the same two rules for your own painting.
+
 ## States and classes
 
-`element.state` is one of `refused`, `disabled`, `active`, `selected`, `hover`, or `null`, in that priority. `active` is a press being held. `refused` lasts a moment, after `show_refused()`, and a selector with `:disabled` matches it too, so an element with no `:refused` rule simply stays disabled.
+`element.state` is one of `refused`, `disabled`, `active`, `selected`, `entering`, `hover`, or `null`, in that priority. `entering` lasts a moment after `show_entering(seconds?)`, for what has just appeared. `active` is a press being held. `refused` lasts a moment, after `show_refused()`, and a selector with `:disabled` matches it too, so an element with no `:refused` rule simply stays disabled.
 
 ```typescript
 button.is_selected = train === game.selected;
@@ -237,6 +240,8 @@ theme_rules_from([
 
 `theme_pulse(from, to, seconds)` breathes a color there and back. `theme_shake(distance)` shakes sideways and dies away. For anything else there is `new ThemeValueAnimator(seconds, (t) => value)`, with `t` going from 0 to 1 each round.
 
+`theme_slide(x, y, seconds?)` starts displaced and arrives, for `:entering`.
+
 **A refused press** can show it: `element.show_refused()` puts it in the state `refused` for `REFUSED_SECONDS`, 0.35. The house rules have `button:refused` shake a little. A game calls it where it knows the press was refused, not in the widget, because the game has the last word on that.
 
 **A theme fade** is a transition with one duration for one change. What a game paints follows along if it reads its colors through `blended`:
@@ -251,11 +256,97 @@ const style = this.properties.blended(PHASE_STYLES);
 
 **Tests.** The theme reads the time from one place. `set_theme_clock(() => my_seconds)` replaces it and `set_theme_clock(null)` puts the real one back, so a test steps through a transition rather than waiting for it. To get past all movement at once, step it by more than the longest duration.
 
+## Borders
+
+`border_style` is `"solid"`, or `"raised"` and `"sunken"`: a bevel, lighter and darker than `border_color`, as `border_width` wide. A `Panel` and anything else that draws a background has it.
+
+## Menus
+
+Three classes with one job each:
+
+| Class | Job | Knows nothing about |
+| --- | --- | --- |
+| `Menu` | the tree, the cursor, the open path | input, drawing |
+| `MenuInput` | keys, presses, the buffer, what was chosen this frame | drawing, rects |
+| `MenuView` | draws a menu in a style, turns hits into presses | keys, the buffer |
+
+```typescript
+const forms = new Menu<string>([
+    { label: "Anträge", entries: [
+        { label: "Hund", value: "hund", disabled: () => !has_id, hint: () => (has_id ? "" : "Ausweis fehlt") },
+        { label: "Zurück", back: true },
+    ] },
+]);
+const input = new MenuInput(forms);
+// In a game's properties: the shell runs a placed view's input by itself.
+const view = this.place(new MenuView(input, UNPLACED), (layout) => layout.menu);
+
+// In update():
+for (const form of input.choices()) {
+    game.file(form);
+}
+```
+
+With no style that is a finished menu in the house look: a row per entry, the cursor fading from row to row, `›` on a submenu, a marked back row, disabled rows dimmed and still pressable, a hint line, a scrolling list, a long label ending in `…`, hover moving the cursor and one tap pressing. It reads the menu when it draws and when it's hit, so a reason that changes while the menu is open just shows.
+
+**`Menu`** entries have `label`, `value`, `entries`, `disabled`, `hint`, `back` and `key`. `levels` gives the open levels from the top down, with their cursors, so a view can draw parents. `back_to(depth)` goes back to a level. `set_entries(root)` replaces the tree while it's open: the path stays as far as its labels still exist, the cursor stays on the same entry. `new Menu(root, { stops_on_disabled: true })` lets the cursor stop on disabled entries, so a keyboard can read their reasons too, and the way to an entry doesn't change when another becomes enabled.
+
+**`MenuInput`** works like `KeyboardState`: events go in, the game asks during `update()`, `end_frame()` starts the next frame.
+
+- `choices()`, `last_choice`, `last_refused`: since the last `end_frame()`. `on_choice` and `on_change` fire inside the event, for what can't wait for the frame, such as starting a hold.
+- `is_held`: while true, presses wait in the buffer and nothing moves. `is_enabled`: a menu on a screen not in use; off, it hears nothing.
+- `handle_key(key, is_repeat?)`, `handle_hover(depth, index)`, `handle_press(depth, index)`: what a view or your own painting feeds it. Up and Down move and repeat; Enter and Space confirm; Escape and Left go back; Right opens a submenu; a letter picks the entry with that `key`.
+- `attach(target, signal)` for keys without the shell. In a game, the shell routes keys to every placed view's input, after the intro and after the mute and next-round keys, and calls `update()` before your `update()` and `end_frame()` after it. A second menu on another screen is the same with `is_enabled`.
+
+**The buffer** holds presses, not choices: typing ahead means pressing Down, Down, Enter during a wait, so the moves have to wait too. They replay in order when the hold ends, and a replayed Enter may open the next submenu and start the next wait. The rules, all of them from what bots showed:
+
+- `buffer_seconds`, default 1: how long the oldest press may wait in one hold. Make it longer than your longest hold; a shorter one is worse than none, because a press typed ahead dies and those behind it are lost with it.
+- `buffer_size`, default 16: how many may wait. A press that doesn't fit is the one that goes.
+- No holes: a queue with a press missing means something else, so what goes, goes with all behind it. Those count in `dropped_presses`.
+- A replayed press on a disabled entry drops the rest, so a mashing player doesn't open the wrong form.
+- A new tree drops the queue: the presses were meant for a tree that isn't there.
+- Replay stops at a choice, so the game can hold before the next one plays.
+
+**`MenuView`** takes `MenuViewOptions`: `style` (theme rules), `level` (which level it shows, default the open one), `row_height`, `row_gap`, `padding`, `submenu_mark`, `show_hint`, `show_path`, `root_text`, `held_text`, `create_row`. It's a `Panel` holding a `ScrollGroup` in `list`, between `path` and `hint`, because those two mustn't scroll. `row_height` can change, for a layout that wants taller rows.
+
+**A style** is a list of theme rules, a constant the game can name:
+
+```typescript
+const OFFICE_95 = theme_rules_from([
+    ["menu", { background_color: silver, border_style: "raised", border_color: silver, border_width: 2 }],
+    ["menu:entering", { transform: theme_slide(-10, 0) }],
+    ["menu-row", { background_color: silver, text_color: black, border_radius: 0, transition_seconds: 0 }],
+    ["menu-row:hover", { background_color: light }],
+    ["menu-row:selected", { background_color: navy, text_color: white }],
+    ["menu-row:active", { background_color: navy, text_color: white }],
+    ["menu-row:disabled", { background_color: silver, text_color: gray }],
+    ["menu-row:disabled_selected", { background_color: gray, text_color: light }],
+    ["menu-row:refused", { background_color: red, transform: theme_shake(4) }],
+    ["menu-hint", { background_color: silver, border_style: "sunken", border_color: silver, border_width: 1 }],
+    ["menu-hint.held", { background_color: theme_pulse(silver, amber, 0.5) }],
+]);
+const styled = this.place(new MenuView(input, UNPLACED, { style: OFFICE_95 }), (layout) => layout.menu);
+```
+
+| Selector | What it styles |
+| --- | --- |
+| `menu` | the area behind the rows, with the class `held` during a hold and the state `entering` when a level appears |
+| `menu-row` with `:hover`, `:active`, `:selected`, `:disabled`, `:disabled_selected`, `:refused` | a row; `selected` is the cursor, `disabled_selected` the cursor on a disabled row |
+| `menu-row.submenu`, `menu-row.back` | rows that open or go back |
+| `menu-hint`, with the class `held` | the hint line |
+| `menu-path` | the path above the rows |
+
+A state beats a type, so a style that sets a row's background has to set it for the states too, or the house look shows through on the row under the mouse.
+
+For a look of its own, one `MenuView` per open level with `level` makes a cascade, placed by a rule that reads `menu.levels`; `MenuHint` is the hint line on its own, for a status bar. What the rules can't say goes in a subclass of `MenuRow` with its own `draw()`, handed in through `create_row`.
+
+A game that paints its own menu can still use `MenuInput` without a view, through `handle_hover()` and `handle_press()`.
+
 ## Scrolling, drags and the wheel
 
 `ScrollGroup` is a `Group` with a vertical offset. It clips its drawing to its rect, leaving room for the border of its widest child, and whatever is clipped away can't be hit.
 
-Set `row_height` and it stacks its children top to bottom, in the order of adding, with `row_gap` between them and `padding` around them, and leaves a gutter for the scroll bar. Without `row_height` it doesn't arrange them: the game gives each child a rect, in the group's scrolling coordinates.
+Set `row_height` and it stacks its children top to bottom, in the order of adding, with `row_gap` between them and `padding` around them, and leaves a gutter for the scroll bar; `reserves_gutter = false` gives rows that fit the whole width until there is something to scroll. Without `row_height` it doesn't arrange them: the game gives each child a rect, in the group's scrolling coordinates.
 
 - `scroll`: the offset, kept between 0 and `max_scroll`.
 - `content_height`, `max_scroll`.
