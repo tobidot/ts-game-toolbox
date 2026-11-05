@@ -29,6 +29,11 @@ export class ScrollGroup extends Group {
     public row_gap: number = 0;
     /** Around the stacked rows. */
     public padding: number = 0;
+    /**
+     * Whether stacked rows always leave room for the scroll bar. False gives them the whole width
+     * until there's something to scroll, so a list that fits has the same margin on both sides.
+     */
+    public reserves_gutter: boolean = true;
     private _scroll: number = 0;
     /** Where the drag in progress began. */
     private drag_anchor: { y: number; scroll: number } | null = null;
@@ -164,13 +169,21 @@ export class ScrollGroup extends Group {
         if (row_height === null) {
             return;
         }
+        const visible = this.children.filter((child) => child.is_visible);
+        const height =
+            2 * this.padding +
+            visible.length * (row_height + this.row_gap) -
+            this.row_gap;
+        const gutter =
+            this.reserves_gutter || height > this.rect.height
+                ? SCROLL_BAR_GUTTER
+                : 0;
         let top = this.padding;
         for (const child of this.children) {
             if (child.is_visible) {
                 child.rect.left = this.padding;
                 child.rect.top = top;
-                child.rect.width =
-                    this.rect.width - 2 * this.padding - SCROLL_BAR_GUTTER;
+                child.rect.width = this.rect.width - 2 * this.padding - gutter;
                 child.rect.height = row_height;
                 top += row_height + this.row_gap;
             }

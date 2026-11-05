@@ -311,4 +311,34 @@ describe("ScrollGroup stacking its rows", () => {
             LIST.height + 6,
         ]);
     });
+
+    describe("reserves_gutter", () => {
+        function stacked(rows: number, reserves_gutter: boolean): Button[] {
+            const list = new ScrollGroup([], LIST);
+            list.row_height = ROW_HEIGHT;
+            list.reserves_gutter = reserves_gutter;
+            const buttons = Array.from(
+                { length: rows },
+                () =>
+                    new Button("", {
+                        left: 0,
+                        top: 0,
+                        width: 0,
+                        height: 0,
+                    }),
+            );
+            buttons.forEach((button) => list.add(button));
+            expect(list.content_height).toBeGreaterThan(0);
+            return buttons;
+        }
+
+        it("always leaves room for the bar by default", () => {
+            expect(stacked(2, true)[0].rect.width).toBe(190);
+        });
+
+        it("gives rows the whole width while they fit, if asked", () => {
+            expect(stacked(4, false)[0].rect.width).toBe(200);
+            expect(stacked(5, false)[0].rect.width).toBe(190);
+        });
+    });
 });
