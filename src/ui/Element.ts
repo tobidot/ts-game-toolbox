@@ -28,6 +28,8 @@ export class Element {
     public is_visible: boolean;
     public is_hovered: boolean = false;
     public is_down: boolean = false;
+    /** Stays above its later siblings, for painting and for hits: `Group.add()` keeps it last. */
+    public stays_on_top: boolean = false;
     private _is_selected: boolean = false;
     private _is_disabled: boolean = false;
     private _type: string = "element";

@@ -7,7 +7,8 @@ const ICON_SHARE = 38 / 56;
 
 /**
  * A toolbox button with an icon for a label, and a strike across it while its channel is off. The
- * shell builds it for a game with sound (`properties.sound_button`, `properties.music_button`).
+ * shell builds it for a game with sound (`properties.sound_button`, `properties.music_button`). It
+ * stays on top of the game's widgets, for painting and for hits, however they are placed.
  */
 export class MuteButton extends Button {
     public icon: Asset<HTMLImageElement> | null = null;
@@ -15,6 +16,7 @@ export class MuteButton extends Button {
     public constructor() {
         super("", { left: 0, top: 0, width: 0, height: 0 });
         this.class = "primary";
+        this.stays_on_top = true;
     }
 
     /** Whether the button shows its channel as off. */

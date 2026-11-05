@@ -20,9 +20,17 @@ export class Group extends Element {
         this.update_theme_instance();
     }
 
+    /** Adds `child` on top of its siblings, but under those that stay on top. */
     public add(child: Element): void {
         child.parent = this;
-        this.children.push(child);
+        const first_on_top = this.children.findIndex(
+            (sibling) => sibling.stays_on_top,
+        );
+        if (child.stays_on_top || first_on_top < 0) {
+            this.children.push(child);
+        } else {
+            this.children.splice(first_on_top, 0, child);
+        }
         child.update_theme_instance();
     }
 

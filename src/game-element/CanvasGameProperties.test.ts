@@ -5,7 +5,9 @@ import { theme_rules_from } from "../ui/theme/ThemeRuleBuilder";
 import { Button } from "../ui/widgets/Button";
 import { Panel } from "../ui/widgets/Panel";
 import { CanvasGameProperties, UNPLACED } from "./CanvasGameProperties";
-import { CanvasGameSettings } from "./CanvasGameSettings";
+import { CanvasGameSettings, MuteButtonsLayout } from "./CanvasGameSettings";
+
+type MuteLayout = MuteButtonsLayout & { width: number; height: number };
 
 const WIDE = { width: 960, height: 640 };
 const TALL = { width: 600, height: 960 };
@@ -111,5 +113,40 @@ describe("place", () => {
         expect(button.rect.width).toBe(480);
         game.place_widgets(TALL);
         expect(button.rect.width).toBe(300);
+    });
+});
+
+describe("the mute button", () => {
+    class SoundSettings extends CanvasGameSettings<MuteLayout> {
+        public override readonly layouts = [
+            {
+                width: 960,
+                height: 640,
+                sound_button: { left: 900, top: 10, width: 50, height: 50 },
+            },
+        ];
+        public override readonly sounds = { select: "select.wav" };
+    }
+
+    it("stays on top of a panel placed later, for painting and for hits", () => {
+        const game = new CanvasGameProperties<object, SoundSettings>(
+            new SoundSettings(),
+            {} as IntroGate,
+        );
+        const panel = game.place(new Panel([], UNPLACED), () => ({
+            left: 0,
+            top: 0,
+            width: 960,
+            height: 100,
+        }));
+        const later = game.place(new Button("b", UNPLACED), () => ({
+            left: 880,
+            top: 0,
+            width: 80,
+            height: 80,
+        }));
+        const button = game.sound_button;
+        expect(game.page.children).toEqual([panel, later, button]);
+        expect(game.page.hit({ x: 920, y: 30 })[0]).toBe(button);
     });
 });

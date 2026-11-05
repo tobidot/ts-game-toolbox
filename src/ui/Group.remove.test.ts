@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { Element } from "./Element";
 import { ElementClickEvent } from "./events";
 import { Group } from "./Group";
 import { UiManager } from "./UiManager";
@@ -101,5 +102,23 @@ describe("Group.remove", () => {
         expect(button.theme.font_size).toBe(50);
         group.remove(button);
         expect(button.theme.font_size).not.toBe(50);
+    });
+});
+
+describe("Group.add and stays_on_top", () => {
+    const rect = { left: 0, top: 0, width: 10, height: 10 };
+
+    it("adds under what stays on top, and in order among the others", () => {
+        const group = new Group([], rect);
+        const first = new Element(rect);
+        const top = new Element(rect);
+        top.stays_on_top = true;
+        const second = new Element(rect);
+        const top_too = new Element(rect);
+        top_too.stays_on_top = true;
+        for (const child of [first, top, second, top_too]) {
+            group.add(child);
+        }
+        expect(group.children).toEqual([first, second, top, top_too]);
     });
 });
