@@ -6,16 +6,29 @@ import { ThemeRule } from "../theme/Theme";
 /** How wide the bar is that says there is more, inside the right edge. */
 const SCROLL_BAR_WIDTH = 4;
 const SCROLL_BAR_MIN_HEIGHT = 24;
+/** What stacked rows leave free on the right, so the bar doesn't lie on them. */
+const SCROLL_BAR_GUTTER = 10;
 
 /**
  * A `Group` whose children scroll up and down inside its rect: it draws only what lies inside, and
  * a press only reaches what it can see. Drag with `UiManager`'s help (a press on a row stays a
  * click until it moved), the wheel with `bind_stage_input`, and `scroll_to()` follows a keyboard
- * cursor. Children have rects relative to the top of the content, as in any `Group`.
+ * cursor.
+ *
+ * With `row_height` set it stacks its visible children in their order, as wide as it is, leaving
+ * `row_gap` between them and `padding` around them; they close up when one goes. Without it the
+ * children keep their own rects, relative to the top of the content, as in any `Group`. A child's
+ * border stays whole at the edge: the clip leaves room for it.
  *
  * Theme type `scroll_group`: `background_color` behind the rows, `text_color` for the scroll bar.
  */
 export class ScrollGroup extends Group {
+    /** The height of a stacked row; null leaves the children's rects alone. */
+    public row_height: number | null = null;
+    /** Between two stacked rows. */
+    public row_gap: number = 0;
+    /** Around the stacked rows. */
+    public padding: number = 0;
     private _scroll: number = 0;
     /** Where the drag in progress began. */
     private drag_anchor: { y: number; scroll: number } | null = null;
@@ -39,15 +52,16 @@ export class ScrollGroup extends Group {
         this._scroll = Math.max(0, Math.min(val, this.max_scroll));
     }
 
-    /** How far down the lowest visible child reaches. */
+    /** How far down the lowest visible child reaches, with `padding` under stacked rows. */
     public get content_height(): number {
-        let bottom = 0;
+        this.stack_rows();
+        let bottom = this.row_height === null ? 0 : this.padding;
         for (const child of this.children) {
             if (child.is_visible) {
                 bottom = Math.max(bottom, child.rect.top + child.rect.height);
             }
         }
-        return bottom;
+        return this.row_height === null ? bottom : bottom + this.padding;
     }
 
     public get max_scroll(): number {
@@ -56,13 +70,20 @@ export class ScrollGroup extends Group {
 
     /** Scrolls as little as it takes to show all of `child`. */
     public scroll_to(child: Element): void {
-        const top = child.rect.top;
-        const bottom = top + child.rect.height;
+        this.stack_rows();
+        const margin = this.row_height === null ? 0 : this.padding;
+        const top = child.rect.top - margin;
+        const bottom = child.rect.top + child.rect.height + margin;
         if (top < this.scroll) {
             this.scroll = top;
         } else if (bottom > this.scroll + this.rect.height) {
             this.scroll = bottom - this.rect.height;
         }
+    }
+
+    public override hit(coords: Vector2I): Array<Element> {
+        this.stack_rows();
+        return super.hit(coords);
     }
 
     public override to_child_coordinates(coords: Vector2I): Vector2I {
@@ -104,6 +125,7 @@ export class ScrollGroup extends Group {
         if (!this.is_visible) {
             return;
         }
+        this.stack_rows();
         const { left, top, width, height } = this.rect;
         const scroll = this.scroll;
 
@@ -114,7 +136,13 @@ export class ScrollGroup extends Group {
 
         ctx.save();
         ctx.beginPath();
-        ctx.rect(left, top, width, height);
+        const border = this.widest_child_border();
+        ctx.rect(
+            left - border,
+            top - border,
+            width + 2 * border,
+            height + 2 * border,
+        );
         ctx.clip();
         ctx.translate(left, top - scroll);
         for (const child of this.children) {
@@ -128,6 +156,34 @@ export class ScrollGroup extends Group {
         ctx.restore();
 
         this.draw_scroll_bar(ctx, scroll);
+    }
+
+    /** Gives the visible children their places, in order, when this group stacks them. */
+    private stack_rows(): void {
+        const row_height = this.row_height;
+        if (row_height === null) {
+            return;
+        }
+        let top = this.padding;
+        for (const child of this.children) {
+            if (child.is_visible) {
+                child.rect.left = this.padding;
+                child.rect.top = top;
+                child.rect.width =
+                    this.rect.width - 2 * this.padding - SCROLL_BAR_GUTTER;
+                child.rect.height = row_height;
+                top += row_height + this.row_gap;
+            }
+        }
+    }
+
+    /** A border draws outward from its rect, so a child at the edge needs this much room. */
+    private widest_child_border(): number {
+        let widest = 0;
+        for (const child of this.children) {
+            widest = Math.max(widest, child.theme_instance.get("border_width"));
+        }
+        return widest;
     }
 
     private draw_scroll_bar(

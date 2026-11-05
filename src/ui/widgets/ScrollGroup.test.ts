@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ElementClickEvent } from "../events";
+import { theme_rules_from } from "../theme/ThemeRuleBuilder";
 import { UiManager } from "../UiManager";
 import { UiPage } from "../UiPage";
 import { Button } from "./Button";
@@ -205,6 +206,109 @@ describe("ScrollGroup", () => {
         expect(calls).toContain("translate 100,50");
         expect(draws.map((draw) => draw.mock.calls.length)).toEqual([
             0, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+        ]);
+    });
+});
+
+describe("ScrollGroup stacking its rows", () => {
+    function stacked(rows: number) {
+        const page = new UiPage(
+            { x: 400, y: 400 },
+            { left: 0, top: 0, width: 1, height: 1 },
+            { left: 0, top: 0, width: 400, height: 400 },
+        );
+        const list = new ScrollGroup([], LIST);
+        list.row_height = 40;
+        list.row_gap = 6;
+        list.padding = 4;
+        const buttons = Array.from({ length: rows }, (_, index) => {
+            const button = new Button(`${index}`, {
+                left: 0,
+                top: 0,
+                width: 0,
+                height: 0,
+            });
+            list.add(button);
+            return button;
+        });
+        page.add(list);
+        return { page, list, buttons };
+    }
+
+    it("gives each row its place, as wide as the list leaves room", () => {
+        const { list, buttons } = stacked(3);
+        expect(list.content_height).toBe(4 + 3 * 40 + 2 * 6 + 4);
+        expect(buttons[2].rect.top).toBe(4 + 2 * 46);
+        expect(buttons[2].rect.left).toBe(4);
+        expect(buttons[2].rect.height).toBe(40);
+        expect(buttons[2].rect.width).toBe(200 - 2 * 4 - 10);
+    });
+
+    it("closes up when a row goes, and skips a hidden one", () => {
+        const { list, buttons } = stacked(3);
+        expect(buttons[1].rect.top).toBe(0);
+        list.remove(buttons[0]);
+        expect(list.content_height).toBe(4 + 2 * 40 + 6 + 4);
+        expect(buttons[1].rect.top).toBe(4);
+        buttons[1].is_visible = false;
+        expect(list.content_height).toBe(4 + 40 + 4);
+        expect(buttons[2].rect.top).toBe(4);
+    });
+
+    it("follows a new width and row height with no help", () => {
+        const { list, buttons } = stacked(2);
+        list.rect.width = 300;
+        list.row_height = 60;
+        expect(list.content_height).toBe(4 + 2 * 60 + 6 + 4);
+        expect(buttons[1].rect.width).toBe(300 - 2 * 4 - 10);
+        expect(buttons[1].rect.top).toBe(4 + 66);
+    });
+
+    it("hits a row where it is stacked, also when nothing asked for the layout first", () => {
+        const { page, buttons } = stacked(3);
+        // row 1 lies at 50 to 90 of the content, the list starts at 100 on the page
+        expect(page.hit({ x: 150, y: 170 })[0]).toBe(buttons[1]);
+    });
+
+    it("scroll_to works on rows that weren't laid out yet", () => {
+        const { list, buttons } = stacked(20);
+        list.scroll_to(buttons[19]);
+        expect(list.scroll).toBe(list.max_scroll);
+    });
+
+    it("leaves a child's own rect alone without a row height", () => {
+        const { buttons, list } = setup(3);
+        expect(list.row_height).toBeNull();
+        expect(buttons[2].rect.top).toBe(2 * ROW_HEIGHT);
+        expect(list.content_height).toBe(3 * ROW_HEIGHT);
+    });
+
+    it("clips with room for the widest border, so a row at the edge keeps it", () => {
+        const { list } = stacked(2);
+        for (const child of list.children) {
+            child.theme_rules = theme_rules_from({ border_width: 3 });
+            child.update_theme_instance();
+        }
+        const rects: number[][] = [];
+        const context = new Proxy(
+            {},
+            {
+                get:
+                    (_, name) =>
+                    (...args: number[]) => {
+                        if (name === "rect") {
+                            rects.push(args);
+                        }
+                    },
+                set: () => true,
+            },
+        ) as unknown as CanvasRenderingContext2D;
+        list.draw(context);
+        expect(rects).toContainEqual([
+            LIST.left - 3,
+            LIST.top - 3,
+            LIST.width + 6,
+            LIST.height + 6,
         ]);
     });
 });
