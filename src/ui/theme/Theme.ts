@@ -225,7 +225,11 @@ export function theme_evaluate(
     themable: Themable,
     rules: Array<ThemeRule>,
 ): ThemePropertyDefinitions {
-    const theme: ThemePropertyDefinitions = Object.assign({}, DEFAULT_THEME);
+    const theme: ThemePropertyDefinitions = Object.assign(
+        {},
+        DEFAULT_THEME,
+        DEFAULT_THEME_OF_TYPE[themable.type],
+    );
     const sorted_rules = theme_rules_sort_by_specificity(rules);
     for (const rule of sorted_rules) {
         const are_all_selectors_matching =
@@ -382,6 +386,16 @@ export function theme_property_definition_equals(
     }
     return theme_property_value_equals(a, b);
 }
+
+/**
+ * What differs from `DEFAULT_THEME` for one type of widget. A button is centered with no rule at
+ * all, also on a page that doesn't use the house rules.
+ */
+const DEFAULT_THEME_OF_TYPE: Readonly<
+    Record<string, Partial<ThemeProperties>>
+> = {
+    button: { text_align: "center" },
+};
 
 /**
  * The fallback value for all value resolutions.
