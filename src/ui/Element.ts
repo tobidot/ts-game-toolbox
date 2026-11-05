@@ -1,7 +1,11 @@
 import { EventSocket } from "../signals";
 import { Rect, RectI, Vector2 } from "../geometries";
 import { Vector2I } from "../geometries";
-import { ElementChangeEvent, ElementClickEvent } from "./events";
+import {
+    ElementChangeEvent,
+    ElementClickEvent,
+    ElementRefusedEvent,
+} from "./events";
 import type { Group } from "./Group";
 import {
     theme_evaluate,
@@ -10,7 +14,10 @@ import {
     ThemeRule,
 } from "./theme/Theme";
 
-export type ElementEvents = ElementChangeEvent | ElementClickEvent;
+export type ElementEvents =
+    | ElementChangeEvent
+    | ElementClickEvent
+    | ElementRefusedEvent;
 
 export class Element {
     public readonly events: EventSocket<ElementEvents> = new EventSocket();
@@ -21,6 +28,8 @@ export class Element {
     public is_visible: boolean;
     public is_hovered: boolean = false;
     public is_down: boolean = false;
+    private _is_selected: boolean = false;
+    private _is_disabled: boolean = false;
     private _type: string = "element";
     private _class: string | null = null;
     // properties
@@ -49,8 +58,46 @@ export class Element {
         return this.theme_instance.get_all();
     }
 
+    /** The one state theme selectors match. Priority: disabled, active, selected, hover. */
     public get state(): string | null {
-        return this.is_down ? "active" : this.is_hovered ? "hover" : null;
+        if (this.is_disabled) {
+            return "disabled";
+        }
+        if (this.is_down) {
+            return "active";
+        }
+        if (this.is_selected) {
+            return "selected";
+        }
+        return this.is_hovered ? "hover" : null;
+    }
+
+    /** The chosen one among its kind, a timetable row or a tab. Only changes the look. */
+    public get is_selected(): boolean {
+        return this._is_selected;
+    }
+
+    public set is_selected(val: boolean) {
+        if (val !== this._is_selected) {
+            this._is_selected = val;
+            this.update_theme_instance();
+        }
+    }
+
+    /**
+     * Can't be used right now. It is still hit, so a press can't fall through to the game, and it
+     * still gets hover, so it can show a reason. It never clicks and never drags: a press released
+     * on it dispatches an `ElementRefusedEvent` instead, which is how touch gets the reason.
+     */
+    public get is_disabled(): boolean {
+        return this._is_disabled;
+    }
+
+    public set is_disabled(val: boolean) {
+        if (val !== this._is_disabled) {
+            this._is_disabled = val;
+            this.update_theme_instance();
+        }
     }
 
     public get type(): string {
@@ -182,7 +229,12 @@ export class Element {
         return false;
     }
 
+    /** Clicks this element; a disabled one refuses instead. */
     public click(): void {
+        if (this.is_disabled) {
+            this.dispatch_refused_event();
+            return;
+        }
         this.dispatch_click_event();
     }
 
@@ -214,6 +266,10 @@ export class Element {
 
     public dispatch_change_event(): void {
         this.events.dispatch(new ElementChangeEvent(this));
+    }
+
+    public dispatch_refused_event(): void {
+        this.events.dispatch(new ElementRefusedEvent(this));
     }
 
     /*

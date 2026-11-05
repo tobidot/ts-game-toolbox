@@ -20,3 +20,12 @@ export class ElementClickEvent extends EventBase {
         super(ElementClickEvent.EVENT_NAME);
     }
 }
+
+/** A press was released on a disabled element, or `click()` was called on one: nothing happened. */
+export class ElementRefusedEvent extends EventBase {
+    public static readonly EVENT_NAME = "element.refused";
+
+    constructor(public readonly element: Element) {
+        super(ElementRefusedEvent.EVENT_NAME);
+    }
+}

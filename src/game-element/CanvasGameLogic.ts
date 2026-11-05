@@ -5,7 +5,11 @@ import { IntroState } from "../stage/IntroGate";
 import { bind_stage_input } from "../stage/StageInput";
 import { StageLayout } from "../stage/StageLayout";
 import { Element as UiElement } from "../ui/Element";
-import { ElementChangeEvent, ElementClickEvent } from "../ui/events";
+import {
+    ElementChangeEvent,
+    ElementClickEvent,
+    ElementRefusedEvent,
+} from "../ui/events";
 import { CanvasGameProperties } from "./CanvasGameProperties";
 import { CanvasGameReferences } from "./CanvasGameReferences";
 import {
@@ -432,6 +436,15 @@ export abstract class CanvasGameLogic<
     protected on_change(widget: UiElement, handler: () => void): void {
         widget.events.detach(ElementChangeEvent);
         widget.events.attach(ElementChangeEvent, handler);
+    }
+
+    /**
+     * `handler` runs when `widget` refuses: a press released on it, or `click()` from a key, while
+     * it is disabled. This is where a game says why; touch has no hover to say it with.
+     */
+    protected on_refused(widget: UiElement, handler: () => void): void {
+        widget.events.detach(ElementRefusedEvent);
+        widget.events.attach(ElementRefusedEvent, handler);
     }
 
     protected set_status(text: string): void {

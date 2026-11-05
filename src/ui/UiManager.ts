@@ -22,11 +22,13 @@ export class UiManager {
         if (this.mouse_locked_element) {
             this.mouse_locked_element.update_mouse_down_status(true);
             // Trigger drag immediately on pointer-down (e.g. sliders), in the widget's own
-            // (reference) coordinates, the same ones hit() tested.
-            this.mouse_locked_element.drag(
-                null,
-                this.to_reference(unit_coords),
-            );
+            // (reference) coordinates, the same ones hit() tested. A disabled element never drags.
+            if (!this.mouse_locked_element.is_disabled) {
+                this.mouse_locked_element.drag(
+                    null,
+                    this.to_reference(unit_coords),
+                );
+            }
         }
         return !!element;
     }
@@ -72,7 +74,10 @@ export class UiManager {
         this._hovered_elements = hit_set;
 
         // Forward drag to the locked element
-        if (this.mouse_locked_element) {
+        if (
+            this.mouse_locked_element &&
+            !this.mouse_locked_element.is_disabled
+        ) {
             const start = this.mouse_down_position;
             this.mouse_locked_element.drag(
                 start === null ? null : new Vector2(this.to_reference(start)),
