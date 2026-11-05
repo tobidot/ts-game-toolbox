@@ -64,6 +64,8 @@ export interface ThemeProperties {
     background_color: RgbColor;
     border_color: RgbColor;
     text_color: RgbColor;
+    /** What a widget fills to show its value: the mark of a checkbox, the track of a slider. */
+    accent_color: RgbColor;
     // borders
     border_width: number;
     border_radius: number;
@@ -244,6 +246,7 @@ export function theme_evaluate(
 export class ThemeInstance implements ThemePropertyDefinitions {
     // colors
     public background_color!: ThemePropertyDefinition<RgbColor>;
+    public accent_color!: ThemePropertyDefinition<RgbColor>;
     // borders
     public border_color!: ThemePropertyDefinition<RgbColor>;
     public border_width!: ThemePropertyDefinition<number>;
@@ -306,6 +309,7 @@ export class ThemeInstance implements ThemePropertyDefinitions {
     public get_all(): ThemeProperties {
         return {
             background_color: this.get("background_color"),
+            accent_color: this.get("accent_color"),
             border_color: this.get("border_color"),
             border_width: this.get("border_width"),
             border_radius: this.get("border_radius"),
@@ -368,6 +372,7 @@ export function theme_property_definition_equals(
  */
 export const DEFAULT_THEME = {
     background_color: new RgbColor(220, 220, 220),
+    accent_color: new RgbColor(0, 0, 0),
 
     border_color: new RgbColor(70, 70, 70),
     border_width: 0,

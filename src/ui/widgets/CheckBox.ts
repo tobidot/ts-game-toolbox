@@ -10,7 +10,7 @@ const LABEL_GAP = 10;
 /**
  * A box that toggles on a press anywhere in its rect. With a `label` the rect decides the box's
  * size, so it can be large enough for a finger, and the label stands next to it in `text_color`.
- * Without one the box stays small.
+ * Without one the box stays small. `accent_color` paints the mark.
  */
 export class CheckBox extends Element {
     public checked: boolean;
@@ -45,6 +45,7 @@ export class CheckBox extends Element {
             border_width,
             border_radius,
             text_color,
+            accent_color,
             font_size,
             font_family,
             text_baseline,
@@ -88,7 +89,7 @@ export class CheckBox extends Element {
         }
 
         if (this.checked) {
-            ctx.fillStyle = text_color.toString();
+            ctx.fillStyle = accent_color.toString();
             const inset = box_size / 5;
             ctx.fillRect(
                 box_x + inset,

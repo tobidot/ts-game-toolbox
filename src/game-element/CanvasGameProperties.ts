@@ -39,13 +39,23 @@ export function hex_color(hex: string): RgbColor {
  * turquoise. Class `primary`: turquoise, hover white, active orange (the "Neues Spiel" button).
  * Class `accent`: orange, hover white, active turquoise (the one action that counts: "Raten").
  * Class `secondary`: quiet, white on the line color, hover grey, active white. Class `off`: grey,
- * hover panel grey (a mute button that is off). A game adds only what differs.
+ * hover panel grey (a mute button that is off). `:selected` is orange and `:disabled` quiet.
+ *
+ * The other widgets look finished with no rules at all: a `panel` is a card with a line around
+ * it, a `label` and a `value_label` are white text with no background, a `scroll_group` shows what
+ * is behind it, a `checkbox` and a `slider` follow the same colors. A game adds only what differs.
  */
 export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
     const colors = settings.colors;
     const background = (color: string) => ({
         background_color: hex_color(color),
     });
+    const white_text = {
+        font_size: settings.label_font_size,
+        text_color: hex_color(colors.white),
+    };
+    const quiet_text = { text_color: hex_color(colors.muted) };
+    const no_background = { background_color: new RgbColor(0, 0, 0, 0) };
     return [
         {
             properties: {
@@ -113,6 +123,92 @@ export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
         {
             selectors: [{ class: "off", state: "hover" }],
             properties: background(colors.panel),
+        },
+        {
+            selectors: [{ type: "button", state: "selected" }],
+            properties: background(colors.orange),
+        },
+        {
+            selectors: [{ class: "accent", state: "selected" }],
+            properties: background(colors.white),
+        },
+        {
+            selectors: [{ type: "button", state: "disabled" }],
+            properties: { ...background(colors.line), ...quiet_text },
+        },
+        {
+            selectors: [{ type: "panel" }],
+            properties: {
+                ...background(colors.card),
+                border_color: hex_color(colors.line),
+                border_width: 2,
+            },
+        },
+        {
+            selectors: [{ type: "panel", state: "selected" }],
+            properties: { border_color: hex_color(colors.orange) },
+        },
+        {
+            selectors: [{ type: "scroll_group" }],
+            properties: { ...no_background, ...quiet_text },
+        },
+        ...["label", "value_label"].flatMap((type) => [
+            {
+                selectors: [{ type }],
+                properties: { ...no_background, ...white_text },
+            },
+            {
+                selectors: [{ type, state: "selected" }],
+                properties: { text_color: hex_color(colors.orange) },
+            },
+            {
+                selectors: [{ type, state: "disabled" }],
+                properties: quiet_text,
+            },
+        ]),
+        {
+            selectors: [{ type: "checkbox" }],
+            properties: {
+                ...white_text,
+                accent_color: hex_color(colors.black),
+            },
+        },
+        {
+            selectors: [{ type: "checkbox", state: "selected" }],
+            properties: { text_color: hex_color(colors.orange) },
+        },
+        {
+            selectors: [{ type: "checkbox", state: "disabled" }],
+            properties: {
+                ...background(colors.line),
+                ...quiet_text,
+                accent_color: hex_color(colors.muted),
+            },
+        },
+        {
+            selectors: [{ type: "slider" }],
+            properties: {
+                ...background(colors.line),
+                ...white_text,
+                accent_color: hex_color(colors.turquoise),
+                border_color: hex_color(colors.black),
+                border_width: 2,
+            },
+        },
+        {
+            selectors: [{ type: "slider", state: "active" }],
+            properties: { text_color: hex_color(colors.turquoise) },
+        },
+        {
+            selectors: [{ type: "slider", state: "selected" }],
+            properties: { accent_color: hex_color(colors.orange) },
+        },
+        {
+            selectors: [{ type: "slider", state: "disabled" }],
+            properties: {
+                ...quiet_text,
+                accent_color: hex_color(colors.muted),
+            },
         },
     ];
 }

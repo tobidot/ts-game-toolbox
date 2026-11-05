@@ -3,6 +3,17 @@ import { Vector2, Vector2I } from "../../geometries/Vector2";
 import { Element } from "../Element";
 import { ThemeRule } from "../theme/Theme";
 
+const TRACK_HEIGHT = 8;
+const THUMB_RADIUS = 10;
+/** Where the track runs, down the rect: the text stands above it. */
+const TRACK_SHARE = 0.7;
+
+/**
+ * A value between `min` and `max`, set by a drag. Its title stands above the track on the left, the
+ * value on the right. The theme carries the look: `background_color` is the track, `accent_color`
+ * the part up to the thumb, `text_color` the text and the thumb, `border_color` and `border_width`
+ * the thumb's outline.
+ */
 export class Slider extends Element {
     public title: string;
     public min: number;
@@ -54,75 +65,59 @@ export class Slider extends Element {
 
         const {
             background_color,
+            accent_color,
             border_color,
             border_width,
-            border_radius,
             text_color,
             font_size,
             font_family,
-            text_baseline,
         } = this.theme_instance.get_all();
 
         ctx.save();
         this.apply_transforms(ctx);
 
-        const content_box = this.get_local_content_box_size();
-        const border_box = this.get_local_border_box_size();
+        const box = this.get_local_content_box_size();
+        const center_y = box.top + box.height * TRACK_SHARE;
+        const track_top = center_y - TRACK_HEIGHT / 2;
+        const round = TRACK_HEIGHT / 2;
+        const progress = Math.max(
+            0,
+            Math.min(1, (this.value - this.min) / (this.max - this.min)),
+        );
+        const thumb_x = box.left + progress * box.width;
 
-        // Draw track
-        const track_height = 4;
-        const track_y =
-            content_box.top + content_box.height / 2 - track_height / 2;
         ctx.fillStyle = background_color.toString();
-        ctx.fillRect(content_box.left, track_y, border_box.width, track_height);
-
-        // Draw thumb
-        const progress = (this.value - this.min) / (this.max - this.min);
-        const thumb_width = 10;
-        const thumb_height = 20;
-        const thumb_x =
-            content_box.left + progress * border_box.width - thumb_width / 2;
-        const thumb_y =
-            content_box.top + content_box.height / 2 - thumb_height / 2;
-
-        const color = background_color;
-
         ctx.beginPath();
-        if (border_radius > 0) {
-            ctx.roundRect(
-                thumb_x,
-                thumb_y,
-                thumb_width,
-                thumb_height,
-                Math.min(border_radius, thumb_width / 2),
-            );
-        } else {
-            ctx.rect(thumb_x, thumb_y, thumb_width, thumb_height);
-        }
-
-        ctx.fillStyle = color.toString();
+        ctx.roundRect(box.left, track_top, box.width, TRACK_HEIGHT, round);
         ctx.fill();
 
+        ctx.fillStyle = accent_color.toString();
+        ctx.beginPath();
+        ctx.roundRect(
+            box.left,
+            track_top,
+            Math.max(TRACK_HEIGHT, progress * box.width),
+            TRACK_HEIGHT,
+            round,
+        );
+        ctx.fill();
+
+        ctx.fillStyle = text_color.toString();
+        ctx.beginPath();
+        ctx.arc(thumb_x, center_y, THUMB_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
         if (border_width > 0) {
             ctx.lineWidth = border_width;
             ctx.strokeStyle = border_color.toString();
             ctx.stroke();
         }
 
-        // Draw title and value
-        ctx.fillStyle = text_color.toString();
         ctx.font = `${font_size}px ${font_family}`;
+        ctx.textBaseline = "top";
         ctx.textAlign = "left";
-        ctx.textBaseline = text_baseline;
-        ctx.fillText(
-            `${this.title}: ${this.format(this.value)}`,
-            content_box.left,
-            text_baseline === "middle"
-                ? track_y - 10
-                : text_baseline === "top"
-                  ? content_box.top
-                  : track_y - 5,
-        );
+        ctx.fillText(this.title, box.left, box.top);
+        ctx.textAlign = "right";
+        ctx.fillText(this.format(this.value), box.left + box.width, box.top);
 
         ctx.restore(); // transform
     }
