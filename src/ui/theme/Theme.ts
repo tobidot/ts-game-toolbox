@@ -1,12 +1,34 @@
 import { RgbColor } from "../../data";
+import {
+    Easing,
+    ease_in,
+    ease_in_out,
+    ease_linear,
+    ease_out,
+} from "../../flow/tween/Tween";
 import { ThemeValueAnimator } from "./ThemeValueAnimator";
-import { ThemeValueTween } from "./ThemeValueTween";
+import { theme_tween_between, ThemeValueTween } from "./ThemeValueTween";
 import { ThemeValueProxy } from "./ThemeValueProxy";
 
 export type ThemeFontStyle = "normal" | "italic" | "bold";
 export type ThemeBorderStyle = "solid";
 export type ThemeTextAlign = "left" | "center" | "right";
 export type ThemeTextBaseline = "top" | "middle" | "bottom";
+export type ThemeEasing = "linear" | "ease_in" | "ease_out" | "ease_in_out";
+
+/** The easing functions a theme can name. */
+const THEME_EASINGS: Readonly<Record<ThemeEasing, Easing>> = {
+    linear: ease_linear,
+    ease_in,
+    ease_out,
+    ease_in_out,
+};
+
+/** How a change of the theme goes from what shows now to the new value. */
+export interface ThemeTransition {
+    seconds: number;
+    easing?: ThemeEasing;
+}
 
 export type ThemePropertyValue =
     | ThemeTransformValue
@@ -83,6 +105,12 @@ export interface ThemeProperties {
     text_baseline: ThemeTextBaseline;
     //
     transform: ThemeTransformValue | null;
+    /**
+     * How long a change of a color, a number or the transform takes on this element, from whatever
+     * shows now. The value of the state it is going to counts, as in CSS. 0 snaps.
+     */
+    transition_seconds: number;
+    transition_easing: ThemeEasing;
 }
 
 /**
@@ -290,32 +318,121 @@ export class ThemeInstance implements ThemePropertyDefinitions {
 
     public transform!: ThemePropertyDefinition<ThemeTransformValue | null>;
 
+    public transition_seconds!: ThemePropertyDefinition<number>;
+    public transition_easing!: ThemePropertyDefinition<ThemeEasing>;
+
+    /**
+     * Whether its element was on the screen yet. Until then there is nothing to go smoothly from:
+     * a new widget has its look at once.
+     */
+    public is_shown: boolean = false;
+    /** What the rules asked for last. A value on the way there is in the property itself. */
+    private readonly targets: Map<
+        keyof ThemePropertyDefinitions,
+        ThemePropertyDefinition<ThemePropertyValue>
+    > = new Map();
+    /** The properties holding a value that moves. */
+    private readonly moving: Set<keyof ThemePropertyDefinitions> = new Set();
+
     constructor(theme?: Partial<ThemePropertyDefinitions>) {
         Object.assign(this, DEFAULT_THEME, theme);
     }
 
-    public set_all(theme: ThemePropertyDefinitions) {
+    /**
+     * Takes on a new set of values. `transition` is a one-off in place of what the theme itself
+     * says, for a whole theme changing at once.
+     */
+    public set_all(
+        theme: ThemePropertyDefinitions,
+        transition?: ThemeTransition,
+    ) {
+        const seconds = transition?.seconds ?? theme.transition_seconds;
+        const easing = transition?.easing ?? theme.transition_easing;
+        const own: ThemeTransition = {
+            seconds: typeof seconds === "number" ? seconds : 0,
+            easing: typeof easing === "string" ? easing : "linear",
+        };
         for (const [key, value] of Object.entries(theme)) {
-            this.set(key as keyof ThemePropertyDefinitions, value as any);
+            this.set(key as keyof ThemePropertyDefinitions, value as any, own);
         }
+    }
+
+    /**
+     * Whether a value of this instance moved, or arrived just now: the frame after a value arrived
+     * is the one that has to show it. Call it once per frame.
+     */
+    public poll_animation(): boolean {
+        const is_moving = this.moving.size > 0;
+        for (const key of this.moving) {
+            const value = this[key] as unknown;
+            if (value instanceof ThemeValueTween && value.is_finished) {
+                (this as Record<string, unknown>)[key] = value.end;
+                if (!(value.end instanceof ThemeValueProxy)) {
+                    this.moving.delete(key);
+                }
+            }
+        }
+        return is_moving;
     }
 
     public set<K extends keyof this & keyof ThemePropertyDefinitions>(
         key: K,
         new_value: this[K],
+        transition?: ThemeTransition,
     ): ThemePropertyDefinitions[K] {
-        const old_value = this[key as K];
-        if (theme_property_definition_equals(old_value, new_value)) {
-            return old_value;
+        const old_target = this.targets.has(key)
+            ? this.targets.get(key)
+            : this[key as K];
+        if (
+            theme_property_definition_equals(
+                old_target as ThemePropertyDefinition<ThemePropertyValue>,
+                new_value as ThemePropertyDefinition<ThemePropertyValue>,
+            )
+        ) {
+            this.targets.set(
+                key,
+                old_target as ThemePropertyDefinition<ThemePropertyValue>,
+            );
+            return old_target as ThemePropertyDefinitions[K];
         }
-        if (new_value instanceof ThemeValueProxy) {
-            // copy the value, this will restart the timer
-            this[key] = new_value.cpy() as this[typeof key];
+        this.targets.set(
+            key,
+            new_value as ThemePropertyDefinition<ThemePropertyValue>,
+        );
+        // a proxy gets copied: this restarts its timer
+        const end =
+            new_value instanceof ThemeValueProxy ? new_value.cpy() : new_value;
+        const tween = this.transition_to(key, end, transition);
+        const shown = tween ?? end;
+        this[key] = shown as this[K];
+        if (shown instanceof ThemeValueProxy) {
+            this.moving.add(key);
         } else {
-            // plain value
-            this[key] = new_value;
+            this.moving.delete(key);
         }
-        return new_value;
+        return new_value as ThemePropertyDefinitions[K];
+    }
+
+    /** The tween from what shows now to `end`, or null when this change should snap. */
+    private transition_to(
+        key: keyof ThemePropertyDefinitions,
+        end: unknown,
+        transition: ThemeTransition | undefined,
+    ): ThemeValueTween<ThemePropertyValue> | null {
+        if (
+            !this.is_shown ||
+            !transition ||
+            transition.seconds <= 0 ||
+            NEVER_TWEENED.has(key)
+        ) {
+            return null;
+        }
+        return theme_tween_between(
+            this.get(key as keyof ThemeProperties),
+            end as ThemePropertyValue,
+            transition.seconds,
+            THEME_EASINGS[transition.easing ?? "ease_out"],
+        );
     }
 
     /**
@@ -350,6 +467,8 @@ export class ThemeInstance implements ThemePropertyDefinitions {
             text_align: this.get("text_align"),
             text_baseline: this.get("text_baseline"),
             transform: this.get("transform"),
+            transition_seconds: this.get("transition_seconds"),
+            transition_easing: this.get("transition_easing"),
         };
     }
 }
@@ -395,6 +514,12 @@ export function theme_property_definition_equals(
     return theme_property_value_equals(a, b);
 }
 
+/** Numbers that make no sense on the way: a font weight, and the transition's own length. */
+const NEVER_TWEENED: ReadonlySet<keyof ThemePropertyDefinitions> = new Set([
+    "font_weight",
+    "transition_seconds",
+] as const);
+
 /**
  * What differs from `DEFAULT_THEME` for one type of widget. A button is centered with no rule at
  * all, also on a page that doesn't use the house rules.
@@ -429,4 +554,7 @@ export const DEFAULT_THEME = {
     text_baseline: "middle",
 
     transform: null,
+
+    transition_seconds: 0,
+    transition_easing: "ease_out",
 } satisfies ThemeProperties;

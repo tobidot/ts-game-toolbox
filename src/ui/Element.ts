@@ -12,6 +12,7 @@ import {
     ThemeInstance,
     ThemeProperties,
     ThemeRule,
+    ThemeTransition,
 } from "./theme/Theme";
 
 export type ElementEvents =
@@ -147,12 +148,28 @@ export class Element {
      */
 
     /**
-     * Update theme instance based on rules.
+     * Update theme instance based on rules. `transition` is a one-off in place of what the theme
+     * says about how values change, for a whole theme changing at once.
      */
-    public update_theme_instance(): void {
+    public update_theme_instance(transition?: ThemeTransition): void {
         const rules = this.collect_theme_rules();
 
-        this.theme_instance.set_all(theme_evaluate(this, rules));
+        this.theme_instance.set_all(theme_evaluate(this, rules), transition);
+    }
+
+    /** It has been on the screen: from now on its values change the way the theme says. */
+    public mark_shown(): void {
+        if (this.is_visible) {
+            this.theme_instance.is_shown = true;
+        }
+    }
+
+    /**
+     * Whether a theme value moved here, or just arrived: then one more paint is due. A hidden
+     * element shows nothing, so it asks for nothing. Call it once per frame.
+     */
+    public poll_animation(): boolean {
+        return this.is_visible && this.theme_instance.poll_animation();
     }
 
     /**

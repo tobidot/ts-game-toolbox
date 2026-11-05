@@ -1,7 +1,7 @@
 import { RectI } from "../geometries";
 import { Vector2, Vector2I } from "../geometries";
 import { Element } from "./Element";
-import { ThemeRule } from "./theme/Theme";
+import { ThemeRule, ThemeTransition } from "./theme/Theme";
 
 export class Group extends Element {
     public readonly children: Array<Element>;
@@ -95,13 +95,34 @@ export class Group extends Element {
         return false;
     }
 
-    public override update_theme_instance() {
-        super.update_theme_instance();
+    public override update_theme_instance(transition?: ThemeTransition) {
+        super.update_theme_instance(transition);
         if (this.children) {
             for (const child of this.children) {
-                child.update_theme_instance();
+                child.update_theme_instance(transition);
             }
         }
+    }
+
+    public override mark_shown(): void {
+        if (!this.is_visible) {
+            return;
+        }
+        super.mark_shown();
+        for (const child of this.children) {
+            child.mark_shown();
+        }
+    }
+
+    public override poll_animation(): boolean {
+        if (!this.is_visible) {
+            return false;
+        }
+        let is_moving = super.poll_animation();
+        for (const child of this.children) {
+            is_moving = child.poll_animation() || is_moving;
+        }
+        return is_moving;
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {

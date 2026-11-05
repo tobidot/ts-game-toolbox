@@ -104,5 +104,6 @@ export class UiPage extends Group {
             child.draw(ctx);
         }
         ctx.restore();
+        this.mark_shown();
     }
 }
