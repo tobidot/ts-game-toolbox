@@ -664,6 +664,10 @@ export abstract class CanvasGameLogic<
             }
             keyboard.end_frame();
             this.show_game_theme(properties.game ?? game);
+            if (properties.page.poll_animation()) {
+                // A still game only repaints when something changed, and this is something.
+                properties.is_dirty = true;
+            }
         }
         if (!properties.is_dirty) {
             return;
