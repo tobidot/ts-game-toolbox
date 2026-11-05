@@ -1,6 +1,8 @@
 import { RectI, Vector2I } from "../geometries";
+import { theme_font, ThemeProperties } from "../ui/theme/Theme";
 import { Slider } from "../ui/widgets/Slider";
-import { HOUSE_COLORS, HouseColors } from "./CanvasGameSettings";
+import { slider_house_rules } from "./CanvasGameProperties";
+import { HouseColors } from "./CanvasGameSettings";
 
 export interface HouseSliderOptions {
     /**
@@ -11,21 +13,21 @@ export interface HouseSliderOptions {
     label?: "above" | "left";
     /** Width of the `"left"` label column. Default 64. */
     label_width?: number;
+    /** Own colors, whatever the page's theme says. Default: the page's slider rules. */
     colors?: HouseColors;
 }
 
-const TRACK_HEIGHT = 8;
 const THUMB_RADIUS = 10;
 
 /**
- * The toolbox `Slider` in the house look: a rounded track filled up to a round white thumb, with
- * its name and whole-number value. It takes layout coordinates like every placed widget, and
- * with the label on the left the value follows the track, not the whole rect.
+ * The toolbox `Slider` with its name and whole-number value, and half a thumb of room at both ends
+ * of the track, or the label in a column on the left. It draws through `Slider`, and the theme
+ * carries the look as for any slider. With the label on the left the value follows the track, not
+ * the whole rect.
  */
 export class HouseSlider extends Slider {
     private readonly label: "above" | "left";
     private readonly label_width: number;
-    private readonly colors: HouseColors;
 
     public constructor(
         title: string,
@@ -35,10 +37,18 @@ export class HouseSlider extends Slider {
         rect: RectI,
         options: HouseSliderOptions = {},
     ) {
-        super(title, min, max, value, rect);
+        super(
+            title,
+            min,
+            max,
+            value,
+            rect,
+            true,
+            options.colors && slider_house_rules(options.colors),
+        );
         this.label = options.label ?? "above";
         this.label_width = options.label_width ?? 64;
-        this.colors = options.colors ?? HOUSE_COLORS;
+        this.format = (shown) => String(Math.round(shown));
     }
 
     /** Where the track runs, relative to `left` and `width` of the slider. */
@@ -67,79 +77,38 @@ export class HouseSlider extends Slider {
         return true;
     }
 
-    public override draw(context: CanvasRenderingContext2D): void {
-        if (!this.is_visible) {
-            return;
-        }
-        const colors = this.colors;
-        const font = this.theme.font_family;
-        context.save();
-        this.apply_transforms(context);
-        const box = this.get_local_content_box_size();
-        const track = this.track(box.left, box.width);
-        const center_y =
-            this.label === "left"
-                ? box.top + box.height / 2
-                : box.top + box.height * 0.7;
-        const progress = Math.max(
-            0,
-            Math.min(1, (this.value - this.min) / (this.max - this.min)),
-        );
-        const track_top = center_y - TRACK_HEIGHT / 2;
-        const round = TRACK_HEIGHT / 2;
+    protected override track_in(box: RectI): { left: number; width: number } {
+        return this.track(box.left, box.width);
+    }
 
-        context.fillStyle = colors.line;
-        context.beginPath();
-        context.roundRect(
-            track.left,
-            track_top,
-            track.width,
-            TRACK_HEIGHT,
-            round,
-        );
-        context.fill();
-        context.fillStyle = colors.turquoise;
-        context.beginPath();
-        context.roundRect(
-            track.left,
-            track_top,
-            Math.max(TRACK_HEIGHT, track.width * progress),
-            TRACK_HEIGHT,
-            round,
-        );
-        context.fill();
+    protected override track_center_y(box: RectI): number {
+        return this.label === "left"
+            ? box.top + box.height / 2
+            : super.track_center_y(box);
+    }
 
-        context.fillStyle = this.is_down ? colors.turquoise : colors.white;
-        context.beginPath();
-        context.arc(
-            track.left + progress * track.width,
-            center_y,
-            THUMB_RADIUS,
-            0,
-            Math.PI * 2,
-        );
-        context.fill();
-        context.lineWidth = 2;
-        context.strokeStyle = colors.black;
-        context.stroke();
-
-        const value = String(Math.round(this.value));
+    /** The name is bold. Beside the track it reads "H 179" in `text_color`, as one text. */
+    protected override draw_text(
+        context: CanvasRenderingContext2D,
+        box: RectI,
+        center_y: number,
+        theme: ThemeProperties,
+    ): void {
+        const value = this.format(this.value);
         context.textAlign = "left";
+        context.font = theme_font({ ...theme, font_weight: 700 });
         if (this.label === "left") {
-            context.font = `bold 15px ${font}`;
-            context.fillStyle = colors.white;
+            context.fillStyle = theme.text_color.toString();
             context.textBaseline = "middle";
             context.fillText(`${this.title} ${value}`, box.left, center_y + 1);
         } else {
             context.textBaseline = "top";
-            context.font = `bold 15px ${font}`;
-            context.fillStyle = colors.muted;
+            context.fillStyle = theme.caption_color.toString();
             context.fillText(this.title, box.left, box.top);
             context.textAlign = "right";
-            context.font = `15px ${font}`;
-            context.fillStyle = colors.white;
+            context.font = theme_font(theme);
+            context.fillStyle = theme.text_color.toString();
             context.fillText(value, box.left + box.width, box.top);
         }
-        context.restore();
     }
 }

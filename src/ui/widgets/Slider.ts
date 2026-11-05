@@ -1,7 +1,7 @@
 import { RectI } from "../../geometries/Rect";
 import { Vector2, Vector2I } from "../../geometries/Vector2";
 import { Element } from "../Element";
-import { theme_font, ThemeRule } from "../theme/Theme";
+import { theme_font, ThemeProperties, ThemeRule } from "../theme/Theme";
 
 const TRACK_HEIGHT = 8;
 const THUMB_RADIUS = 10;
@@ -11,8 +11,8 @@ const TRACK_SHARE = 0.7;
 /**
  * A value between `min` and `max`, set by a drag. Its title stands above the track on the left, the
  * value on the right. The theme carries the look: `background_color` is the track, `accent_color`
- * the part up to the thumb, `text_color` the text and the thumb, `border_color` and `border_width`
- * the thumb's outline.
+ * the part up to the thumb, `thumb_color` the thumb, `border_color` and `border_width` its outline,
+ * `caption_color` the title and `text_color` the value.
  */
 export class Slider extends Element {
     public title: string;
@@ -69,41 +69,47 @@ export class Slider extends Element {
             accent_color,
             border_color,
             border_width,
-            text_color,
+            thumb_color,
         } = theme;
 
         ctx.save();
         this.apply_transforms(ctx);
 
         const box = this.get_local_content_box_size();
-        const center_y = box.top + box.height * TRACK_SHARE;
+        const track = this.track_in(box);
+        const center_y = this.track_center_y(box);
         const track_top = center_y - TRACK_HEIGHT / 2;
         const round = TRACK_HEIGHT / 2;
         const progress = Math.max(
             0,
             Math.min(1, (this.value - this.min) / (this.max - this.min)),
         );
-        const thumb_x = box.left + progress * box.width;
 
         ctx.fillStyle = background_color.toString();
         ctx.beginPath();
-        ctx.roundRect(box.left, track_top, box.width, TRACK_HEIGHT, round);
+        ctx.roundRect(track.left, track_top, track.width, TRACK_HEIGHT, round);
         ctx.fill();
 
         ctx.fillStyle = accent_color.toString();
         ctx.beginPath();
         ctx.roundRect(
-            box.left,
+            track.left,
             track_top,
-            Math.max(TRACK_HEIGHT, progress * box.width),
+            Math.max(TRACK_HEIGHT, progress * track.width),
             TRACK_HEIGHT,
             round,
         );
         ctx.fill();
 
-        ctx.fillStyle = text_color.toString();
+        ctx.fillStyle = thumb_color.toString();
         ctx.beginPath();
-        ctx.arc(thumb_x, center_y, THUMB_RADIUS, 0, Math.PI * 2);
+        ctx.arc(
+            track.left + progress * track.width,
+            center_y,
+            THUMB_RADIUS,
+            0,
+            Math.PI * 2,
+        );
         ctx.fill();
         if (border_width > 0) {
             ctx.lineWidth = border_width;
@@ -111,13 +117,35 @@ export class Slider extends Element {
             ctx.stroke();
         }
 
+        this.draw_text(ctx, box, center_y, theme);
+
+        ctx.restore(); // transform
+    }
+
+    /** Where the track runs inside `box`. */
+    protected track_in(box: RectI): { left: number; width: number } {
+        return { left: box.left, width: box.width };
+    }
+
+    /** How far down `box` the middle of the track lies: the text stands above it. */
+    protected track_center_y(box: RectI): number {
+        return box.top + box.height * TRACK_SHARE;
+    }
+
+    /** The name in `caption_color` on the left, the value in `text_color` on the right. */
+    protected draw_text(
+        ctx: CanvasRenderingContext2D,
+        box: RectI,
+        _center_y: number,
+        theme: ThemeProperties,
+    ): void {
         ctx.font = theme_font(theme);
         ctx.textBaseline = "top";
         ctx.textAlign = "left";
+        ctx.fillStyle = theme.caption_color.toString();
         ctx.fillText(this.title, box.left, box.top);
         ctx.textAlign = "right";
+        ctx.fillStyle = theme.text_color.toString();
         ctx.fillText(this.format(this.value), box.left + box.width, box.top);
-
-        ctx.restore(); // transform
     }
 }

@@ -66,6 +66,10 @@ export interface ThemeProperties {
     text_color: RgbColor;
     /** What a widget fills to show its value: the mark of a checkbox, the track of a slider. */
     accent_color: RgbColor;
+    /** The part of a slider you hold. */
+    thumb_color: RgbColor;
+    /** The quieter text next to the main one: a slider's name. */
+    caption_color: RgbColor;
     // borders
     border_width: number;
     border_radius: number;
@@ -267,6 +271,8 @@ export class ThemeInstance implements ThemePropertyDefinitions {
     // colors
     public background_color!: ThemePropertyDefinition<RgbColor>;
     public accent_color!: ThemePropertyDefinition<RgbColor>;
+    public thumb_color!: ThemePropertyDefinition<RgbColor>;
+    public caption_color!: ThemePropertyDefinition<RgbColor>;
     // borders
     public border_color!: ThemePropertyDefinition<RgbColor>;
     public border_width!: ThemePropertyDefinition<number>;
@@ -330,6 +336,8 @@ export class ThemeInstance implements ThemePropertyDefinitions {
         return {
             background_color: this.get("background_color"),
             accent_color: this.get("accent_color"),
+            thumb_color: this.get("thumb_color"),
+            caption_color: this.get("caption_color"),
             border_color: this.get("border_color"),
             border_width: this.get("border_width"),
             border_radius: this.get("border_radius"),
@@ -403,6 +411,8 @@ const DEFAULT_THEME_OF_TYPE: Readonly<
 export const DEFAULT_THEME = {
     background_color: new RgbColor(220, 220, 220),
     accent_color: new RgbColor(0, 0, 0),
+    thumb_color: new RgbColor(0, 0, 0),
+    caption_color: new RgbColor(0, 0, 0),
 
     border_color: new RgbColor(70, 70, 70),
     border_width: 0,

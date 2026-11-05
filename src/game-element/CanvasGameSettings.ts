@@ -71,8 +71,10 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     public readonly font_family: string = "monospace";
     /** Text size of the toolbox buttons, in layout pixels. */
     public readonly button_font_size: number = 24;
-    /** Text size of the other toolbox widgets: labels, checkboxes, sliders. */
+    /** Text size of labels and checkboxes. */
     public readonly label_font_size: number = 18;
+    /** Text size of sliders. */
+    public readonly slider_font_size: number = 15;
     /** Corner radius of cards and keys, in layout pixels. */
     public readonly radius: number = 14;
     /** The intro gives up after this long, so a slow network never blocks the game. */

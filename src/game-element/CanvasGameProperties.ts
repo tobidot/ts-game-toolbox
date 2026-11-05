@@ -11,6 +11,7 @@ import { Group } from "../ui/Group";
 import { UiPage } from "../ui/UiPage";
 import {
     CanvasGameSettings,
+    HouseColors,
     LayoutOf,
     MuteButtonsLayout,
 } from "./CanvasGameSettings";
@@ -185,19 +186,10 @@ export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
                 accent_color: hex_color(colors.muted),
             },
         },
+        ...slider_house_rules(colors),
         {
             selectors: [{ type: "slider" }],
-            properties: {
-                ...background(colors.line),
-                ...white_text,
-                accent_color: hex_color(colors.turquoise),
-                border_color: hex_color(colors.black),
-                border_width: 2,
-            },
-        },
-        {
-            selectors: [{ type: "slider", state: "active" }],
-            properties: { text_color: hex_color(colors.turquoise) },
+            properties: { font_size: settings.slider_font_size },
         },
         {
             selectors: [{ type: "slider", state: "selected" }],
@@ -209,6 +201,28 @@ export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
                 ...quiet_text,
                 accent_color: hex_color(colors.muted),
             },
+        },
+    ];
+}
+
+/** A slider's house look in `colors`: the part of `default_theme()` a `HouseSlider` can also own. */
+export function slider_house_rules(colors: HouseColors): ThemeRule[] {
+    return [
+        {
+            selectors: [{ type: "slider" }],
+            properties: {
+                background_color: hex_color(colors.line),
+                accent_color: hex_color(colors.turquoise),
+                thumb_color: hex_color(colors.white),
+                caption_color: hex_color(colors.muted),
+                text_color: hex_color(colors.white),
+                border_color: hex_color(colors.black),
+                border_width: 2,
+            },
+        },
+        {
+            selectors: [{ type: "slider", state: "active" }],
+            properties: { thumb_color: hex_color(colors.turquoise) },
         },
     ];
 }
