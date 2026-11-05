@@ -1,10 +1,16 @@
+import { RgbColor } from "../../data/RgbColor";
+import { theme_now } from "./ThemeClock";
 import { ThemeValueProxy } from "./ThemeValueProxy";
 import { ThemePropertyValue } from "./Theme";
 
+/**
+ * A value that keeps moving: `callback` gets how far the current round is, 0 to 1. Put it in a rule
+ * and it runs for as long as the rule applies, from the moment it starts to apply.
+ */
 export class ThemeValueAnimator<
     T extends ThemePropertyValue,
 > extends ThemeValueProxy<T> {
-    public start: number = performance.now();
+    public start: number = theme_now();
 
     constructor(
         protected interval_seconds: number,
@@ -21,8 +27,7 @@ export class ThemeValueAnimator<
     }
 
     public get(): T {
-        const t =
-            ((performance.now() - this.start) / 1000) % this.interval_seconds;
+        const t = (theme_now() - this.start) % this.interval_seconds;
         return this.callback(t / this.interval_seconds);
     }
 
@@ -30,6 +35,20 @@ export class ThemeValueAnimator<
         if (other === this) {
             return true;
         }
-        return this.callback === other.callback;
+        return (
+            this.callback === other.callback &&
+            this.interval_seconds === other.interval_seconds
+        );
     }
+}
+
+/** A color breathing from `from` to `to` and back, softly, once in `interval_seconds`. */
+export function theme_pulse(
+    from: RgbColor,
+    to: RgbColor,
+    interval_seconds: number,
+): ThemeValueAnimator<RgbColor> {
+    return new ThemeValueAnimator(interval_seconds, (t) =>
+        from.lerp(to, (1 - Math.cos(t * 2 * Math.PI)) / 2),
+    );
 }
