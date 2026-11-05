@@ -52,7 +52,8 @@ export function hex_color(hex: string): RgbColor {
  *
  * The other widgets look finished with no rules at all: a `panel` is a card with a line around
  * it, a `label` and a `value_label` are white text with no background, a `scroll_group` shows what
- * is behind it, a `checkbox` and a `slider` follow the same colors. A game adds only what differs.
+ * is behind it, a `checkbox` and a `slider` follow the same colors. What you can press changes its
+ * look in `settings.press_transition_seconds`. A game adds only what differs.
  */
 export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
     const colors = settings.colors;
@@ -203,6 +204,12 @@ export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
             selectors: [{ type: "slider" }],
             properties: { font_size: settings.slider_font_size },
         },
+        ...["button", "checkbox", "slider"].map((type) => ({
+            selectors: [{ type }],
+            properties: {
+                transition_seconds: settings.press_transition_seconds,
+            },
+        })),
         {
             selectors: [{ type: "slider", state: "selected" }],
             properties: { accent_color: hex_color(colors.orange) },

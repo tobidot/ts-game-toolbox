@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { RgbColor } from "../data/RgbColor";
 import { Element } from "../ui/Element";
+import { set_theme_clock } from "../ui/theme/ThemeClock";
 import { Button } from "../ui/widgets/Button";
 import { CheckBox } from "../ui/widgets/CheckBox";
 import { Label } from "../ui/widgets/Label";
@@ -129,5 +130,48 @@ describe("default_theme", () => {
         const label = themed(new Label("l", UNPLACED));
         label.is_disabled = true;
         expect(label.theme.background_color.a).toBe(0);
+    });
+});
+
+describe("the house look moves", () => {
+    afterEach(() => {
+        set_theme_clock(null);
+    });
+
+    it("gives what you can press a short transition, and leaves the rest alone", () => {
+        const seconds_of = (element: Element): number => {
+            element.theme_rules = rules;
+            element.update_theme_instance();
+            return element.theme.transition_seconds;
+        };
+        const rect = { left: 0, top: 0, width: 10, height: 10 };
+        const pressable = [
+            new Button("b", rect),
+            new CheckBox(false, rect),
+            new Slider("s", 0, 1, 0, rect),
+        ];
+        for (const widget of pressable) {
+            expect(seconds_of(widget)).toBe(settings.press_transition_seconds);
+        }
+        expect(seconds_of(new Label("l", rect))).toBe(0);
+        expect(seconds_of(new Panel([], rect))).toBe(0);
+    });
+
+    it("rests on exactly the color it had without the transition", () => {
+        let time = 1;
+        set_theme_clock(() => time);
+        const button = new Button(
+            "b",
+            { left: 0, top: 0, width: 10, height: 10 },
+            true,
+            rules,
+        );
+        const rest = button.theme.background_color;
+        button.theme_instance.is_shown = true;
+        button.update_mouse_hover_status(true);
+        time += 0.05;
+        button.update_mouse_hover_status(false);
+        time += 1;
+        expect(button.theme.background_color.equals(rest)).toBe(true);
     });
 });

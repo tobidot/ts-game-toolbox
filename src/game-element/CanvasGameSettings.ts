@@ -76,6 +76,8 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     public readonly label_font_size: number = 18;
     /** Text size of sliders. */
     public readonly slider_font_size: number = 15;
+    /** How long what you can press takes to change its look: hover, press, enable. 0 snaps. */
+    public readonly press_transition_seconds: number = 0.12;
     /** Corner radius of cards and keys, in layout pixels. */
     public readonly radius: number = 14;
     /** The intro gives up after this long, so a slow network never blocks the game. */
