@@ -238,6 +238,8 @@ export class CanvasGameProperties<
     public readonly best: SessionBest = new SessionBest();
     /** Whether `on_round_finished()` already ran for the current game. */
     public is_round_reported = false;
+    /** How long the current round has been finished; see `settings.round_end_hold_seconds`. */
+    public round_over_seconds = 0;
     public last_tick_ms: number | null = null;
     public is_dirty = true;
 

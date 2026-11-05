@@ -84,6 +84,11 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     /** The keys that start the next round on a finished one, see `is_round_finished()`. */
     public readonly next_round_keys: readonly string[] = [" ", "Enter"];
     /**
+     * How long an end card stays before a press or a key starts the next round, so one meant for
+     * the game doesn't skip it. A press in that time does nothing. Default: no wait.
+     */
+    public readonly round_end_hold_seconds: number = 0;
+    /**
      * The game's images, name to imported file. The shell loads them when the element starts;
      * the renderer's `paint_image()` paints them by name.
      */

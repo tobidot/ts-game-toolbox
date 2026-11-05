@@ -263,12 +263,21 @@ export abstract class CanvasGameLogic<
         return (properties.seed + properties.restarts) % (MAX_SEED + 1);
     }
 
+    /** The end card has stayed `settings.round_end_hold_seconds`: a press starts the next round. */
+    public get is_round_end_ready(): boolean {
+        return (
+            this.properties.round_over_seconds >=
+            this.settings.round_end_hold_seconds
+        );
+    }
+
     /** Creates the game for `game_seed`. */
     public new_game(): void {
         const properties = this.properties;
         properties.game = this.create_game(this.game_seed);
         properties.best.settle();
         properties.is_round_reported = false;
+        properties.round_over_seconds = 0;
         this.on_new_game(properties.game);
         properties.is_dirty = true;
     }
@@ -467,13 +476,18 @@ export abstract class CanvasGameLogic<
         properties.is_dirty = true;
     }
 
-    /** Starts the next round when the current one is finished; returns whether it did. */
+    /**
+     * A press or key on a finished round is the shell's: it starts the next round, or does nothing
+     * while the end card holds. Returns whether the round was finished.
+     */
     private next_round_if_finished(): boolean {
         const game = this.properties.game;
         if (game === null || !this.is_round_finished(game)) {
             return false;
         }
-        this.start_next_round();
+        if (this.is_round_end_ready) {
+            this.start_next_round();
+        }
         return true;
     }
 
@@ -625,6 +639,12 @@ export abstract class CanvasGameLogic<
                 properties.is_dirty = true;
             }
             this.report_finished_round();
+            if (properties.is_round_reported) {
+                if (!this.is_round_end_ready) {
+                    properties.is_dirty = true;
+                }
+                properties.round_over_seconds += delta_seconds;
+            }
             keyboard.end_frame();
         }
         if (!properties.is_dirty) {
