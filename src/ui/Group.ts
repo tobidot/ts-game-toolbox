@@ -130,8 +130,10 @@ export class Group extends Element {
             return;
         }
 
+        // Through the theme's transform, so what is in a group moves along with it.
         ctx.save();
-        ctx.translate(this.rect.left, this.rect.top);
+        this.context_transform_to_local(ctx);
+        ctx.translate(-this.rect.width / 2, -this.rect.height / 2);
 
         for (const child of this.children) {
             child.draw(ctx);
