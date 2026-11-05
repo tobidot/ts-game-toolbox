@@ -5,6 +5,8 @@ import { theme_font, ThemeRule, ThemeTextBaseline } from "../theme/Theme";
 
 export class Label extends Element {
     public text: string;
+    /** Between the edge and the text. */
+    public text_padding: number = 0;
     /** Breaks the text into lines inside its box instead of squeezing it into one. */
     public is_wrapped: boolean = false;
     /** From one line of a wrapped text to the next, as a share of the font size. */
@@ -39,11 +41,12 @@ export class Label extends Element {
         ctx.textBaseline = text_baseline;
 
         const content_box = this.get_local_content_box_size();
-        let x = content_box.left;
+        const inner_width = content_box.width - 2 * this.text_padding;
+        let x = content_box.left + this.text_padding;
         if (text_align === "center") {
             x = content_box.left + content_box.width / 2;
         } else if (text_align === "right") {
-            x = content_box.left + content_box.width;
+            x = content_box.left + content_box.width - this.text_padding;
         }
 
         let y = content_box.top;
@@ -54,10 +57,17 @@ export class Label extends Element {
         }
 
         if (this.is_wrapped) {
-            this.draw_lines(ctx, x, y, theme.font_size, text_baseline);
+            this.draw_lines(
+                ctx,
+                x,
+                y,
+                inner_width,
+                theme.font_size,
+                text_baseline,
+            );
         } else {
             // Squeezed rather than running out of the box and over whatever is next to it.
-            ctx.fillText(this.text, x, y, content_box.width);
+            ctx.fillText(this.text, x, y, inner_width);
         }
         ctx.restore(); // transform
     }
@@ -67,10 +77,10 @@ export class Label extends Element {
         ctx: CanvasRenderingContext2D,
         x: number,
         y: number,
+        width: number,
         font_size: number,
         text_baseline: ThemeTextBaseline,
     ): void {
-        const width = this.rect.width;
         const lines = wrap_text(ctx, this.text, width);
         const step = font_size * this.line_spacing;
         const height = (lines.length - 1) * step;

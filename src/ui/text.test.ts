@@ -88,7 +88,24 @@ describe("Button text_overflow", () => {
         });
         button.text_overflow = "ellipsis";
         button.draw(context);
-        expect(texts[1]).toMatchObject({ text: "Hundesteu…", max: undefined });
+        expect(texts[1]).toMatchObject({ text: "Hundest…", max: undefined });
+    });
+});
+
+describe("Label text_padding", () => {
+    it("keeps the text off the edge, and off a wrapped line's width", () => {
+        const { context, texts } = context_with_texts();
+        const label = new Label("ein langer Satz", RECT);
+        label.text_padding = 10;
+        label.draw(context);
+        expect(texts[0].max).toBe(80);
+        label.is_wrapped = true;
+        label.draw(context);
+        expect(texts.slice(1).map((one) => one.text)).toEqual([
+            "ein",
+            "langer",
+            "Satz",
+        ]);
     });
 });
 
