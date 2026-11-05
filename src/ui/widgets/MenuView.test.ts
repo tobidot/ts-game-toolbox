@@ -657,4 +657,20 @@ describe("MenuView", () => {
             expect(statement?.type).toBe("translate");
         });
     });
+
+    it("takes another row height for another layout", () => {
+        const menu = new Menu<string>([{ label: "A", value: "a" }]);
+        const view = new MenuView(new MenuInput(menu), {
+            left: 0,
+            top: 0,
+            width: 200,
+            height: 300,
+        });
+        view.row_height = 70;
+        view.poll_animation();
+        void view.list.max_scroll;
+        const row = view.list.children[0];
+        expect(row.rect.height).toBe(70);
+        expect((view.hint as MenuHint<string>).rect.height).toBe(70);
+    });
 });

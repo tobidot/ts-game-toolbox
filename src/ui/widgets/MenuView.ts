@@ -230,7 +230,6 @@ export class MenuView<T> extends Panel {
     public readonly hint: MenuHint<T> | null;
     public readonly path: MenuPath<T> | null;
     private readonly level: number | null;
-    private readonly row_height: number;
     private readonly submenu_mark: string;
     private readonly create_row: (
         entry: MenuEntry<T>,
@@ -251,13 +250,12 @@ export class MenuView<T> extends Panel {
         this.type = "menu";
         this.input = input;
         this.level = options.level ?? null;
-        this.row_height = options.row_height ?? 40;
         this.submenu_mark = options.submenu_mark ?? "›";
         this.create_row =
             options.create_row ?? ((entry, index) => new MenuRow(entry, index));
         this.seen_refusals = input.refusals;
         this.list = new ScrollGroup([], NO_RECT);
-        this.list.row_height = this.row_height;
+        this.list.row_height = options.row_height ?? 40;
         this.list.row_gap = options.row_gap ?? 2;
         this.list.padding = options.padding ?? 4;
         this.list.reserves_gutter = false;
@@ -274,6 +272,15 @@ export class MenuView<T> extends Panel {
             }
         }
         this.sync();
+    }
+
+    /** How high a row is, and the hint and the path. A layout for a phone can ask for more. */
+    public get row_height(): number {
+        return this.list.row_height ?? 0;
+    }
+
+    public set row_height(value: number) {
+        this.list.row_height = value;
     }
 
     public override hit(coords: Vector2I): Array<Element> {
