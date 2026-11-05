@@ -8,6 +8,8 @@ export class Slider extends Element {
     public min: number;
     public max: number;
     public value: number;
+    /** How the value reads next to the title. Default: two decimals. */
+    public format: (value: number) => string = (value) => value.toFixed(2);
 
     public constructor(
         title: string,
@@ -113,12 +115,12 @@ export class Slider extends Element {
         ctx.textAlign = "left";
         ctx.textBaseline = text_baseline;
         ctx.fillText(
-            `${this.title}: ${this.value.toFixed(2)}`,
-            this.rect.left,
+            `${this.title}: ${this.format(this.value)}`,
+            content_box.left,
             text_baseline === "middle"
                 ? track_y - 10
                 : text_baseline === "top"
-                  ? this.rect.top
+                  ? content_box.top
                   : track_y - 5,
         );
 

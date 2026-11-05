@@ -46,7 +46,7 @@ export class Label extends Element {
             x = content_box.left + content_box.width;
         }
 
-        let y = this.rect.top;
+        let y = content_box.top;
         if (text_baseline === "middle") {
             y = content_box.top + content_box.height / 2;
         } else if (text_baseline === "bottom") {

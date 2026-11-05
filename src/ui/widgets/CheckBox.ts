@@ -2,8 +2,20 @@ import { RectI } from "../../geometries";
 import { Element } from "../Element";
 import { ThemeRule } from "../theme/Theme";
 
+/** The largest box of a checkbox without a label; games paint their own text next to it. */
+const UNLABELLED_BOX_SIZE = 20;
+/** Between the box and the label. */
+const LABEL_GAP = 10;
+
+/**
+ * A box that toggles on a press anywhere in its rect. With a `label` the rect decides the box's
+ * size, so it can be large enough for a finger, and the label stands next to it in `text_color`.
+ * Without one the box stays small.
+ */
 export class CheckBox extends Element {
     public checked: boolean;
+    /** The text next to the box; empty for none. */
+    public label: string = "";
 
     public constructor(
         checked: boolean,
@@ -33,6 +45,9 @@ export class CheckBox extends Element {
             border_width,
             border_radius,
             text_color,
+            font_size,
+            font_family,
+            text_baseline,
         } = this.theme_instance.get_all();
 
         ctx.save();
@@ -40,7 +55,11 @@ export class CheckBox extends Element {
         this.apply_transforms(ctx);
 
         const content_box = this.get_local_content_box_size();
-        const box_size = Math.min(content_box.width, content_box.height, 20);
+        const box_size = Math.min(
+            content_box.width,
+            content_box.height,
+            this.label === "" ? UNLABELLED_BOX_SIZE : Number.POSITIVE_INFINITY,
+        );
         const box_x = content_box.left;
         const box_y = content_box.top + (content_box.height - box_size) / 2;
 
@@ -70,7 +89,26 @@ export class CheckBox extends Element {
 
         if (this.checked) {
             ctx.fillStyle = text_color.toString();
-            ctx.fillRect(box_x + 4, box_y + 4, box_size - 8, box_size - 8);
+            const inset = box_size / 5;
+            ctx.fillRect(
+                box_x + inset,
+                box_y + inset,
+                box_size - 2 * inset,
+                box_size - 2 * inset,
+            );
+        }
+
+        if (this.label !== "") {
+            ctx.fillStyle = text_color.toString();
+            ctx.font = `${font_size}px ${font_family}`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = text_baseline;
+            ctx.fillText(
+                this.label,
+                box_x + box_size + LABEL_GAP,
+                content_box.top + content_box.height / 2,
+                content_box.width - box_size - LABEL_GAP,
+            );
         }
 
         ctx.restore(); // transform

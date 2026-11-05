@@ -164,6 +164,19 @@ export class Element {
         });
     }
 
+    /**
+     * A point in the page's reference coordinates, as this element's `rect` sees it: through every
+     * parent's position and scroll. What `drag()` gets.
+     */
+    public to_parent_coordinates(reference_coords: Vector2I): Vector2I {
+        const parent = this.parent;
+        return parent === null
+            ? reference_coords
+            : parent.to_child_coordinates(
+                  parent.to_parent_coordinates(reference_coords),
+              );
+    }
+
     public get_local_content_box_size(): RectI {
         return {
             left: -this.rect.width / 2,
@@ -222,6 +235,11 @@ export class Element {
         return this.is_visible && this.rect.contains(coords.x, coords.y);
     }
 
+    /**
+     * The press on this element moved. Both points are in the coordinates of this element's
+     * `rect`, whatever its parents; `_start_coords` is null on the press itself. Returns whether
+     * it drags: if not, a `UiManager` offers the move to its parents once it has gone far enough.
+     */
     public drag(
         _start_coords: Vector2I | null,
         _current_coords: Vector2I,

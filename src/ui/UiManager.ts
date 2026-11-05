@@ -42,10 +42,15 @@ export class UiManager {
         const element = elements.length > 0 ? elements[0] : null;
         if (element) {
             element.update_mouse_down_status(true);
-            // Trigger drag immediately on pointer-down (e.g. sliders), in the widget's own
-            // (reference) coordinates, the same ones hit() tested. A disabled element never drags.
+            // Trigger drag immediately on pointer-down (e.g. sliders), in the coordinates of the
+            // widget's own rect, the same ones hit() tested. A disabled element never drags.
             if (!element.is_disabled) {
-                element.drag(null, this.to_reference(unit_coords));
+                element.drag(
+                    null,
+                    element.to_parent_coordinates(
+                        this.to_reference(unit_coords),
+                    ),
+                );
             }
         }
         this.mouse_locked_element = element;
@@ -131,10 +136,9 @@ export class UiManager {
      */
     private forward_drag(locked: Element, unit_coords: Vector2I): void {
         const down = this.mouse_down_position;
-        const start =
-            down === null ? null : new Vector2(this.to_reference(down));
+        const start = down === null ? null : this.to_reference(down);
         const current = this.to_reference(unit_coords);
-        if (!locked.is_disabled && locked.drag(start, current)) {
+        if (!locked.is_disabled && this.drag(locked, start, current)) {
             return;
         }
         if (
@@ -145,7 +149,7 @@ export class UiManager {
             return;
         }
         for (let parent = locked.parent; parent; parent = parent.parent) {
-            if (!parent.is_disabled && parent.drag(start, current)) {
+            if (!parent.is_disabled && this.drag(parent, start, current)) {
                 locked.release_pointer();
                 parent.update_mouse_down_status(true);
                 this.mouse_locked_element = parent;
@@ -153,6 +157,18 @@ export class UiManager {
                 return;
             }
         }
+    }
+
+    /** Drags `element` between two points in reference coordinates. */
+    private drag(
+        element: Element,
+        start: Vector2I | null,
+        current: Vector2I,
+    ): boolean {
+        return element.drag(
+            start === null ? null : element.to_parent_coordinates(start),
+            element.to_parent_coordinates(current),
+        );
     }
 
     /** A removed element has no hover anymore, and must not stay in the set. */
