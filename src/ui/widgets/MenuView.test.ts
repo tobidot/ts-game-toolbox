@@ -690,11 +690,10 @@ describe("MenuView", () => {
         const input = new MenuInput(menu);
         const rect = { left: 0, top: 0, width: 200, height: 300 };
         const view = new MenuView(input, rect, { level: 1 });
-        input.handle_key("Enter");
+        input.handle_press(0, 0);
         expect(input.refusals).toBe(1);
         view.poll_animation();
-        input.handle_key("ArrowDown");
-        input.handle_key("Enter");
+        input.handle_press(0, 1);
         view.poll_animation();
         expect(view.is_visible).toBe(true);
         expect(view.list.children[0].state).not.toBe("refused");
