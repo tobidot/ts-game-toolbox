@@ -22,3 +22,4 @@ export * from "./widgets/Slider";
 export * from "./widgets/ValueLabel";
 export * from "./widgets/Image";
 export * from "./widgets/Video";
+export * from "./widgets/MenuView";

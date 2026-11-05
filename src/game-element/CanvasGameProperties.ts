@@ -1,18 +1,20 @@
 import { AudioPlayer } from "../audio/AudioPlayer";
 import { RectI, Vector2I } from "../geometries";
 import { KeyboardState } from "../input/KeyboardState";
+import { MenuInput } from "../input/MenuInput";
 import { IntroGate } from "../stage/IntroGate";
 import { StageLayout } from "../stage/StageLayout";
 import { RgbColor } from "../data/RgbColor";
 import { ease_in_out } from "../flow/tween/Tween";
 import { ThemeEasing, ThemeRule } from "../ui/theme/Theme";
 import { blend_table } from "../ui/theme/ThemeBlend";
-import { theme_shake } from "../ui/theme/ThemeValueAnimator";
+import { theme_pulse, theme_shake } from "../ui/theme/ThemeValueAnimator";
 import { ThemeValueTweenNumber } from "../ui/theme/ThemeValueTween";
 import { UiManager } from "../ui/UiManager";
 import { Element } from "../ui/Element";
 import { Group } from "../ui/Group";
 import { UiPage } from "../ui/UiPage";
+import { MenuView } from "../ui/widgets/MenuView";
 import {
     CanvasGameSettings,
     HouseColors,
@@ -231,6 +233,113 @@ export function default_theme(settings: CanvasGameSettings): ThemeRule[] {
                 accent_color: hex_color(colors.muted),
             },
         },
+        ...menu_house_rules(settings),
+    ];
+}
+
+/** How long the house's "Bitte warten" breathes once. */
+const MENU_HELD_PULSE_SECONDS = 0.7;
+
+/**
+ * A `MenuView` with no style at all: a card with a line around it, white rows, the cursor in
+ * turquoise fading from row to row. A style is the same selectors with other values.
+ */
+function menu_house_rules(settings: CanvasGameSettings): ThemeRule[] {
+    const colors = settings.colors;
+    const background = (color: string) => ({
+        background_color: hex_color(color),
+    });
+    const no_background = { background_color: new RgbColor(0, 0, 0, 0) };
+    return [
+        {
+            selectors: [{ type: "menu" }],
+            properties: {
+                ...background(colors.card),
+                border_color: hex_color(colors.line),
+                border_width: 2,
+            },
+        },
+        {
+            selectors: [{ type: "menu-row" }],
+            properties: {
+                ...no_background,
+                font_size: settings.label_font_size,
+                text_color: hex_color(colors.white),
+                border_radius: 8,
+                transition_seconds: settings.press_transition_seconds,
+            },
+        },
+        {
+            selectors: [{ type: "menu-row", class: "back" }],
+            properties: { text_color: hex_color(colors.muted) },
+        },
+        {
+            selectors: [{ type: "menu-row", state: "hover" }],
+            properties: background(colors.line),
+        },
+        {
+            selectors: [{ type: "menu-row", state: "selected" }],
+            properties: {
+                ...background(colors.turquoise),
+                text_color: hex_color(colors.black),
+            },
+        },
+        {
+            selectors: [{ type: "menu-row", state: "active" }],
+            properties: {
+                ...background(colors.orange),
+                text_color: hex_color(colors.black),
+            },
+        },
+        {
+            selectors: [{ type: "menu-row", state: "disabled" }],
+            properties: {
+                ...no_background,
+                text_color: hex_color(colors.gray),
+            },
+        },
+        {
+            selectors: [{ type: "menu-row", state: "disabled_selected" }],
+            properties: {
+                ...background(colors.line),
+                text_color: hex_color(colors.muted),
+            },
+        },
+        {
+            selectors: [{ type: "menu-row", state: "refused" }],
+            properties: {
+                ...background(colors.line),
+                text_color: hex_color(colors.orange),
+                transform: theme_shake(3),
+                transition_seconds: 0,
+            },
+        },
+        {
+            selectors: [{ type: "menu-hint" }],
+            properties: {
+                ...no_background,
+                font_size: settings.slider_font_size,
+                text_color: hex_color(colors.muted),
+            },
+        },
+        {
+            selectors: [{ type: "menu-hint", class: "held" }],
+            properties: {
+                text_color: theme_pulse(
+                    hex_color(colors.muted),
+                    hex_color(colors.orange),
+                    MENU_HELD_PULSE_SECONDS,
+                ),
+            },
+        },
+        {
+            selectors: [{ type: "menu-path" }],
+            properties: {
+                ...no_background,
+                font_size: settings.slider_font_size,
+                text_color: hex_color(colors.turquoise),
+            },
+        },
     ];
 }
 
@@ -291,6 +400,12 @@ export class CanvasGameProperties<
     public readonly page: UiPage;
     /** Every key, collected on the host; read it in `update()`. Empty until the intro is done. */
     public readonly keyboard = new KeyboardState();
+    /**
+     * The menus' inputs, the same way: the shell hands them the keys after the intro, ages their
+     * buffers and ends their frames. Every placed `MenuView` brings its own; a game drawing its own
+     * menu adds its input here.
+     */
+    public readonly menu_inputs = new Set<MenuInput<never>>();
     /**
      * Plays `settings.sounds` by name. The shell builds it over the loaded assets and stops it on
      * a disconnect; its volumes and mutes stay, like all properties.
@@ -468,6 +583,9 @@ export class CanvasGameProperties<
         parent: Group = this.page,
     ): W {
         parent.add(widget);
+        if (widget instanceof MenuView) {
+            this.menu_inputs.add(widget.input as MenuInput<never>);
+        }
         this.placements.push({ widget, rect_of });
         this.move(widget, rect_of(this.layout));
         return widget;

@@ -165,7 +165,9 @@ export function theme_selector_matches_element(
         (!selector.class || selector.class === element.class) &&
         (!selector.state ||
             selector.state === element.state ||
-            (selector.state === "disabled" && element.state === "refused"))
+            (selector.state === "disabled" &&
+                (element.state === "refused" ||
+                    element.state === "disabled_selected")))
     );
 }
 
