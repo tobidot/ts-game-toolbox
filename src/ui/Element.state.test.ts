@@ -4,7 +4,12 @@ import { Element } from "./Element";
 import { ElementClickEvent, ElementRefusedEvent } from "./events";
 import { set_theme_clock } from "./theme/ThemeClock";
 import { theme_rules_from } from "./theme/ThemeRuleBuilder";
-import { REFUSED_SECONDS, theme_shake } from "./theme/ThemeValueAnimator";
+import {
+    ENTERING_SECONDS,
+    REFUSED_SECONDS,
+    theme_shake,
+    theme_slide,
+} from "./theme/ThemeValueAnimator";
 import { UiManager } from "./UiManager";
 import { UiPage } from "./UiPage";
 import { Button } from "./widgets/Button";
@@ -199,5 +204,70 @@ describe("a refusal", () => {
         const late = at(0.625) as { x: number };
         expect(early.x).toBeGreaterThan(1.5);
         expect(Math.abs(late.x)).toBeLessThan(Math.abs(early.x));
+    });
+
+    describe("entering", () => {
+        let now = 0;
+
+        beforeEach(() => {
+            now = 0;
+            set_theme_clock(() => now);
+        });
+
+        afterEach(() => {
+            set_theme_clock(null);
+        });
+
+        const slide_x = (button: Button): number => {
+            const statement = button.theme.transform?.statements[0];
+            return statement?.type === "translate" ? statement.x : 0;
+        };
+
+        it("lasts a moment, and slides by a rule from where it starts to where it belongs", () => {
+            const button = new Button(
+                "b",
+                RECT,
+                true,
+                theme_rules_from([
+                    ["button:entering", { transform: theme_slide(-8, 0) }],
+                ]),
+            );
+            expect(button.state).toBe(null);
+            button.show_entering();
+            expect(button.state).toBe("entering");
+            expect(slide_x(button)).toBeCloseTo(-8);
+            now = ENTERING_SECONDS / 2;
+            button.poll_animation();
+            expect(slide_x(button)).toBeLessThan(0);
+            expect(slide_x(button)).toBeGreaterThan(-8);
+            now = ENTERING_SECONDS;
+            expect(slide_x(button)).toBeCloseTo(0);
+            button.poll_animation();
+            expect(button.state).toBe(null);
+            expect(button.theme.transform).toBeNull();
+        });
+
+        it("doesn't start over when the state lasts a little longer", () => {
+            const button = new Button(
+                "b",
+                RECT,
+                true,
+                theme_rules_from([
+                    ["button:entering", { transform: theme_slide(-8, 0) }],
+                ]),
+            );
+            button.show_entering();
+            now = ENTERING_SECONDS * 1.5;
+            expect(slide_x(button)).toBeCloseTo(0);
+        });
+
+        it("beats a hover, and gives way to a press", () => {
+            const button = new Button("b", RECT);
+            button.is_hovered = true;
+            button.show_entering();
+            expect(button.state).toBe("entering");
+            button.is_down = true;
+            expect(button.state).toBe("active");
+        });
     });
 });

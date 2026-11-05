@@ -5,6 +5,8 @@ import { ThemePropertyValue, ThemeTransformValue } from "./Theme";
 
 /** How long an element shows a refusal. */
 export const REFUSED_SECONDS = 0.35;
+/** How long an element counts as just appeared. */
+export const ENTERING_SECONDS = 0.12;
 
 /**
  * A value that keeps moving: `callback` gets how far the current round is, 0 to 1. Put it in a rule
@@ -71,5 +73,26 @@ export function theme_shake(
                     y: 0,
                 },
             ]),
+    );
+}
+
+/**
+ * A short move from `x`, `y` to where the element belongs, slowing down: for an `:entering` rule.
+ * It runs for `seconds`, then stays at rest, so a state lasting a little longer can't start it over.
+ */
+export function theme_slide(
+    x: number,
+    y: number,
+    seconds: number = ENTERING_SECONDS,
+): ThemeValueAnimator<ThemeTransformValue | null> {
+    return new ThemeValueAnimator<ThemeTransformValue | null>(
+        seconds * 2,
+        (t) => {
+            const left = Math.max(0, 1 - t * 2);
+            const distance = left * left;
+            return new ThemeTransformValue([
+                { type: "translate", x: x * distance, y: y * distance },
+            ]);
+        },
     );
 }

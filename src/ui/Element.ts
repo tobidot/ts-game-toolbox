@@ -9,7 +9,7 @@ import {
 } from "./events";
 import type { Group } from "./Group";
 import { theme_now } from "./theme/ThemeClock";
-import { REFUSED_SECONDS } from "./theme/ThemeValueAnimator";
+import { ENTERING_SECONDS, REFUSED_SECONDS } from "./theme/ThemeValueAnimator";
 import {
     theme_evaluate,
     ThemeInstance,
@@ -38,6 +38,8 @@ export class Element {
     private _is_disabled: boolean = false;
     /** When the current refusal is over. */
     private refused_until: number | null = null;
+    /** When its entrance is over. */
+    private entering_until: number | null = null;
     private _type: string = "element";
     private _class: string | null = null;
     // properties
@@ -67,8 +69,8 @@ export class Element {
     }
 
     /**
-     * The one state theme selectors match. Priority: refused, disabled, active, selected, hover. A
-     * `:disabled` rule also holds while refused, so `:refused` only says what differs.
+     * The one state theme selectors match. Priority: refused, disabled, active, selected, entering,
+     * hover. A `:disabled` rule also holds while refused, so `:refused` only says what differs.
      */
     public get state(): string | null {
         if (this.refused_until !== null) {
@@ -82,6 +84,9 @@ export class Element {
         }
         if (this.is_selected) {
             return "selected";
+        }
+        if (this.entering_until !== null) {
+            return "entering";
         }
         return this.is_hovered ? "hover" : null;
     }
@@ -125,6 +130,15 @@ export class Element {
      */
     public show_refused(): void {
         this.refused_until = theme_now() + REFUSED_SECONDS;
+        this.update_theme_instance();
+    }
+
+    /**
+     * Shows that this just appeared, for a moment, through the theme's `:entering` rules: a menu
+     * level that opens. With no such rule nothing shows.
+     */
+    public show_entering(seconds: number = ENTERING_SECONDS): void {
+        this.entering_until = theme_now() + seconds;
         this.update_theme_instance();
     }
 
@@ -199,6 +213,13 @@ export class Element {
         }
         if (this.refused_until !== null && theme_now() >= this.refused_until) {
             this.refused_until = null;
+            this.update_theme_instance();
+        }
+        if (
+            this.entering_until !== null &&
+            theme_now() >= this.entering_until
+        ) {
+            this.entering_until = null;
             this.update_theme_instance();
         }
         return this.theme_instance.poll_animation();
