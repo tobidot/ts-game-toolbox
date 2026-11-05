@@ -194,6 +194,12 @@ export abstract class CanvasGameLogic<
                         event.preventDefault();
                         return;
                     }
+                    for (const input of properties.menu_inputs) {
+                        input.handle_key(event.key, event.repeat);
+                    }
+                    if (properties.menu_inputs.size > 0) {
+                        mark_dirty();
+                    }
                     this.on_key_down(event);
                     if (!event.repeat) {
                         this.on_key_press(event);
@@ -652,6 +658,9 @@ export abstract class CanvasGameLogic<
             // The key that left the start screen, or one pressed during the logo, is no move.
             keyboard.clear();
         } else {
+            for (const input of properties.menu_inputs) {
+                input.update(delta_seconds);
+            }
             if (this.update(game, delta_seconds)) {
                 properties.is_dirty = true;
             }
@@ -663,6 +672,9 @@ export abstract class CanvasGameLogic<
                 properties.round_over_seconds += delta_seconds;
             }
             keyboard.end_frame();
+            for (const input of properties.menu_inputs) {
+                input.end_frame();
+            }
             this.show_game_theme(properties.game ?? game);
             if (properties.poll_animation()) {
                 // A still game only repaints when something changed, and this is something.
