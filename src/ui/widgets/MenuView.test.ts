@@ -717,6 +717,15 @@ describe("MenuView", () => {
         expect(path.text).toBe("A");
     });
 
+    it("gives a hint its style the way a view gets one", () => {
+        const menu = new Menu([{ label: "Eins" }]);
+        const input = new MenuInput(menu);
+        const style = [{ properties: { font_size: 31 } }];
+        const hint = new MenuHint(input, VIEW, null, style);
+        expect(hint.theme_rules).toBe(style);
+        expect(hint.theme_instance.get("font_size")).toBe(31);
+    });
+
     it("takes another row height for another layout", () => {
         const menu = new Menu<string>([{ label: "A", value: "a" }]);
         const view = new MenuView(new MenuInput(menu), {

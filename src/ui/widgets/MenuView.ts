@@ -128,8 +128,9 @@ export class MenuHint<T> extends Label {
         private readonly input: MenuInput<T>,
         rect: RectI,
         held_text: string | null = null,
+        style: Array<ThemeRule> = [],
     ) {
-        super("", rect);
+        super("", rect, true, style);
         this.held_text = held_text;
         this.type = "menu-hint";
         this.is_wrapped = true;
