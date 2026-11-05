@@ -7,6 +7,7 @@ import { RgbColor } from "../data/RgbColor";
 import { ThemeRule } from "../ui/theme/Theme";
 import { UiManager } from "../ui/UiManager";
 import { Element } from "../ui/Element";
+import { Group } from "../ui/Group";
 import { UiPage } from "../ui/UiPage";
 import {
     CanvasGameSettings,
@@ -198,14 +199,16 @@ export class CanvasGameProperties<
     }
 
     /**
-     * Adds `widget` to the page and keeps it at `rect_of(layout)` in whichever layout the stage
-     * picks. A widget placed here never needs to be moved by hand.
+     * Adds `widget` to `parent` (default: the page) and keeps it at `rect_of(layout)` in whichever
+     * layout the stage picks. A widget placed here never needs to be moved by hand. Inside a
+     * parent, the rect is relative to that parent, as it always is in a `Group`.
      */
     public place<W extends Element>(
         widget: W,
         rect_of: (layout: LayoutOf<S>) => RectI,
+        parent: Group = this.page,
     ): W {
-        this.page.add(widget);
+        parent.add(widget);
         this.placements.push({ widget, rect_of });
         this.move(widget, rect_of(this.layout));
         return widget;
