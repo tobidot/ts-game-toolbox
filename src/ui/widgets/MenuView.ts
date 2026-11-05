@@ -169,6 +169,8 @@ export class MenuPath<T> extends Label {
         private readonly input: MenuInput<T>,
         rect: RectI,
         public separator: string = " › ",
+        /** What it says on the top level, where there is no path yet. */
+        public root_text: string = "",
     ) {
         super("", rect);
         this.type = "menu-path";
@@ -176,15 +178,20 @@ export class MenuPath<T> extends Label {
     }
 
     public override poll_animation(): boolean {
-        const text = this.input.menu.path.join(this.separator);
+        const text = this.path_text();
         const has_changed = this.is_visible && text !== this.text;
         this.text = text;
         return super.poll_animation() || has_changed;
     }
 
     public override draw(ctx: CanvasRenderingContext2D): void {
-        this.text = this.input.menu.path.join(this.separator);
+        this.text = this.path_text();
         super.draw(ctx);
+    }
+
+    private path_text(): string {
+        const path = this.input.menu.path;
+        return path.length === 0 ? this.root_text : path.join(this.separator);
     }
 }
 
@@ -205,6 +212,8 @@ export interface MenuViewOptions<T> {
     show_hint?: boolean;
     /** The line for the open path above the rows. Default false. */
     show_path?: boolean;
+    /** What the path line says on the top level. Default nothing. */
+    root_text?: string;
     /** What the hint line says while the input is held; default the hint itself. */
     held_text?: string;
     /** Build a row of your own, a subclass of `MenuRow`. */
@@ -267,7 +276,9 @@ export class MenuView<T> extends Panel {
                 ? new MenuHint(input, NO_RECT, options.held_text ?? null)
                 : null;
         this.path =
-            (options.show_path ?? false) ? new MenuPath(input, NO_RECT) : null;
+            (options.show_path ?? false)
+                ? new MenuPath(input, NO_RECT, " › ", options.root_text ?? "")
+                : null;
         for (const line of [this.hint, this.path]) {
             if (line !== null) {
                 this.add(line);

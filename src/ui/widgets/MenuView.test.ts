@@ -682,6 +682,24 @@ describe("MenuView", () => {
         });
     });
 
+    it("can say something on the path line of the top level", () => {
+        const menu = new Menu<string>([
+            { label: "A", entries: [{ label: "B", value: "b" }] },
+        ]);
+        const input = new MenuInput(menu);
+        const view = new MenuView(
+            input,
+            { left: 0, top: 0, width: 200, height: 300 },
+            { show_path: true, root_text: "Hauptmenü" },
+        );
+        const path = view.path as MenuPath<string>;
+        path.poll_animation();
+        expect(path.text).toBe("Hauptmenü");
+        input.handle_key("Enter");
+        path.poll_animation();
+        expect(path.text).toBe("A");
+    });
+
     it("takes another row height for another layout", () => {
         const menu = new Menu<string>([{ label: "A", value: "a" }]);
         const view = new MenuView(new MenuInput(menu), {
