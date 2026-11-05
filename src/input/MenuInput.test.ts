@@ -433,6 +433,7 @@ describe("MenuInput", () => {
             const target = document.createElement("div");
             const controller = new AbortController();
             input.attach(target, controller.signal);
+            // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
             target.dispatchEvent(key_event("ArrowDown", { ctrlKey: true }));
             expect(menu.cursor).toBe(0);
             const repeat = key_event("Enter", { repeat: true });

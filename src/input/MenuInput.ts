@@ -16,10 +16,10 @@ type WaitingPress = Press & { age: number; tree_version: number };
 /** What a press came to, as far as the buffer cares. */
 type PressResult = "choice" | "refused" | "nothing";
 
-const MOVE_KEYS: Readonly<Record<string, number>> = {
-    ArrowUp: -1,
-    ArrowDown: 1,
-};
+const MOVE_KEYS: ReadonlyMap<string, number> = new Map([
+    ["ArrowUp", -1],
+    ["ArrowDown", 1],
+]);
 const CONFIRM_KEYS: readonly string[] = ["Enter", " "];
 const BACK_KEYS: readonly string[] = ["Escape", "ArrowLeft"];
 const OPEN_KEY = "ArrowRight";
@@ -220,7 +220,7 @@ export class MenuInput<T> {
 
     /** Whether this key does something on a menu; a letter only when the tree has any. */
     private understands(key: string, is_repeat: boolean): boolean {
-        if (key in MOVE_KEYS) {
+        if (MOVE_KEYS.has(key)) {
             return true;
         }
         if (is_repeat) {
@@ -310,8 +310,9 @@ export class MenuInput<T> {
 
     private apply_key(key: string): PressResult {
         const menu = this.menu;
-        if (key in MOVE_KEYS) {
-            menu.move(MOVE_KEYS[key]);
+        const step = MOVE_KEYS.get(key);
+        if (step !== undefined) {
+            menu.move(step);
             return "nothing";
         }
         if (CONFIRM_KEYS.includes(key)) {

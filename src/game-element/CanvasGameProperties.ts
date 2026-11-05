@@ -32,6 +32,10 @@ export const UNPLACED: Readonly<RectI> = {
     height: 0,
 };
 
+/** A menu's input, whatever its choices are: the shell only hands it keys. */
+
+type AnyMenuInput = MenuInput<any>;
+
 /** One of `settings.themes` fading into another. */
 interface ThemeFade {
     from: string;
@@ -405,7 +409,7 @@ export class CanvasGameProperties<
      * buffers and ends their frames. Every placed `MenuView` brings its own; a game drawing its own
      * menu adds its input here.
      */
-    public readonly menu_inputs = new Set<MenuInput<never>>();
+    public readonly menu_inputs = new Set<AnyMenuInput>();
     /**
      * Plays `settings.sounds` by name. The shell builds it over the loaded assets and stops it on
      * a disconnect; its volumes and mutes stay, like all properties.
@@ -584,7 +588,7 @@ export class CanvasGameProperties<
     ): W {
         parent.add(widget);
         if (widget instanceof MenuView) {
-            this.menu_inputs.add(widget.input as MenuInput<never>);
+            this.menu_inputs.add(widget.input);
         }
         this.placements.push({ widget, rect_of });
         this.move(widget, rect_of(this.layout));

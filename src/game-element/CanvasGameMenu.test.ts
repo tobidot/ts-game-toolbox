@@ -170,6 +170,7 @@ describe("a MenuView on the shell's page", () => {
     });
 
     it("hears no shortcut, and a mute key stays the shell's", () => {
+        // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
         press("ArrowDown", { ctrlKey: true });
         expect(logic.properties.forms.cursor).toBe(0);
     });
