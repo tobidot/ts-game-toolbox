@@ -97,6 +97,11 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
      */
     public readonly themes: Readonly<Record<string, readonly ThemeRule[]>> = {};
     /**
+     * How long one of `themes` takes to fade into the next while a game runs. A new game shows its
+     * theme at once.
+     */
+    public readonly theme_fade_seconds: number = 0;
+    /**
      * The game's images, name to imported file. The shell loads them when the element starts;
      * the renderer's `paint_image()` paints them by name.
      */

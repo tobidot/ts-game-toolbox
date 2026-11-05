@@ -4,7 +4,10 @@ import { KeyboardState } from "../input/KeyboardState";
 import { IntroGate } from "../stage/IntroGate";
 import { StageLayout } from "../stage/StageLayout";
 import { RgbColor } from "../data/RgbColor";
-import { ThemeRule } from "../ui/theme/Theme";
+import { ease_in_out } from "../flow/tween/Tween";
+import { ThemeEasing, ThemeRule } from "../ui/theme/Theme";
+import { blend_table } from "../ui/theme/ThemeBlend";
+import { ThemeValueTweenNumber } from "../ui/theme/ThemeValueTween";
 import { UiManager } from "../ui/UiManager";
 import { Element } from "../ui/Element";
 import { Group } from "../ui/Group";
@@ -25,6 +28,9 @@ export const UNPLACED: Readonly<RectI> = {
     width: 0,
     height: 0,
 };
+
+/** The curve of a whole theme fading into another. `blended()` goes along with it. */
+const THEME_FADE_EASING: ThemeEasing = "ease_in_out";
 
 /** `#rrggbb` as the toolbox UI's color. */
 export function hex_color(hex: string): RgbColor {
@@ -283,6 +289,11 @@ export class CanvasGameProperties<
     /** The game's rules, between the house rules and the layout's. */
     private game_theme_rules: readonly ThemeRule[];
     private _shown_theme: string | null = null;
+    /** The fade from one of `settings.themes` to the shown one. */
+    private theme_fade: {
+        from: string;
+        progress: ThemeValueTweenNumber;
+    } | null = null;
     private readonly placements: Array<{
         widget: Element;
         rect_of: (layout: LayoutOf<S>) => RectI;
@@ -319,13 +330,20 @@ export class CanvasGameProperties<
 
     /**
      * Swaps the game's theme rules: the house rules stay underneath and the current layout's on top,
-     * everything on the page follows at once, and no widget needs to know. Rules a widget has for
-     * itself stay too.
+     * and no widget needs to know. Rules a widget has for itself stay too. Everything on the page
+     * follows at once, or over `fade_seconds`, from what shows at that moment. This is the same
+     * mechanism as `transition_seconds`, with one duration for this one change.
      */
-    public set_theme(rules: readonly ThemeRule[]): void {
+    public set_theme(
+        rules: readonly ThemeRule[],
+        fade_seconds: number = 0,
+    ): void {
         this.game_theme_rules = rules;
         this.page.theme_rules = this.all_theme_rules();
-        this.page.update_theme_instance();
+        this.page.update_theme_instance({
+            seconds: fade_seconds,
+            easing: THEME_FADE_EASING,
+        });
         this.is_dirty = true;
     }
 
@@ -334,12 +352,60 @@ export class CanvasGameProperties<
         return this._shown_theme;
     }
 
-    /** Shows the theme `name` from `settings.themes`. Asking for the one that shows does nothing. */
-    public show_theme(name: string): void {
-        if (name !== this._shown_theme) {
-            this._shown_theme = name;
-            this.set_theme(this.settings.themes[name] ?? []);
+    /**
+     * Shows the theme `name` from `settings.themes`, fading from the one before over `fade_seconds`.
+     * Asking for the one that shows does nothing.
+     */
+    public show_theme(
+        name: string,
+        fade_seconds: number = this.settings.theme_fade_seconds,
+    ): void {
+        if (name === this._shown_theme) {
+            return;
         }
+        const from = this._shown_theme;
+        this._shown_theme = name;
+        this.theme_fade =
+            from !== null && fade_seconds > 0
+                ? {
+                      from,
+                      progress: new ThemeValueTweenNumber(
+                          0,
+                          1,
+                          fade_seconds,
+                          ease_in_out,
+                      ),
+                  }
+                : null;
+        this.set_theme(this.settings.themes[name] ?? [], fade_seconds);
+    }
+
+    /**
+     * A game's own table per theme (what it paints), as it stands right now: the shown theme's
+     * entry, or during a fade the blend that goes in step with the widgets. See `blend_table()`.
+     */
+    public blended<T extends object>(table: Readonly<Record<string, T>>): T {
+        const shown = this._shown_theme ?? Object.keys(table)[0];
+        const fade = this.theme_fade;
+        return fade === null
+            ? table[shown]
+            : blend_table(table[fade.from], table[shown], fade.progress.get());
+    }
+
+    /**
+     * Whether something of the theme moved, or just arrived: then one more paint is due. The shell
+     * calls it once per frame.
+     */
+    public poll_animation(): boolean {
+        const is_page_moving = this.page.poll_animation();
+        const fade = this.theme_fade;
+        if (fade === null) {
+            return is_page_moving;
+        }
+        if (fade.progress.is_finished) {
+            this.theme_fade = null;
+        }
+        return true;
     }
 
     private all_theme_rules(): ThemeRule[] {
@@ -374,6 +440,7 @@ export class CanvasGameProperties<
         const is_other_theme = layout.theme_rules !== this.layout.theme_rules;
         this.layout = layout;
         if (is_other_theme) {
+            this.theme_fade = null;
             this.set_theme(this.game_theme_rules);
         }
         for (const { widget, rect_of } of this.placements) {

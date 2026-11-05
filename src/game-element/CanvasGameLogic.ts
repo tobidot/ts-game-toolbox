@@ -279,7 +279,7 @@ export abstract class CanvasGameLogic<
         properties.is_round_reported = false;
         properties.round_over_seconds = 0;
         this.on_new_game(properties.game);
-        this.show_game_theme(properties.game);
+        this.show_game_theme(properties.game, 0);
         properties.is_dirty = true;
     }
 
@@ -470,10 +470,10 @@ export abstract class CanvasGameLogic<
         this.renderer.set_status(text);
     }
 
-    private show_game_theme(game: G): void {
+    private show_game_theme(game: G, fade_seconds?: number): void {
         const name = this.theme_name(game);
         if (name !== null) {
-            this.properties.show_theme(name);
+            this.properties.show_theme(name, fade_seconds);
         }
     }
 
@@ -664,7 +664,7 @@ export abstract class CanvasGameLogic<
             }
             keyboard.end_frame();
             this.show_game_theme(properties.game ?? game);
-            if (properties.page.poll_animation()) {
+            if (properties.poll_animation()) {
                 // A still game only repaints when something changed, and this is something.
                 properties.is_dirty = true;
             }

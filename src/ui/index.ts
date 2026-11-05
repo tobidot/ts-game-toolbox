@@ -6,6 +6,7 @@ export * from "./menu/Menu";
 export * from "./events";
 export * from "./theme/Theme";
 export * from "./theme/ThemeRuleBuilder";
+export * from "./theme/ThemeBlend";
 export * from "./theme/ThemeClock";
 export * from "./theme/ThemeValueAnimator";
 export * from "./theme/ThemeValueProxy";

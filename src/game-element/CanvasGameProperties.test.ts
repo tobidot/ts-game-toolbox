@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RgbColor } from "../data/RgbColor";
 import { IntroGate } from "../stage/IntroGate";
+import { set_theme_clock } from "../ui/theme/ThemeClock";
 import { theme_rules_from } from "../ui/theme/ThemeRuleBuilder";
 import { Button } from "../ui/widgets/Button";
 import { Panel } from "../ui/widgets/Panel";
@@ -148,5 +149,36 @@ describe("the mute button", () => {
         const button = game.sound_button;
         expect(game.page.children).toEqual([panel, later, button]);
         expect(game.page.hit({ x: 920, y: 30 })[0]).toBe(button);
+    });
+});
+
+describe("set_theme with a fade", () => {
+    const RED = new RgbColor(255, 0, 0);
+    const BLACK = new RgbColor(0, 0, 0);
+    let time = 0;
+
+    it("moves shown widgets from where they are, and at once without one", () => {
+        time = 10;
+        set_theme_clock(() => time);
+        const game = properties();
+        const button = game.place(new Button("b", UNPLACED), () => UNPLACED);
+        game.set_theme(
+            theme_rules_from([["button", { background_color: RED }]]),
+        );
+        button.theme_instance.is_shown = true;
+        game.set_theme(
+            theme_rules_from([["button", { background_color: BLACK }]]),
+            4,
+        );
+        expect(button.theme.background_color.equals(RED)).toBe(true);
+        time += 2;
+        expect(button.theme.background_color.r).toBe(128);
+        time += 2;
+        expect(button.theme.background_color.equals(BLACK)).toBe(true);
+        game.set_theme(
+            theme_rules_from([["button", { background_color: RED }]]),
+        );
+        expect(button.theme.background_color.equals(RED)).toBe(true);
+        set_theme_clock(null);
     });
 });
