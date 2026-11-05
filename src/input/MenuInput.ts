@@ -10,7 +10,7 @@ export interface MenuInputOptions {
 /** A press as it came in: a key, or a level and an entry from a pointer. */
 type Press = { key: string } | { depth: number; index: number };
 
-/** A press in the buffer: how long it has waited, and which tree it was meant for. */
+/** A press in the buffer: how long it has waited in this hold, and which tree it was meant for. */
 type WaitingPress = Press & { age: number; tree_version: number };
 
 /** What a press came to, as far as the buffer cares. */
@@ -35,7 +35,8 @@ const OPEN_KEY = "ArrowRight";
  * wait, and the rest then waits for that. Whatever is typed after a press means what that press
  * would have led to, so the buffer never gets a hole: the first press to run out of time takes the
  * rest with it, a press that doesn't fit is the one that goes, a refused press drops what comes
- * after it, and so does a new tree (`Menu.set_entries()`).
+ * after it, and so does a new tree (`Menu.set_entries()`). Time only counts within one hold: as
+ * long as the replay gets somewhere, a long chain of waits doesn't run out.
  *
  * Keys: Up and Down move, Enter and Space confirm, Escape and Left go back, Right opens a submenu,
  * and a letter picks the entry with that `key`. Only Up and Down repeat while held.
@@ -278,6 +279,9 @@ export class MenuInput<T> {
                 return;
             }
             this.buffer.shift();
+            for (const waiting of this.buffer) {
+                waiting.age = 0;
+            }
             const result = this.apply(press);
             if (result === "refused" && !this.plays_on_after_refusal) {
                 this.drop_buffer();

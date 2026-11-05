@@ -332,6 +332,22 @@ describe("MenuInput", () => {
             expect(input.choices()).toEqual([]);
         });
 
+        it("counts time per hold: a chain of short waits doesn't run out", () => {
+            const { menu, input } = setup({ buffer_seconds: 0.3 });
+            input.on_change = () => {
+                input.is_held = menu.path.length > 0;
+            };
+            input.is_held = true;
+            type(input, "Enter", "Enter", "ArrowDown");
+            for (let hold = 0; hold < 2; hold++) {
+                input.update(0.25);
+                input.is_held = false;
+                input.update(0);
+            }
+            expect(input.dropped_presses).toBe(0);
+            expect(menu.path).toEqual(["Anträge", "Steuern"]);
+        });
+
         it("drops what doesn't fit, and keeps what came first", () => {
             const { menu, input } = setup({ buffer_size: 1 });
             input.is_held = true;
