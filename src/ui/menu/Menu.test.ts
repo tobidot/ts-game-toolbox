@@ -302,4 +302,215 @@ describe("Menu", () => {
             expect(menu.cursor).toBe(1);
         });
     });
+
+    describe("a back entry", () => {
+        it("goes back instead of returning a value, and does nothing else", () => {
+            const menu = new Menu<string>([
+                {
+                    label: "Zauber",
+                    entries: [
+                        { label: "Feuer", value: "fire" },
+                        { label: "Zurück", back: true, value: "never" },
+                    ],
+                },
+            ]);
+            menu.confirm();
+            menu.move(1);
+            expect(menu.confirm()).toBeNull();
+            expect(menu.path).toEqual([]);
+        });
+    });
+
+    describe("levels and back_to", () => {
+        function deep(): Menu<string> {
+            return new Menu<string>([
+                { label: "x", value: "x" },
+                {
+                    label: "a",
+                    entries: [
+                        {
+                            label: "b",
+                            entries: [{ label: "c", value: "c" }],
+                        },
+                        { label: "d", value: "d" },
+                    ],
+                },
+            ]);
+        }
+
+        it("shows every open level from the top, with its cursor", () => {
+            const menu = deep();
+            menu.point_at(1);
+            menu.confirm();
+            menu.confirm();
+            const levels = menu.levels;
+            expect(levels.map((level) => level.label)).toEqual([
+                null,
+                "a",
+                "b",
+            ]);
+            expect(levels.map((level) => level.cursor)).toEqual([1, 0, 0]);
+            expect(levels[1].entries.map((entry) => entry.label)).toEqual([
+                "b",
+                "d",
+            ]);
+        });
+
+        it("back_to closes down to that level and keeps its cursor", () => {
+            const menu = deep();
+            menu.point_at(1);
+            menu.confirm();
+            menu.confirm();
+            expect(menu.back_to(0)).toBe(true);
+            expect(menu.path).toEqual([]);
+            expect(menu.cursor).toBe(1);
+        });
+
+        it("back_to refuses the open level and what isn't open", () => {
+            const menu = deep();
+            expect(menu.back_to(0)).toBe(false);
+            expect(menu.back_to(3)).toBe(false);
+            expect(menu.back_to(-1)).toBe(false);
+        });
+    });
+
+    describe("key", () => {
+        const menu_with_keys = () =>
+            new Menu<string>([
+                { label: "Hund", value: "h", key: "H" },
+                { label: "Katze", value: "k", key: "k" },
+                { label: "Zaun", value: "z" },
+            ]);
+
+        it("finds the entry on the open level, in any case", () => {
+            const menu = menu_with_keys();
+            expect(menu.index_of_key("h")).toBe(0);
+            expect(menu.index_of_key("K")).toBe(1);
+            expect(menu.index_of_key("z")).toBe(-1);
+        });
+
+        it("says whether the tree has any", () => {
+            expect(menu_with_keys().has_keys).toBe(true);
+            expect(
+                new Menu<string>([
+                    {
+                        label: "a",
+                        entries: [{ label: "b", key: "b" }],
+                    },
+                ]).has_keys,
+            ).toBe(true);
+            expect(new Menu<string>([{ label: "a" }]).has_keys).toBe(false);
+        });
+    });
+
+    describe("stops_on_disabled", () => {
+        const entries = (): MenuEntry<string>[] => [
+            { label: "a", value: "a", disabled: true, hint: "Noch nicht" },
+            { label: "b", value: "b" },
+            { label: "c", value: "c", disabled: true },
+            { label: "d", value: "d" },
+        ];
+
+        it("starts on the first entry and walks over every one", () => {
+            const menu = new Menu<string>(entries(), {
+                stops_on_disabled: true,
+            });
+            expect(menu.cursor).toBe(0);
+            menu.move(2);
+            expect(menu.cursor).toBe(2);
+            expect(menu.confirm()).toBeNull();
+            menu.move(2);
+            expect(menu.cursor).toBe(0);
+            expect(menu.hint_of(menu.current as MenuEntry<string>)).toBe(
+                "Noch nicht",
+            );
+        });
+
+        it("skips them without it, as before", () => {
+            const menu = new Menu<string>(entries());
+            expect(menu.cursor).toBe(1);
+            menu.move(1);
+            expect(menu.cursor).toBe(3);
+        });
+    });
+
+    describe("set_entries", () => {
+        const tree = (): MenuEntry<string>[] => [
+            { label: "Neu", value: "n" },
+            {
+                label: "Steuern",
+                entries: [
+                    { label: "Grund", value: "g" },
+                    {
+                        label: "Hund",
+                        entries: [
+                            { label: "Anmelden", value: "a" },
+                            { label: "Abmelden", value: "b" },
+                        ],
+                    },
+                ],
+            },
+            { label: "Ende", value: "e" },
+        ];
+
+        function open_hund(): Menu<string> {
+            const menu = new Menu<string>(tree());
+            menu.point_at(1);
+            menu.confirm();
+            menu.point_at(1);
+            menu.confirm();
+            menu.point_at(1);
+            return menu;
+        }
+
+        it("keeps the open path and the cursor on the same entries, wherever they are now", () => {
+            const menu = open_hund();
+            const moved = tree();
+            moved.unshift({ label: "Favoriten", entries: [] });
+            const hund = moved[2].entries as MenuEntry<string>[];
+            hund.reverse();
+            (hund[0].entries as MenuEntry<string>[]).reverse();
+            menu.set_entries(moved);
+            expect(menu.path).toEqual(["Steuern", "Hund"]);
+            expect(menu.current?.label).toBe("Abmelden");
+            expect(menu.cursor).toBe(0);
+            expect(menu.levels[0].cursor).toBe(2);
+            expect(menu.levels[1].cursor).toBe(0);
+        });
+
+        it("closes the open path as far as it must when an entry is gone", () => {
+            const menu = open_hund();
+            const moved = tree();
+            (moved[1].entries as MenuEntry<string>[]).pop();
+            menu.set_entries(moved);
+            expect(menu.path).toEqual(["Steuern"]);
+            expect(menu.current?.label).toBe("Grund");
+        });
+
+        it("closes everything when the top entry is gone", () => {
+            const menu = open_hund();
+            menu.set_entries([{ label: "Neu", value: "n" }]);
+            expect(menu.path).toEqual([]);
+            expect(menu.current?.label).toBe("Neu");
+        });
+
+        it("keeps the cursor near when its own entry is gone", () => {
+            const menu = open_hund();
+            const moved = tree();
+            const hund = (moved[1].entries as MenuEntry<string>[])[1];
+            hund.entries = [{ label: "Anmelden", value: "a" }];
+            menu.set_entries(moved);
+            expect(menu.path).toEqual(["Steuern", "Hund"]);
+            expect(menu.current?.label).toBe("Anmelden");
+        });
+
+        it("a reset then opens the new tree, and the version counts", () => {
+            const menu = open_hund();
+            expect(menu.tree_version).toBe(0);
+            menu.set_entries([{ label: "Neu", value: "n" }]);
+            expect(menu.tree_version).toBe(1);
+            menu.reset();
+            expect(menu.entries.length).toBe(1);
+        });
+    });
 });
