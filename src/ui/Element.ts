@@ -1,3 +1,4 @@
+import { RgbColor } from "../data/RgbColor";
 import { EventSocket } from "../signals";
 import { Rect, RectI, Vector2 } from "../geometries";
 import { Vector2I } from "../geometries";
@@ -389,14 +390,20 @@ export class Element {
      * @protected
      */
     protected draw_background(ctx: CanvasRenderingContext2D): void {
-        const { background_color, border_color, border_width, border_radius } =
-            this.theme_instance.get_all();
+        const {
+            background_color,
+            border_color,
+            border_width,
+            border_radius,
+            border_style,
+        } = this.theme_instance.get_all();
 
         const color = background_color;
+        const is_bevel = border_width > 0 && border_style !== "solid";
 
         ctx.beginPath();
         const border_box = this.get_local_border_box_size();
-        if (border_radius > 0) {
+        if (border_radius > 0 && !is_bevel) {
             ctx.roundRect(
                 border_box.left,
                 border_box.top,
@@ -416,10 +423,75 @@ export class Element {
         ctx.fillStyle = color.toString();
         ctx.fill();
 
-        if (border_width > 0) {
+        if (is_bevel) {
+            this.draw_bevel(ctx);
+        } else if (border_width > 0) {
             ctx.lineWidth = border_width;
             ctx.strokeStyle = border_color.toString();
             ctx.stroke();
         }
     }
+
+    /**
+     * A `raised` or `sunken` border, in the same band outside the rect as a solid one: a light
+     * edge and a dark one, both worked out from `border_color`. A bevel has square corners.
+     */
+    private draw_bevel(ctx: CanvasRenderingContext2D): void {
+        const { border_color, border_width, border_style } =
+            this.theme_instance.get_all();
+        const { left, top, width, height } = this.get_local_content_box_size();
+        const right = left + width;
+        const bottom = top + height;
+        const out = border_width;
+        const { light, dark } = bevel_colors(border_color);
+        const edges: Array<{ color: RgbColor; corners: number[][] }> = [
+            {
+                color: border_style === "raised" ? light : dark,
+                corners: [
+                    [left - out, bottom + out],
+                    [left - out, top - out],
+                    [right + out, top - out],
+                    [right, top],
+                    [left, top],
+                    [left, bottom],
+                ],
+            },
+            {
+                color: border_style === "raised" ? dark : light,
+                corners: [
+                    [right + out, top - out],
+                    [right + out, bottom + out],
+                    [left - out, bottom + out],
+                    [left, bottom],
+                    [right, bottom],
+                    [right, top],
+                ],
+            },
+        ];
+        for (const { color, corners } of edges) {
+            ctx.fillStyle = color.toString();
+            ctx.beginPath();
+            corners.forEach(([x, y], index) => {
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+}
+
+/** The two edges of a bevel, from the color a theme gave its border. */
+export function bevel_colors(border_color: RgbColor): {
+    light: RgbColor;
+    dark: RgbColor;
+} {
+    const { a } = border_color;
+    return {
+        light: border_color.lerp(new RgbColor(255, 255, 255, a), 0.7),
+        dark: border_color.lerp(new RgbColor(0, 0, 0, a), 0.55),
+    };
 }

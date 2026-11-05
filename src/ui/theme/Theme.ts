@@ -11,7 +11,8 @@ import { theme_tween_between, ThemeValueTween } from "./ThemeValueTween";
 import { ThemeValueProxy } from "./ThemeValueProxy";
 
 export type ThemeFontStyle = "normal" | "italic" | "bold";
-export type ThemeBorderStyle = "solid";
+/** `raised` and `sunken` are bevels: a light edge and a dark one, worked out from `border_color`. */
+export type ThemeBorderStyle = "solid" | "raised" | "sunken";
 export type ThemeTextAlign = "left" | "center" | "right";
 export type ThemeTextBaseline = "top" | "middle" | "bottom";
 export type ThemeEasing = "linear" | "ease_in" | "ease_out" | "ease_in_out";
