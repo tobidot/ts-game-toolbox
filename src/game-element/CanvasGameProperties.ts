@@ -280,6 +280,9 @@ export class CanvasGameProperties<
     public layout: LayoutOf<S>;
     /** The house rules; a theme swap keeps them underneath. */
     private readonly house_theme_rules: ThemeRule[];
+    /** The game's rules, between the house rules and the layout's. */
+    private game_theme_rules: readonly ThemeRule[];
+    private _shown_theme: string | null = null;
     private readonly placements: Array<{
         widget: Element;
         rect_of: (layout: LayoutOf<S>) => RectI;
@@ -293,12 +296,13 @@ export class CanvasGameProperties<
         const layout = settings.layouts[0] as LayoutOf<S>;
         this.layout = layout;
         this.house_theme_rules = default_theme(settings);
+        this.game_theme_rules = theme_rules;
         this.page = new UiPage(
             { x: layout.width, y: layout.height },
             { left: 0, top: 0, width: 1, height: 1 },
             { left: 0, top: 0, width: layout.width, height: layout.height },
             true,
-            [...this.house_theme_rules, ...theme_rules],
+            this.all_theme_rules(),
         );
         this.ui.active_menu = this.page;
         const has_sounds = Object.keys(settings.sounds).some(
@@ -314,13 +318,36 @@ export class CanvasGameProperties<
     }
 
     /**
-     * Swaps the game's theme rules: the house rules stay underneath, everything on the page follows
-     * at once, and no widget needs to know. Rules a widget has for itself stay too.
+     * Swaps the game's theme rules: the house rules stay underneath and the current layout's on top,
+     * everything on the page follows at once, and no widget needs to know. Rules a widget has for
+     * itself stay too.
      */
     public set_theme(rules: readonly ThemeRule[]): void {
-        this.page.theme_rules = [...this.house_theme_rules, ...rules];
+        this.game_theme_rules = rules;
+        this.page.theme_rules = this.all_theme_rules();
         this.page.update_theme_instance();
         this.is_dirty = true;
+    }
+
+    /** The name in `settings.themes` that shows; null before one was asked for. */
+    public get shown_theme(): string | null {
+        return this._shown_theme;
+    }
+
+    /** Shows the theme `name` from `settings.themes`. Asking for the one that shows does nothing. */
+    public show_theme(name: string): void {
+        if (name !== this._shown_theme) {
+            this._shown_theme = name;
+            this.set_theme(this.settings.themes[name] ?? []);
+        }
+    }
+
+    private all_theme_rules(): ThemeRule[] {
+        return [
+            ...this.house_theme_rules,
+            ...this.game_theme_rules,
+            ...(this.layout.theme_rules ?? []),
+        ];
     }
 
     /**
@@ -344,7 +371,11 @@ export class CanvasGameProperties<
      * when the stage switches; a game calls it when a rule depends on game state that changed.
      */
     public place_widgets(layout: LayoutOf<S> = this.layout): void {
+        const is_other_theme = layout.theme_rules !== this.layout.theme_rules;
         this.layout = layout;
+        if (is_other_theme) {
+            this.set_theme(this.game_theme_rules);
+        }
         for (const { widget, rect_of } of this.placements) {
             this.move(widget, rect_of(layout));
         }

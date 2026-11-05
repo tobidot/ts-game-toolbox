@@ -1,3 +1,4 @@
+import type { ThemeRule } from "../ui/theme/Theme";
 import { LayoutRect, StageLayout } from "../stage/StageLayout";
 
 /** The house palette; a game may reference it but rarely needs to change it. */
@@ -90,6 +91,11 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
      * the game doesn't skip it. A press in that time does nothing. Default: no wait.
      */
     public readonly round_end_hold_seconds: number = 0;
+    /**
+     * The game's looks, name to theme rules. `CanvasGameLogic.theme_name()` says which one shows,
+     * and the shell swaps when that changes. Empty: the game has one look.
+     */
+    public readonly themes: Readonly<Record<string, readonly ThemeRule[]>> = {};
     /**
      * The game's images, name to imported file. The shell loads them when the element starts;
      * the renderer's `paint_image()` paints them by name.

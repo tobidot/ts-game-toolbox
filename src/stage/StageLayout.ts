@@ -1,3 +1,4 @@
+import type { ThemeRule } from "../ui/theme/Theme";
 import { RectI, Vector2I } from "../geometries";
 
 /** A rectangle in layout coordinates. */
@@ -7,6 +8,8 @@ export type LayoutRect = Readonly<RectI>;
 export interface StageLayout {
     readonly width: number;
     readonly height: number;
+    /** Theme rules only this layout has, over the game's: a phone's larger text. */
+    readonly theme_rules?: readonly ThemeRule[];
 }
 
 /**
