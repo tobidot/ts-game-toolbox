@@ -324,6 +324,7 @@ export class MenuView<T> extends Panel {
         this.is_visible = level !== undefined;
         if (level === undefined) {
             this.shown_entries = null;
+            this.seen_refusals = this.input.refusals;
             return was_visible;
         }
         this.arrange();

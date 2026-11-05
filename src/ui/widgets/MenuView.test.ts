@@ -682,6 +682,24 @@ describe("MenuView", () => {
         });
     });
 
+    it("doesn't show a refusal from before its level appeared", () => {
+        const menu = new Menu<string>([
+            { label: "No", value: "n", disabled: true },
+            { label: "A", entries: [{ label: "B", value: "b" }] },
+        ]);
+        const input = new MenuInput(menu);
+        const rect = { left: 0, top: 0, width: 200, height: 300 };
+        const view = new MenuView(input, rect, { level: 1 });
+        input.handle_key("Enter");
+        expect(input.refusals).toBe(1);
+        view.poll_animation();
+        input.handle_key("ArrowDown");
+        input.handle_key("Enter");
+        view.poll_animation();
+        expect(view.is_visible).toBe(true);
+        expect(view.list.children[0].state).not.toBe("refused");
+    });
+
     it("can say something on the path line of the top level", () => {
         const menu = new Menu<string>([
             { label: "A", entries: [{ label: "B", value: "b" }] },
