@@ -269,6 +269,8 @@ function menu_house_rules(settings: CanvasGameSettings): ThemeRule[] {
                 ...no_background,
                 font_size: settings.label_font_size,
                 text_color: hex_color(colors.white),
+                caption_font_size: settings.slider_font_size,
+                caption_color: hex_color(colors.muted),
                 border_radius: 8,
                 transition_seconds: settings.press_transition_seconds,
             },
@@ -286,6 +288,7 @@ function menu_house_rules(settings: CanvasGameSettings): ThemeRule[] {
             properties: {
                 ...background(colors.turquoise),
                 text_color: hex_color(colors.black),
+                caption_color: hex_color(colors.black),
             },
         },
         {
@@ -293,6 +296,7 @@ function menu_house_rules(settings: CanvasGameSettings): ThemeRule[] {
             properties: {
                 ...background(colors.orange),
                 text_color: hex_color(colors.black),
+                caption_color: hex_color(colors.black),
             },
         },
         {
@@ -300,6 +304,7 @@ function menu_house_rules(settings: CanvasGameSettings): ThemeRule[] {
             properties: {
                 ...no_background,
                 text_color: hex_color(colors.gray),
+                caption_color: hex_color(colors.muted),
             },
         },
         {
@@ -314,6 +319,7 @@ function menu_house_rules(settings: CanvasGameSettings): ThemeRule[] {
             properties: {
                 ...background(colors.line),
                 text_color: hex_color(colors.orange),
+                caption_color: hex_color(colors.orange),
                 transform: theme_shake(3),
                 transition_seconds: 0,
             },

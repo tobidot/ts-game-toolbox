@@ -404,6 +404,92 @@ describe("MenuView", () => {
             expect(rows_of(view)[1].columns?.[0].text).toBe("‹ Zurück");
         });
 
+        describe("with the hints in the rows", () => {
+            const hints = { row_hint_share: 0.5, show_hint: false };
+
+            it("shows every entry's hint beside its label, the mark with the label", () => {
+                const { view, page } = setup(tree(), hints);
+                page.draw(fake_context());
+                expect(rows_of(view)[0].columns).toEqual([
+                    { text: "Steuern ›", share: 0.5, align: "left" },
+                    {
+                        text: "Was das Amt nimmt",
+                        share: 0.5,
+                        align: "right",
+                        is_caption: true,
+                    },
+                ]);
+                expect(rows_of(view)[1].columns?.[1].text).toBe("Prüfen");
+                expect(rows_of(view)[2].columns?.[1].text).toBe("");
+            });
+
+            it("keeps the key letter's column", () => {
+                const { view, page } = setup(
+                    [
+                        {
+                            label: "Hund",
+                            value: "hund",
+                            key: "h",
+                            hint: "Pro Hund",
+                        },
+                    ],
+                    hints,
+                );
+                page.draw(fake_context());
+                const columns = rows_of(view)[0].columns ?? [];
+                expect(columns.map((column) => column.text)).toEqual([
+                    "H",
+                    "Hund",
+                    "Pro Hund",
+                ]);
+                expect(
+                    columns.reduce((sum, column) => sum + column.share, 0),
+                ).toBeCloseTo(1);
+            });
+
+            it("repaints a still game when a hint changes", () => {
+                let mana = 20;
+                const { view, page } = setup(
+                    [
+                        {
+                            label: "Feuer",
+                            value: "fire",
+                            hint: () => `Mana ${mana}`,
+                        },
+                    ],
+                    hints,
+                );
+                const context = fake_context();
+                page.draw(context);
+                expect(page.poll_animation()).toBe(false);
+                mana = 5;
+                expect(page.poll_animation()).toBe(true);
+                page.draw(context);
+                expect(rows_of(view)[0].columns?.[1].text).toBe("Mana 5");
+            });
+
+            it("has a finished house look: quiet, dark on the cursor", () => {
+                const { view, page } = setup(tree(), hints);
+                page.draw(fake_context());
+                const [cursor, other] = rows_of(view);
+                expect(cursor.theme_instance.get("caption_color")).toEqual(
+                    hex_color(HOUSE_COLORS.black),
+                );
+                expect(other.theme_instance.get("caption_color")).toEqual(
+                    hex_color(HOUSE_COLORS.muted),
+                );
+            });
+
+            it("doesn't touch a row without the option", () => {
+                const { view, page } = setup();
+                page.draw(fake_context());
+                expect(rows_of(view)[0].columns?.map((c) => c.text)).toEqual([
+                    "Steuern",
+                    "›",
+                ]);
+            });
+        });
+
         it("ends a label too long for its row in an ellipsis", () => {
             const { view } = setup();
             expect(rows_of(view)[0].text_overflow).toBe("ellipsis");

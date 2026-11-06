@@ -308,7 +308,9 @@ With no style that is a finished menu in the house look: a row per entry, the cu
 - A new tree drops the queue: the presses were meant for a tree that isn't there.
 - Replay stops at a choice, so the game can hold before the next one plays.
 
-**`MenuView`** takes `MenuViewOptions`: `style` (theme rules), `level` (which level it shows, default the open one), `row_height`, `row_gap`, `padding`, `submenu_mark`, `show_hint`, `show_path`, `root_text`, `held_text`, `create_row`. It's a `Panel` holding a `ScrollGroup` in `list`, between `path` and `hint`, because those two mustn't scroll. `row_height` can change, for a layout that wants taller rows.
+**`MenuView`** takes `MenuViewOptions`: `style` (theme rules), `level` (which level it shows, default the open one), `row_height`, `row_gap`, `padding`, `submenu_mark`, `show_hint`, `row_hint_share`, `show_path`, `root_text`, `held_text`, `create_row`. It's a `Panel` holding a `ScrollGroup` in `list`, between `path` and `hint`, because those two mustn't scroll. `row_height` can change, for a layout that wants taller rows.
+
+`row_hint_share` puts every entry's hint in its own row, beside the label, in that share of the width, for a list you choose from by reading. A finger has no cursor to read a line with. The hint is a caption, so a style says its color per state with `caption_color` and its size with `caption_font_size`, and the `›` stays with the label. It usually goes with `show_hint: false`.
 
 **A style** is a list of theme rules, a constant the game can name:
 

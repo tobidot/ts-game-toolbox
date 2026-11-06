@@ -36,6 +36,10 @@ export class MenuRow<T> extends Button {
     public has_key_column: boolean = false;
     public submenu_mark: string = "›";
     public back_mark: string = "‹";
+    /** How much of the row the hint takes, beside the label; 0 keeps it out of the row. Set by the view. */
+    public hint_share: number = 0;
+    /** What the hint says right now. Set by the view, which reads it from the menu. */
+    public hint_text: string = "";
 
     public constructor(entry: MenuEntry<T>, index: number) {
         super(entry.label, NO_RECT);
@@ -75,18 +79,22 @@ export class MenuRow<T> extends Button {
         super.draw(ctx);
     }
 
-    /** The key letter, the label and the mark, the first and the last at their own width. */
+    /**
+     * The key letter, the label and the mark, the first and the last at their own width. With a
+     * hint in the row, that takes the right edge and the mark stays with the label.
+     */
     private row_columns(): Button["columns"] {
         const inner = Math.max(1, this.rect.width - 2 * this.text_padding);
         const font_size = this.theme_instance.get("font_size");
         const entry = this.entry;
+        const has_hint = this.hint_share > 0;
         const key_share = this.has_key_column
             ? Math.min(0.4, (font_size * KEY_COLUMN_FONT_SIZES) / inner)
             : 0;
-        const mark_share = Math.min(
-            0.4,
-            (font_size * MARK_COLUMN_FONT_SIZES) / inner,
-        );
+        const mark_share = has_hint
+            ? 0
+            : Math.min(0.4, (font_size * MARK_COLUMN_FONT_SIZES) / inner);
+        const mark = entry.entries === undefined ? "" : this.submenu_mark;
         const label =
             entry.back === true
                 ? `${this.back_mark} ${entry.label}`
@@ -102,15 +110,18 @@ export class MenuRow<T> extends Button {
                   ]
                 : []),
             {
-                text: label,
-                share: 1 - key_share - mark_share,
+                text: has_hint && mark !== "" ? `${label} ${mark}` : label,
+                share: 1 - key_share - mark_share - this.hint_share,
                 align: "left" as const,
             },
-            {
-                text: entry.entries === undefined ? "" : this.submenu_mark,
-                share: mark_share,
-                align: "right" as const,
-            },
+            has_hint
+                ? {
+                      text: this.hint_text,
+                      share: this.hint_share,
+                      align: "right" as const,
+                      is_caption: true,
+                  }
+                : { text: mark, share: mark_share, align: "right" as const },
         ];
     }
 }
@@ -209,8 +220,14 @@ export interface MenuViewOptions<T> {
     padding?: number;
     /** On an entry that opens. Default `›`. */
     submenu_mark?: string;
-    /** The line for the hint under the rows. Default true. */
+    /** The line for the hint of the cursor's entry, under the rows. Default true. */
     show_hint?: boolean;
+    /**
+     * Every entry's hint in its own row, beside the label, as a caption, in this share of the
+     * row's width. A list you choose from by reading, and a finger has no cursor to read a line
+     * with. It usually goes with `show_hint: false`. Default 0: no hint in the rows.
+     */
+    row_hint_share?: number;
     /** The line for the open path above the rows. Default false. */
     show_path?: boolean;
     /** What the path line says on the top level. Default nothing. */
@@ -241,6 +258,7 @@ export class MenuView<T> extends Panel {
     public readonly path: MenuPath<T> | null;
     private readonly level: number | null;
     private readonly submenu_mark: string;
+    private readonly row_hint_share: number;
     private readonly create_row: (
         entry: MenuEntry<T>,
         index: number,
@@ -263,6 +281,7 @@ export class MenuView<T> extends Panel {
         this.input = input;
         this.level = options.level ?? null;
         this.submenu_mark = options.submenu_mark ?? "›";
+        this.row_hint_share = options.row_hint_share ?? 0;
         this.create_row =
             options.create_row ?? ((entry, index) => new MenuRow(entry, index));
         this.seen_refusals = input.refusals;
@@ -356,6 +375,13 @@ export class MenuView<T> extends Panel {
                 row.is_selected = is_selected;
                 has_changed = true;
             }
+            if (this.row_hint_share > 0) {
+                const hint = menu.hint_of(row.entry);
+                if (row.hint_text !== hint) {
+                    row.hint_text = hint;
+                    has_changed = true;
+                }
+            }
         }
         const class_name = this.input.is_held ? "held" : null;
         if (class_name !== this.class) {
@@ -394,6 +420,7 @@ export class MenuView<T> extends Panel {
             row.depth = depth;
             row.has_key_column = has_keys;
             row.submenu_mark = this.submenu_mark;
+            row.hint_share = this.row_hint_share;
             this.list.add(row);
             return row;
         });
