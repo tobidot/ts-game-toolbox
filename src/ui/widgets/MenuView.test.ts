@@ -812,6 +812,43 @@ describe("MenuView", () => {
         expect(hint.theme_instance.get("font_size")).toBe(31);
     });
 
+    describe("a menu out of use", () => {
+        it("leaves the screen and isn't hit, so a press goes through to the game", () => {
+            const { view, input, page, ui } = setup();
+            page.draw(fake_context());
+            input.is_enabled = false;
+            page.draw(fake_context());
+            expect(view.is_visible).toBe(false);
+            ui.pointer_down({ x: 200, y: 120 });
+            expect(ui.mouse_locked_element).toBe(page);
+        });
+
+        it("repaints a still game when it goes, and comes back", () => {
+            const { view, input, page } = setup();
+            page.draw(fake_context());
+            expect(page.poll_animation()).toBe(false);
+            input.is_enabled = false;
+            expect(page.poll_animation()).toBe(true);
+            page.draw(fake_context());
+            input.is_enabled = true;
+            expect(page.poll_animation()).toBe(true);
+            page.draw(fake_context());
+            expect(view.is_visible).toBe(true);
+        });
+
+        it("still hides a level that isn't open once it's back in use", () => {
+            const { menu, input, page } = setup();
+            const below = new MenuView(input, VIEW, { level: 1 });
+            page.add(below);
+            input.is_enabled = false;
+            page.draw(fake_context());
+            input.is_enabled = true;
+            page.draw(fake_context());
+            expect(menu.levels.length).toBe(1);
+            expect(below.is_visible).toBe(false);
+        });
+    });
+
     it("takes another row height for another layout", () => {
         const menu = new Menu<string>([{ label: "A", value: "a" }]);
         const view = new MenuView(new MenuInput(menu), {

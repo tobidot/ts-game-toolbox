@@ -248,7 +248,8 @@ export interface MenuViewOptions<T> {
  * `held` while the input is held, and `:entering` for a moment when another level opens in it.
  *
  * It holds a `ScrollGroup` for the rows, between the path and the hint, because those two must not
- * scroll with them.
+ * scroll with them. It decides `is_visible` itself: it shows while its level is open and its input
+ * is enabled, so a game takes it off the screen with `input.is_enabled = false`.
  */
 export class MenuView<T> extends Panel {
     public readonly input: MenuInput<T>;
@@ -341,6 +342,11 @@ export class MenuView<T> extends Panel {
         const depth = this.level ?? open_depth;
         const level = levels[depth];
         const was_visible = this.is_visible;
+        if (!this.input.is_enabled) {
+            this.is_visible = false;
+            this.seen_refusals = this.input.refusals;
+            return was_visible;
+        }
         this.is_visible = level !== undefined;
         if (level === undefined) {
             this.shown_entries = null;

@@ -112,7 +112,8 @@ export class MenuInput<T> {
 
     /**
      * False while this menu isn't the one in use, on a screen that doesn't show it: presses go
-     * nowhere and leave no trace. Turning it off forgets what was waiting.
+     * nowhere and leave no trace, and a `MenuView` of it leaves the screen. Turning it off forgets
+     * what was waiting.
      */
     public get is_enabled(): boolean {
         return this._is_enabled;

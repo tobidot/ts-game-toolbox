@@ -295,7 +295,7 @@ With no style that is a finished menu in the house look: a row per entry, the cu
 **`MenuInput`** works like `KeyboardState`: events go in, the game asks during `update()`, `end_frame()` starts the next frame.
 
 - `choices()`, `last_choice`, `last_refused`: since the last `end_frame()`. `on_choice` and `on_change` fire inside the event, for what can't wait for the frame, such as starting a hold.
-- `is_held`: while true, presses wait in the buffer and nothing moves. `is_enabled`: a menu on a screen not in use; off, it hears nothing.
+- `is_held`: while true, presses wait in the buffer and nothing moves. `is_enabled`: a menu on a screen not in use; off, it hears nothing and its views leave the screen. A view writes its own `is_visible` from this and the open levels, so that's the way to hide one.
 - `handle_key(key, is_repeat?)`, `handle_hover(depth, index)`, `handle_press(depth, index)`: what a view or your own painting feeds it. Up and Down move and repeat; Enter and Space confirm; Escape and Left go back; Right opens a submenu; a letter picks the entry with that `key`.
 - `attach(target, signal)` for keys without the shell. In a game, the shell routes keys to every placed view's input, after the intro and after the mute and next-round keys, and calls `update()` before your `update()` and `end_frame()` after it. A second menu on another screen is the same with `is_enabled`.
 
