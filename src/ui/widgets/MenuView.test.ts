@@ -812,6 +812,17 @@ describe("MenuView", () => {
         expect(hint.theme_instance.get("font_size")).toBe(31);
     });
 
+    it("forgets a pointer that left during a hold", () => {
+        const { input, page, ui, menu } = setup();
+        page.draw(fake_context());
+        input.is_held = true;
+        ui.pointer_move({ x: 200, y: 166 });
+        ui.pointer_move({ x: 700, y: 700 });
+        input.is_held = false;
+        input.update(0.1);
+        expect(menu.cursor).toBe(0);
+    });
+
     describe("a menu out of use", () => {
         it("leaves the screen and isn't hit, so a press goes through to the game", () => {
             const { view, input, page, ui } = setup();

@@ -212,6 +212,16 @@ export class MenuInput<T> {
         }
     }
 
+    /** The pointer has left that entry: if it went there during a hold, that no longer counts. */
+    public handle_hover_end(depth: number, index: number): void {
+        if (
+            this.held_hover?.depth === depth &&
+            this.held_hover.index === index
+        ) {
+            this.held_hover = null;
+        }
+    }
+
     /**
      * A press on the entry `index` of the level at `depth`. On a parent it goes back to that level:
      * on the entry that is open, that's all; on another one, that one is confirmed too.

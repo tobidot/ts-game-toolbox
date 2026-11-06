@@ -461,4 +461,46 @@ describe("MenuInput", () => {
             expect(menu.cursor).toBe(0);
         });
     });
+
+    describe("a pointer during a hold", () => {
+        function three_rows() {
+            return new MenuInput(
+                new Menu<string>([
+                    { label: "a", value: "a" },
+                    { label: "b", value: "b" },
+                    { label: "c", value: "c" },
+                ]),
+            );
+        }
+
+        it("moves the cursor once the hold is over, if it's still there", () => {
+            const input = three_rows();
+            input.is_held = true;
+            input.handle_hover(0, 2);
+            input.is_held = false;
+            input.update(0.1);
+            expect(input.menu.cursor).toBe(2);
+        });
+
+        it("moves nothing if it has left since", () => {
+            const input = three_rows();
+            input.is_held = true;
+            input.handle_hover(0, 2);
+            input.handle_hover_end(0, 2);
+            input.is_held = false;
+            input.update(0.1);
+            expect(input.menu.cursor).toBe(0);
+        });
+
+        it("goes by the row it came to last, in whatever order the rows hear of it", () => {
+            const input = three_rows();
+            input.is_held = true;
+            input.handle_hover(0, 2);
+            input.handle_hover(0, 1);
+            input.handle_hover_end(0, 2);
+            input.is_held = false;
+            input.update(0.1);
+            expect(input.menu.cursor).toBe(1);
+        });
+    });
 });

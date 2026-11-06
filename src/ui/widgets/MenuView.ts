@@ -70,6 +70,8 @@ export class MenuRow<T> extends Button {
     public override update_mouse_hover_status(is_hovering: boolean): boolean {
         if (is_hovering && !this.is_down) {
             this.input?.handle_hover(this.depth, this.index);
+        } else if (!is_hovering) {
+            this.input?.handle_hover_end(this.depth, this.index);
         }
         return super.update_mouse_hover_status(is_hovering);
     }
