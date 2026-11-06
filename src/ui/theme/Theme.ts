@@ -102,6 +102,8 @@ export interface ThemeProperties {
     font_weight: number;
     font_style: ThemeFontStyle;
     font_family: string;
+    /** The size of a quieter text next to the main one: a `caption` column of a `Button`. */
+    caption_font_size: number;
     text_align: ThemeTextAlign;
     text_baseline: ThemeTextBaseline;
     //
@@ -316,6 +318,7 @@ export class ThemeInstance implements ThemePropertyDefinitions {
     public font_weight!: ThemePropertyDefinition<number>;
     public font_style!: ThemePropertyDefinition<ThemeFontStyle>;
     public font_family!: ThemePropertyDefinition<string>;
+    public caption_font_size!: ThemePropertyDefinition<number>;
     // text
     public text_color!: ThemePropertyDefinition<RgbColor>;
     public text_align!: ThemePropertyDefinition<ThemeTextAlign>;
@@ -468,6 +471,7 @@ export class ThemeInstance implements ThemePropertyDefinitions {
             font_weight: this.get("font_weight"),
             font_style: this.get("font_style"),
             font_family: this.get("font_family"),
+            caption_font_size: this.get("caption_font_size"),
             text_color: this.get("text_color"),
             text_align: this.get("text_align"),
             text_baseline: this.get("text_baseline"),
@@ -553,6 +557,7 @@ export const DEFAULT_THEME = {
     font_size: 16,
     font_weight: 400,
     font_family: "Arial",
+    caption_font_size: 14,
 
     text_color: new RgbColor(0, 0, 0),
     text_align: "left",

@@ -1,7 +1,12 @@
 import { RectI } from "../../geometries";
 import { Element } from "../Element";
 import { ellipsize_text } from "../text";
-import { theme_font, ThemeRule, ThemeTextAlign } from "../theme/Theme";
+import {
+    theme_font,
+    ThemeProperties,
+    ThemeRule,
+    ThemeTextAlign,
+} from "../theme/Theme";
 
 /** One cell of a button's text, see `Button.columns`. */
 export interface ButtonColumn {
@@ -10,6 +15,8 @@ export interface ButtonColumn {
     share: number;
     /** Default: the theme's `text_align`. */
     align?: ThemeTextAlign;
+    /** The quieter text next to the main one: `caption_color`, `caption_font_size`, never bold. */
+    is_caption?: boolean;
 }
 
 /**
@@ -42,7 +49,7 @@ export class Button extends Element {
         }
 
         const theme = this.theme_instance.get_all();
-        const { text_color, text_align, text_baseline } = theme;
+        const { text_align, text_baseline } = theme;
 
         ctx.save();
 
@@ -50,8 +57,7 @@ export class Button extends Element {
         this.draw_background(ctx);
 
         const content_rect = this.get_local_content_box_size();
-        ctx.fillStyle = text_color.toString();
-        ctx.font = theme_font(theme);
+        this.set_text_style(ctx, theme, false);
         ctx.textBaseline = text_baseline;
         const y =
             text_baseline === "middle"
@@ -60,7 +66,7 @@ export class Button extends Element {
                   ? content_rect.top
                   : content_rect.top + content_rect.height;
         if (this.columns !== null) {
-            this.draw_columns(ctx, this.columns, content_rect, y, text_align);
+            this.draw_columns(ctx, this.columns, content_rect, y, theme);
         } else if (text_align === "center") {
             ctx.textAlign = "center";
             ctx.fillText(
@@ -88,22 +94,43 @@ export class Button extends Element {
         columns: readonly ButtonColumn[],
         content_rect: RectI,
         y: number,
-        text_align: ThemeTextAlign,
+        theme: ThemeProperties,
     ): void {
         const inner_width = content_rect.width - 2 * this.text_padding;
         let left = content_rect.left + this.text_padding;
         for (const column of columns) {
             const width = inner_width * column.share;
+            this.set_text_style(ctx, theme, column.is_caption === true);
             this.draw_cell(
                 ctx,
                 column.text,
                 left,
                 width,
                 y,
-                column.align ?? text_align,
+                column.align ?? theme.text_align,
             );
             left += width;
         }
+    }
+
+    private set_text_style(
+        ctx: CanvasRenderingContext2D,
+        theme: ThemeProperties,
+        is_caption: boolean,
+    ): void {
+        ctx.fillStyle = (
+            is_caption ? theme.caption_color : theme.text_color
+        ).toString();
+        ctx.font = theme_font(
+            is_caption
+                ? {
+                      ...theme,
+                      font_size: theme.caption_font_size,
+                      font_weight: 400,
+                      font_style: "normal",
+                  }
+                : theme,
+        );
     }
 
     /** One text aligned in its cell, squeezed rather than running over what is next to it. */

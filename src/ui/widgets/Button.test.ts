@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RgbColor } from "../../data";
 import { theme_rules_from } from "../theme/ThemeRuleBuilder";
 import { Button } from "./Button";
 
@@ -92,5 +93,63 @@ describe("a button's columns", () => {
         );
         row.columns = [{ text: "a", share: 1 }];
         expect(texts_of(row)[0].align).toBe("left");
+    });
+
+    it("says a caption quieter: its own color and size, never bold", () => {
+        const row = new Button(
+            "",
+            RECT,
+            true,
+            theme_rules_from([
+                [
+                    "button",
+                    {
+                        text_color: new RgbColor(1, 2, 3),
+                        caption_color: new RgbColor(4, 5, 6),
+                        font_size: 20,
+                        font_weight: 700,
+                        font_family: "mono",
+                        caption_font_size: 14,
+                    },
+                ],
+            ]),
+        );
+        row.columns = [
+            { text: "Trank", share: 0.5 },
+            { text: "Kein Trank mehr", share: 0.5, is_caption: true },
+            { text: "›", share: 0 },
+        ];
+        const written: Array<{ text: string; font: string; color: string }> =
+            [];
+        const context = new Proxy({} as Record<string | symbol, unknown>, {
+            get: (target, name) => {
+                if (name in target) {
+                    return target[name];
+                }
+                return (...args: unknown[]) => {
+                    if (name === "fillText") {
+                        written.push({
+                            text: args[0] as string,
+                            font: target.font as string,
+                            color: target.fillStyle as string,
+                        });
+                    }
+                };
+            },
+            set: (target, name, value) => {
+                target[name] = value;
+                return true;
+            },
+        }) as unknown as CanvasRenderingContext2D;
+        row.draw(context);
+        expect(written).toEqual([
+            { text: "Trank", font: "700 20px mono", color: "rgba(1, 2, 3, 1)" },
+            {
+                text: "Kein Trank mehr",
+                font: "14px mono",
+                color: "rgba(4, 5, 6, 1)",
+            },
+            { text: "›", font: "700 20px mono", color: "rgba(1, 2, 3, 1)" },
+        ]);
     });
 });

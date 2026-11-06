@@ -138,7 +138,7 @@ row.columns = [
 ];
 ```
 
-A column without `align` takes the theme's `text_align`. While `columns` isn't null, the label doesn't show.
+A column without `align` takes the theme's `text_align`. A column with `is_caption: true` is the quieter text next to the main one, in `caption_color` and `caption_font_size`, never bold. While `columns` isn't null, the label doesn't show.
 
 A long label on a `Button` is squeezed. `text_overflow = "ellipsis"` ends it in `…` instead, for a list where the squeezed rows would differ. `wrap_text(ctx, text, width)` and `ellipsize_text(ctx, text, width)` are the same two rules for your own painting.
 
@@ -180,6 +180,7 @@ Properties:
 - Colors: `background_color`, `border_color`, `text_color`, and `accent_color` for what a widget fills to show its value (the mark of a checkbox, the filled part of a slider).
 - Borders: `border_width`, `border_radius`. A border draws outward from the rect.
 - Slider parts: `thumb_color` for what you hold, `caption_color` for its name.
+- The quieter text in a row of a table: `caption_color`, `caption_font_size`.
 - Text: `font_size`, `font_family`, `font_weight`, `font_style`, `text_align`, `text_baseline`. All widgets build their font with `theme_font(theme)`. A `font_style` of `"bold"` means weight 700. `text_align` starts as `left`, and as `center` on a button, until a rule says otherwise.
 - Movement: `transform`, `transition_seconds`, `transition_easing`; see below.
 
