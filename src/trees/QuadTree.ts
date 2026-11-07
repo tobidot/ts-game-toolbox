@@ -176,6 +176,9 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
         if (!this.intersects(rect)) {
             return result;
         }
+        if (this.is_within(rect)) {
+            return this.pick_all(result);
+        }
         result.push(
             ...this.elements.filter((element) =>
                 Rect.intersects(rect, element),
@@ -183,9 +186,6 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
         );
         if (this.child_branch_nodes === null) {
             return result;
-        }
-        if (this.is_within(rect)) {
-            return this.pick_all(result);
         }
         for (const branch of this.child_branch_nodes) {
             branch.pick(rect, result);

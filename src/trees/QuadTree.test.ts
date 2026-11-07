@@ -77,4 +77,42 @@ describe("QuadTree", () => {
         expect(result.length).toBe(1);
         expect(result[0]).toBe(element);
     });
+
+    describe("on a tree that has split", () => {
+        const corners = (): Array<DemoQuadElement<number>> => {
+            const elements: Array<DemoQuadElement<number>> = [];
+            for (let index = 0; index < 12; index++) {
+                elements.push(
+                    new DemoQuadElement<number>(
+                        -48 + index,
+                        -48 + index,
+                        1,
+                        1,
+                        index,
+                    ),
+                );
+            }
+            return elements;
+        };
+
+        it("pick returns an element once when the rect covers a whole branch", () => {
+            const tree = new QuadTree<DemoQuadElement<number>>(base_rect);
+            for (const element of corners()) {
+                tree.add(element);
+            }
+            // Lies across the middle, so the root keeps it itself.
+            const across = new DemoQuadElement<number>(-5, -5, 10, 10, 99);
+            tree.add(across);
+
+            const picked = tree.pick({
+                left: -60,
+                top: -60,
+                width: 120,
+                height: 120,
+            });
+
+            expect(picked).toHaveLength(13);
+            expect(new Set(picked).size).toBe(13);
+        });
+    });
 });
