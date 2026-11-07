@@ -1,16 +1,21 @@
-import { RectI } from "../../geometries";
+import { Rect, RectI } from "../../geometries";
 import { Element } from "../Element";
 import { Asset } from "../../assets";
 import { ThemeRule } from "../theme/Theme";
 
 export class Image extends Element {
-    public readonly image: Asset<HTMLImageElement>;
+    /** The picture; null draws nothing, for a widget built before its assets exist. */
+    public image: Asset<HTMLImageElement> | null;
     public pixel_size: number;
+    /** Keep the picture's shape, centered in the box, instead of stretching it. */
+    public is_contained: boolean = false;
+    /** False keeps pixel art sharp when it is drawn larger. */
+    public is_smooth: boolean = true;
     private offscreen_canvas: HTMLCanvasElement | null = null;
     private offscreen_ctx: CanvasRenderingContext2D | null = null;
 
     public constructor(
-        image: Asset<HTMLImageElement>,
+        image: Asset<HTMLImageElement> | null,
         rect: RectI,
         is_visible: boolean = true,
         theme_rules?: Array<ThemeRule>,
@@ -62,7 +67,14 @@ export class Image extends Element {
         const border_box = this.get_local_border_box_size();
         const content_box = this.get_local_content_box_size();
         // draw the image
-        if (img.ready) {
+        if (img !== null && img.ready) {
+            const target = this.is_contained
+                ? Rect.contained(
+                      content_box,
+                      img.element.naturalWidth,
+                      img.element.naturalHeight,
+                  )
+                : content_box;
             ctx.save();
             ctx.beginPath();
             if (border_radius > 0) {
@@ -87,11 +99,11 @@ export class Image extends Element {
             if (pixel_size > 1) {
                 const low_width = Math.max(
                     1,
-                    Math.floor(content_box.width / pixel_size),
+                    Math.floor(target.width / pixel_size),
                 );
                 const low_height = Math.max(
                     1,
-                    Math.floor(content_box.height / pixel_size),
+                    Math.floor(target.height / pixel_size),
                 );
 
                 const offscreen = this.get_offscreen(low_width, low_height);
@@ -121,22 +133,25 @@ export class Image extends Element {
 
                     ctx.drawImage(
                         offscreen.canvas,
-                        content_box.left,
-                        content_box.top,
-                        content_box.width,
-                        content_box.height,
+                        target.left,
+                        target.top,
+                        target.width,
+                        target.height,
                     );
 
                     ctx.imageSmoothingEnabled = old_smoothing;
                 }
             } else {
+                const old_smoothing = ctx.imageSmoothingEnabled;
+                ctx.imageSmoothingEnabled = this.is_smooth;
                 ctx.drawImage(
                     img.element,
-                    content_box.left,
-                    content_box.top,
-                    content_box.width,
-                    content_box.height,
+                    target.left,
+                    target.top,
+                    target.width,
+                    target.height,
                 );
+                ctx.imageSmoothingEnabled = old_smoothing;
             }
             ctx.restore();
         }
