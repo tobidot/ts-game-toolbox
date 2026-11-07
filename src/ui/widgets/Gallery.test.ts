@@ -10,7 +10,9 @@ function asset(
 ): Asset<HTMLImageElement> {
     return {
         element: {
+            // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
             naturalWidth: width,
+            // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
             naturalHeight: height,
         } as HTMLImageElement,
         url: "",
@@ -23,6 +25,7 @@ function drawing_context() {
     const draws: Array<{ args: unknown[]; is_smooth: boolean }> = [];
     const rects: number[][] = [];
     const texts: Array<{ text: string; x: number; y: number }> = [];
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
     const state = { imageSmoothingEnabled: true };
     const context = new Proxy(state, {
         get: (target, name) => {
