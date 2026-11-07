@@ -106,6 +106,19 @@ export class Vector2 {
     }
 
     /**
+     * Shorten the vector to `max_length` if it is longer; a shorter one and
+     * the null vector are left as they are. A joystick deflection stays one.
+     * @returns this for chaining
+     */
+    public limit(max_length: number): this {
+        const len = this.len();
+        if (len <= max_length || len < 0.000001) {
+            return this;
+        }
+        return this.set_magnitude(max_length);
+    }
+
+    /**
      * Calculate the dot product with another vector.
      */
     public dot(other: Vector2I): number {
