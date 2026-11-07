@@ -114,5 +114,31 @@ describe("QuadTree", () => {
             expect(picked).toHaveLength(13);
             expect(new Set(picked).size).toBe(13);
         });
+
+        it("clear keeps the branches for the next fill by default", () => {
+            const tree = new QuadTree<DemoQuadElement<number>>(base_rect);
+            for (const element of corners()) {
+                tree.add(element);
+            }
+            const leaves = tree.collect_leaf_rects().length;
+            expect(leaves).toBeGreaterThan(1);
+
+            tree.clear();
+
+            expect(tree.is_empty()).toBe(true);
+            expect(tree.collect_leaf_rects()).toHaveLength(leaves);
+        });
+
+        it("clear(0) drops the branches, so an emptied corner stops being subdivided", () => {
+            const tree = new QuadTree<DemoQuadElement<number>>(base_rect);
+            for (const element of corners()) {
+                tree.add(element);
+            }
+
+            tree.clear(0);
+
+            expect(tree.is_empty()).toBe(true);
+            expect(tree.collect_leaf_rects()).toHaveLength(1);
+        });
     });
 });

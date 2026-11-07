@@ -78,8 +78,14 @@ export class QuadTree<T extends RectI> {
         return this.root_branch.is_empty();
     }
 
-    public clear() {
-        this.root_branch.clear(8);
+    /**
+     * Removes all elements.
+     * @param keep_levels How many levels of branches stay for the next fill.
+     * Refilling a tree whose elements cluster elsewhere now wants 0, or the
+     * old branches stay, and a corner with nothing in it stays subdivided.
+     */
+    public clear(keep_levels: number = 8) {
+        this.root_branch.clear(keep_levels);
     }
 
     /**
