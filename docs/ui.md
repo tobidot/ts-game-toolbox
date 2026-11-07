@@ -124,7 +124,8 @@ this.on_refused(this.properties.go, () => {
 | `Panel`                     | `(children, rect)`               | A `Group` with a background.                                                                                                                                           |
 | `ScrollGroup`               | `(children, rect)`               | See below.                                                                                                                                                             |
 | `MenuView`                  | `(input, rect, options?)`        | A `Menu` on the page, in a style. See "Menus".                                                                                       |
-| `Gallery`, `Image`, `Video` |                                  | Not used in the Spielwerk series yet.                                                                                                                                  |
+| `Gallery`, `Image`               |                                  | Pictures: `Asset`s, `is_contained` and `is_smooth`, `Image.pixel_size`. A click on a `Gallery` goes to the next. See step 23.                                         |
+| `Video`                          |                                  | Not used in the Spielwerk series yet.                                                                                                                                  |
 
 All of them also take `is_visible` and `theme_rules` as the last two arguments. A hidden element isn't hit, and neither is anything inside it.
 

@@ -63,7 +63,7 @@ export class GalleryTest extends TestClass {
             this.create_placeholder_image("Slide 2", "#16a34a"),
             this.create_placeholder_image("Slide 3", "#dc2626"),
             this.create_placeholder_image("Slide 4", "#9333ea"),
-        ];
+        ].map((element) => ({ element, url: element.src, ready: true }));
 
         const gallery = new Gallery("Gallery Widget", images, {
             left: 60,
