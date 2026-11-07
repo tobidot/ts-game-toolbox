@@ -51,9 +51,10 @@ export class SignalSocket<T> implements Observable<Listener<T>, number, T> {
     }
 
     /**
-     * removes all listeners from this socket
+     * removes all listeners from this socket. Handles are never reused, so an old one can't
+     * detach a listener attached later.
      */
     public detach_all() {
-        this.listeners = [];
+        this.listeners = new Array<Listener<T>>(this.listeners.length);
     }
 }

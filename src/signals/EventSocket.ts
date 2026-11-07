@@ -18,7 +18,9 @@ export class EventBase {
 export type EventCallback<T extends EventBase> = (event: T) => void;
 
 /**
- * An EventSocket provides an easy way to
+ * Several kinds of event through one socket: a listener attaches to an event class and gets only
+ * events of that class. For things that happen (a sale, a click), where a `SignalSocket` or an
+ * `ObservableSocket` carries one kind of value.
  */
 export class EventSocket<T extends EventBase> implements Observable<
     Listener<T>,
@@ -81,7 +83,8 @@ export class EventSocket<T extends EventBase> implements Observable<
     }
 
     /**
-     *
+     * Removes the listener with this handle, or every listener for this event class.
+     * @returns TRUE if anything was removed
      */
     public detach<EVENT extends T>(
         identifier: EventClass<EVENT> | number,
@@ -108,8 +111,14 @@ export class EventSocket<T extends EventBase> implements Observable<
         return one_hit;
     }
 
+    /**
+     * Removes all listeners. Handles are never reused, so an old one can't detach a listener
+     * attached later.
+     */
     public detach_all() {
-        this.listeners = [];
+        this.listeners = new Array<Listener<T> | undefined>(
+            this.listeners.length,
+        );
     }
 }
 

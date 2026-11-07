@@ -23,16 +23,29 @@ export class ObservableSocket<T> extends SignalSocket<ObserverSignal<T>> {
     }
 
     /**
-     * Sets a new value for the socket and emits a ObserverSignal with the change
+     * Sets a new value and tells the listeners, which already read the new value from `get()`.
+     * A value equal to the current one (`Object.is`) is stored and tells nobody.
      * @param new_value new value for the parameter
      * @return The new Value
      */
     public set(new_value: T): T {
-        super.dispatch({
-            old: this.value,
-            new: new_value,
-        });
-        return (this.value = new_value);
+        const old = this.value;
+        this.value = new_value;
+        if (!Object.is(old, new_value)) {
+            super.dispatch({ old, new: new_value });
+        }
+        return new_value;
+    }
+
+    /**
+     * Attaches a listener and calls it at once with the current value (`old` and `new` the same),
+     * so a widget shows the value from the start without a second line for it.
+     * @return The handle, for `detach()`
+     */
+    public watch(listener: (signal: ObserverSignal<T>) => void): number {
+        const handle = this.attach(listener);
+        listener({ old: this.value, new: this.value });
+        return handle;
     }
 
     /**
@@ -47,7 +60,7 @@ export class ObservableSocket<T> extends SignalSocket<ObserverSignal<T>> {
 /**
  * The change signal
  */
-interface ObserverSignal<T> {
+export interface ObserverSignal<T> {
     old: T;
     new: T;
 }
