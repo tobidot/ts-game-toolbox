@@ -57,4 +57,35 @@ describe("Rect", () => {
             rect.overlaps_with({ left: 101, top: 101, width: 10, height: 10 }),
         ).toBe(false);
     });
+
+    describe("touches_segment", () => {
+        const rect = { left: 0, top: 0, width: 10, height: 10 };
+
+        it("is true for a segment inside, across, or ending in the rect", () => {
+            const a = { x: 2, y: 2 };
+            const b = { x: 8, y: 8 };
+            expect(Rect.touches_segment(rect, a, b)).toBe(true);
+            expect(
+                Rect.touches_segment(rect, { x: -5, y: 5 }, { x: 15, y: 5 }),
+            ).toBe(true);
+            expect(
+                Rect.touches_segment(rect, { x: 5, y: 5 }, { x: 50, y: 50 }),
+            ).toBe(true);
+        });
+
+        it("is false for a segment that passes by", () => {
+            expect(
+                Rect.touches_segment(rect, { x: -5, y: 8 }, { x: 8, y: 25 }),
+            ).toBe(false);
+            expect(
+                Rect.touches_segment(rect, { x: 11, y: -5 }, { x: 11, y: 15 }),
+            ).toBe(false);
+        });
+
+        it("is false for a segment that stops short of the rect", () => {
+            expect(
+                Rect.touches_segment(rect, { x: -5, y: 5 }, { x: -1, y: 5 }),
+            ).toBe(false);
+        });
+    });
 });

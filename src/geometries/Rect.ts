@@ -248,6 +248,46 @@ export class Rect implements RectI {
         );
     }
 
+    /**
+     * Does the segment from `a` to `b` touch the rect, inside or across?
+     * Cuts the segment down one border at a time (Liang-Barsky): if nothing
+     * is left of it, it missed.
+     */
+    public static touches_segment(
+        rect: RectI,
+        a: Vector2I,
+        b: Vector2I,
+    ): boolean {
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const borders: Array<[number, number]> = [
+            [-dx, a.x - rect.left],
+            [dx, rect.left + rect.width - a.x],
+            [-dy, a.y - rect.top],
+            [dy, rect.top + rect.height - a.y],
+        ];
+        let from = 0;
+        let to = 1;
+        for (const [direction, room] of borders) {
+            if (direction === 0) {
+                if (room < 0) {
+                    return false;
+                }
+                continue;
+            }
+            const cut = room / direction;
+            if (direction < 0) {
+                from = Math.max(from, cut);
+            } else {
+                to = Math.min(to, cut);
+            }
+            if (from > to) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static intersects(a: RectI, b: RectI): boolean {
         const overlap_x =
             (a.left + a.width > b.left && a.left <= b.left) ||
