@@ -42,4 +42,42 @@ describe("Polygon", () => {
         expect(rect.width).toBe(0);
         expect(rect.height).toBe(0);
     });
+
+    it("contains is not fooled by a ray that only grazes a corner", () => {
+        const triangle = new Polygon([
+            { x: 100, y: 100 },
+            { x: 200, y: 100 },
+            { x: 200, y: 200 },
+        ]);
+
+        // On the line through its corners, before them and after them.
+        expect(triangle.contains({ x: 50, y: 50 })).toBe(false);
+        expect(triangle.contains({ x: 250, y: 250 })).toBe(false);
+        expect(triangle.contains({ x: 170, y: 130 })).toBe(true);
+
+        const diamond = new Polygon([
+            { x: 100, y: 0 },
+            { x: 200, y: 100 },
+            { x: 100, y: 200 },
+            { x: 0, y: 100 },
+        ]);
+        // In line with a corner, on each axis.
+        expect(diamond.contains({ x: 100, y: -50 })).toBe(false);
+        expect(diamond.contains({ x: -50, y: 100 })).toBe(false);
+        expect(diamond.contains({ x: 100, y: 100 })).toBe(true);
+    });
+
+    it("contains works on a concave shape", () => {
+        const notch = new Polygon([
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+            { x: 50, y: 50 },
+            { x: 100, y: 100 },
+            { x: 0, y: 100 },
+        ]);
+
+        expect(notch.contains({ x: 25, y: 50 })).toBe(true);
+        expect(notch.contains({ x: 80, y: 50 })).toBe(false);
+        expect(notch.contains({ x: 80, y: 10 })).toBe(true);
+    });
 });

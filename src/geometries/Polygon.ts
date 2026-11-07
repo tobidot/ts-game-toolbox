@@ -1,4 +1,3 @@
-import { Ray } from "./Ray";
 import { Rect } from "./Rect";
 import { Segment } from "./Segment";
 import { Vector2, Vector2I } from "./Vector2";
@@ -56,26 +55,24 @@ export class Polygon implements PolygonI {
     }
 
     /**
-     * Check if a point is inside this polygone via even/odd rule
-     * @param point
+     * Is the point inside? Counts the edges a line going right from the point
+     * crosses: an odd number means inside. An edge counts when one of its ends
+     * lies above the point and the other doesn't, so a corner counts once for
+     * a line passing through and not at all for one that only grazes it.
      */
     public contains(point: Vector2I): boolean {
-        // const random_point = new Vector2(0, 0);
-        const direction = new Vector2(0.66, 0.66); // Vector2.from_angle(Math.random() + Math.PI * 2)
-        const ray = new Ray(point, direction);
-        // cast a ray from a random point and count the crosssections with all lines of the plygone
-        // if an even number of lines are crossed it is outside the polygone
-        const lines = this.lines;
-        let hits = 0;
-        for (let i = 0; i < lines.length; ++i) {
-            const line = lines[i];
-            const t = ray.get_ray_projection(line);
-            const u = line.get_ray_projection(ray);
-            if (t !== null && u !== null && t >= 0 && u >= 0 && u < 1) {
-                hits++;
+        const points = this._points;
+        let is_inside = false;
+        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+            const a = points[i];
+            const b = points[j];
+            if (a.y > point.y !== b.y > point.y) {
+                const x = a.x + ((point.y - a.y) / (b.y - a.y)) * (b.x - a.x);
+                if (point.x < x) {
+                    is_inside = !is_inside;
+                }
             }
         }
-        // if it is odd it is inside
-        return hits % 2 === 1;
+        return is_inside;
     }
 }
