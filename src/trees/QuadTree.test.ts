@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { QuadTree } from "./QuadTree";
 import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundException";
+import { Polygon } from "../geometries/Polygon";
 import { Rect, RectI } from "../geometries/Rect";
 
 class DemoQuadElement<T> extends Rect {
@@ -139,6 +140,102 @@ describe("QuadTree", () => {
 
             expect(tree.is_empty()).toBe(true);
             expect(tree.collect_leaf_rects()).toHaveLength(1);
+        });
+    });
+
+    describe("pick_polygon", () => {
+        const sea: RectI = { left: 0, top: 0, width: 1000, height: 1000 };
+        const center = (element: Rect) => ({
+            x: element.left + element.width / 2,
+            y: element.top + element.height / 2,
+        });
+        /** Spread by a fixed sequence, so a failure stays the same one. */
+        const filled = (count: number) => {
+            const tree = new QuadTree<Rect>(sea);
+            const elements: Array<Rect> = [];
+            for (let index = 0; index < count; index++) {
+                const element = new Rect({
+                    left: 10 + ((index * 379) % 970),
+                    top: 10 + ((index * 613) % 970),
+                    width: 8,
+                    height: 8,
+                });
+                elements.push(element);
+                tree.add(element);
+            }
+            return { tree, elements };
+        };
+        const shapes: Record<string, Polygon> = {
+            fan: new Polygon([
+                { x: 500, y: 500 },
+                { x: 960, y: 200 },
+                { x: 990, y: 500 },
+                { x: 960, y: 800 },
+            ]),
+            concave_star: new Polygon([
+                { x: 500, y: 50 },
+                { x: 560, y: 440 },
+                { x: 950, y: 500 },
+                { x: 560, y: 560 },
+                { x: 500, y: 950 },
+                { x: 440, y: 560 },
+                { x: 50, y: 500 },
+                { x: 440, y: 440 },
+            ]),
+            smaller_than_a_cell: new Polygon([
+                { x: 500, y: 500 },
+                { x: 503, y: 500 },
+                { x: 503, y: 503 },
+            ]),
+            around_everything: new Polygon([
+                { x: -100, y: -100 },
+                { x: 1100, y: -100 },
+                { x: 1100, y: 1100 },
+                { x: -100, y: 1100 },
+            ]),
+            outside_everything: new Polygon([
+                { x: 2000, y: 2000 },
+                { x: 2100, y: 2000 },
+                { x: 2100, y: 2100 },
+            ]),
+        };
+
+        for (const [name, shape] of Object.entries(shapes)) {
+            it(`finds what a loop over all elements finds: ${name}`, () => {
+                const { tree, elements } = filled(2000);
+
+                const picked = tree.pick_polygon(shape);
+
+                const expected = elements.filter((element) =>
+                    shape.contains(center(element)),
+                );
+                expect(new Set(picked).size).toBe(picked.length);
+                expect(new Set(picked)).toEqual(new Set(expected));
+            });
+        }
+
+        it("tests few elements one by one, where the cells are decided whole", () => {
+            const { tree } = filled(2000);
+            const checked: Array<Rect> = [];
+
+            tree.pick_polygon(shapes.fan, checked);
+
+            expect(checked.length).toBeGreaterThan(0);
+            expect(checked.length).toBeLessThan(600);
+        });
+
+        it("tests hardly any when the polygon misses or covers it all", () => {
+            const { tree } = filled(2000);
+            const checked: Array<Rect> = [];
+
+            expect(
+                tree.pick_polygon(shapes.around_everything, checked),
+            ).toHaveLength(2000);
+            expect(
+                tree.pick_polygon(shapes.outside_everything, checked),
+            ).toHaveLength(0);
+
+            expect(checked).toHaveLength(0);
         });
     });
 });

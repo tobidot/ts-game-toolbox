@@ -1,5 +1,5 @@
 import { TreeElementNotFoundException } from "./exceptions/TreeElementNotFoundException";
-import { RectI, Rect } from "../geometries";
+import { Polygon, RectI, Rect, Vector2I } from "../geometries";
 
 export class QuadTree<T extends RectI> {
     private root_branch: QuadTreeBranch<T>;
@@ -9,6 +9,26 @@ export class QuadTree<T extends RectI> {
     public pick(rect: RectI): Array<T> {
         return this.root_branch.pick(rect);
     }
+
+    /**
+     * The elements whose center lies inside the polygon. Unlike `pick()` with
+     * a `contains()` on each result, this asks the polygon about whole cells:
+     * a cell no edge touches is all inside or all outside, so one test decides
+     * every element in it. Only cells an edge runs through test theirs one by one.
+     * @param polygon May be concave.
+     * @param checked Receives the elements that were tested one by one.
+     */
+    public pick_polygon(polygon: Polygon, checked: Array<T> = []): Array<T> {
+        const points = polygon.points;
+        const edges: Array<PolygonEdge> = points.map((point, index) => [
+            point,
+            points[(index + 1) % points.length],
+        ]);
+        const result: Array<T> = [];
+        this.root_branch.pick_polygon(polygon, edges, result, checked);
+        return result;
+    }
+
     public add(element: T, max_depth: number = 32): void {
         if (max_depth <= 0) {
             throw new Error("Maximum depth reached in QuadTree");
@@ -97,6 +117,8 @@ export class QuadTree<T extends RectI> {
         return result;
     }
 }
+
+type PolygonEdge = [Vector2I, Vector2I];
 
 export class QuadTreeBranch<T extends RectI> extends Rect {
     public child_branch_nodes:
@@ -197,6 +219,47 @@ export class QuadTreeBranch<T extends RectI> extends Rect {
             branch.pick(rect, result);
         }
         return result;
+    }
+
+    /**
+     * `edges`: those of the polygon that touched the parent. No other can
+     * touch this branch, so the list gets shorter on the way down.
+     */
+    public pick_polygon(
+        polygon: Polygon,
+        edges: Array<PolygonEdge>,
+        result: Array<T>,
+        checked: Array<T>,
+    ): void {
+        const touching = edges.filter(([a, b]) =>
+            Rect.touches_segment(this, a, b),
+        );
+        if (touching.length === 0) {
+            const middle = {
+                x: this.left + this.width / 2,
+                y: this.top + this.height / 2,
+            };
+            if (polygon.contains(middle)) {
+                this.pick_all(result);
+            }
+            return;
+        }
+        for (const element of this.elements) {
+            checked.push(element);
+            const center = {
+                x: element.left + element.width / 2,
+                y: element.top + element.height / 2,
+            };
+            if (polygon.contains(center)) {
+                result.push(element);
+            }
+        }
+        if (this.child_branch_nodes === null) {
+            return;
+        }
+        for (const branch of this.child_branch_nodes) {
+            branch.pick_polygon(polygon, touching, result, checked);
+        }
     }
 
     public pick_all(result: Array<T>): Array<T> {
