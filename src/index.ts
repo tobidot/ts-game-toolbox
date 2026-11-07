@@ -17,3 +17,4 @@ export * from "./canvas";
 export * from "./audio";
 export * from "./stage";
 export * from "./game-element";
+export * from "./helpers/math";
