@@ -1,4 +1,5 @@
 import { Ray } from "./Ray";
+import { Rect } from "./Rect";
 import { Segment } from "./Segment";
 import { Vector2, Vector2I } from "./Vector2";
 
@@ -32,6 +33,26 @@ export class Polygon implements PolygonI {
             lines.push(new Segment(a, b));
         }
         return lines;
+    }
+
+    /**
+     * The smallest rect around the points: what to ask a `QuadTree` for
+     * before testing `contains()` on what it returns.
+     */
+    public get bounding_rect(): Rect {
+        if (this._points.length === 0) {
+            return new Rect({ left: 0, top: 0, width: 0, height: 0 });
+        }
+        const xs = this._points.map((point) => point.x);
+        const ys = this._points.map((point) => point.y);
+        const left = Math.min(...xs);
+        const top = Math.min(...ys);
+        return new Rect({
+            left,
+            top,
+            width: Math.max(...xs) - left,
+            height: Math.max(...ys) - top,
+        });
     }
 
     /**
