@@ -38,7 +38,21 @@ async function run() {
 
 ## Throttler
 
-A decorator to throttle function calls.
+Runs an expensive async callback at most once per `delay_ms`, however often it's asked to: a slider that fires on every pointer move, a resize, a search box.
+
+```ts
+const maps = new Throttler<[Screws], Terrain>({
+    delay_ms: 120,
+    callback: async (screws) => make_terrain(screws),
+});
+maps.run(screws).then((terrain) => show(terrain));
+```
+
+- The first call after a rest runs at once (or after `wake_up_ms`).
+- Calls that come while it runs, or within `delay_ms` after it ends, wait and share one more run with the last call's arguments, so what was asked for last always happens.
+- Every call that shared a run gets the same promise, and so the same result: a caller that counts results should count distinct ones.
+- `STRATEGIES.latest` is the default. `STRATEGIES.combine` hands calls made while a run is going that run's promise and drops their arguments.
+- `is_busy` is true while a run is going or one is waiting.
 
 ## Asserts
 

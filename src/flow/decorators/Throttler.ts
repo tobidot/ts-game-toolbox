@@ -1,21 +1,13 @@
 import { WithDefaultSettings } from "../../helpers";
-import { assert_never } from "../asserts/AssertNever";
-import { sleep } from "../async/Sleep";
-import { assert_ok } from "../asserts/AssertOk";
 
 /**
  * --------------------------------------------------------------------------------
  * 								Strategy
  * --------------------------------------------------------------------------------
  *
- * When the throttler is called, it could be in one of the following states:
- * - SLEEPING: The throttler is sleeping and not attempting to run any function right now.
- * - AWAKENING: The throttler is waiting for the wake_up_ms to pass.
- * - READY: The throttler is ready to run the function.
- * - RUNNING: The throttler is running the function.
- * - DELAYING: The throttler is waiting for the delay_ms to pass.
- *
- *
+ * The first call after a rest runs at once (or after `wake_up_ms`). Calls that come
+ * while it runs, or within `delay_ms` after it, wait and share one more run, so the
+ * callback runs at most once per `delay_ms` however often it's called.
  */
 
 /**
@@ -27,11 +19,12 @@ interface Settings<PARAMETERS extends Array<any>, RESULT> {
      */
     strategy: ThrottleStrategy;
     /**
-     * The amout of ms to wait before the function should first run (when not being throttled).
+     * After a rest, how long to wait before the first run. The last (or first, see
+     * `use_last_args`) arguments of that wait are used.
      */
     wake_up_ms: number;
     /**
-     * The amount of ms to wait before the function should run again.
+     * How long after a run ends before the next may start.
      */
     delay_ms: number;
     /**
@@ -40,25 +33,39 @@ interface Settings<PARAMETERS extends Array<any>, RESULT> {
     callback: (...args: PARAMETERS) => Promise<RESULT>;
 }
 
+/** Calls waiting for the same run, and what they'll be told. */
+interface Batch<PARAMETERS, RESULT> {
+    args: PARAMETERS;
+    promise: Promise<RESULT>;
+    resolve: (result: RESULT) => void;
+    reject: (reason: unknown) => void;
+}
+
 /**
- * A decorator that throttles a function call.
- * @param strategy The strategy to use for throttling.
- * @param delay_ms The amount of ms to wait before the function should run again.
+ * Runs an expensive callback at most once per `delay_ms`, however often it is asked
+ * to: a slider that fires on every pointer move, a resize, a search box.
  */
 export class Throttler<PARAMETERS extends Array<any>, RESULT> {
-    public static readonly STRATEGIES: { [key: string]: ThrottleStrategy } = {
+    public static readonly STRATEGIES = {
         /**
-         * The first function call will be executed.
-         * Calls during awake and running get the same promise returend.
-         * (using the first call's arguments)
+         * Calls that come while it waits or runs share one more run, with the last
+         * call's arguments: what was asked for last always happens. The default.
+         */
+        latest: {
+            queue_when_running: true,
+            use_last_args: true,
+        } as ThrottleStrategy,
+        /**
+         * Calls while the callback runs get that run's promise, and their arguments
+         * are dropped. Calls while it waits share one more run, with the last arguments.
          */
         combine: {
             queue_when_running: false,
             use_last_args: true,
-        },
+        } as ThrottleStrategy,
     };
     public static readonly DEFAULT_SETTINGS = {
-        strategy: Throttler.STRATEGIES.combine,
+        strategy: Throttler.STRATEGIES.latest,
         wake_up_ms: 0,
         delay_ms: 33,
     };
@@ -67,20 +74,12 @@ export class Throttler<PARAMETERS extends Array<any>, RESULT> {
      * The settings for this throttler.
      */
     public settings: Settings<PARAMETERS, RESULT>;
-    /**
-     * Some logic calls to the throttler.
-     */
-    public logic: Logic<PARAMETERS, RESULT>;
-    /**
-     * The properties for this throttler.
-     */
-    public props: Properties<PARAMETERS, RESULT>;
 
-    /**
-     * Creates a new throttler.
-     * @param callback
-     * @param settings
-     */
+    private running: Promise<RESULT> | null = null;
+    private pending: Batch<PARAMETERS, RESULT> | null = null;
+    private timer: ReturnType<typeof setTimeout> | null = null;
+    private last_end_ms: number = -Infinity;
+
     public constructor(
         settings: WithDefaultSettings<
             Throttler<PARAMETERS, RESULT>,
@@ -88,209 +87,98 @@ export class Throttler<PARAMETERS extends Array<any>, RESULT> {
         >,
     ) {
         this.settings = Object.assign({}, Throttler.DEFAULT_SETTINGS, settings);
-        this.logic = new Logic(this);
-        this.props = new Properties(this);
+    }
+
+    /** True while a run is going or one is waiting. */
+    public get is_busy(): boolean {
+        return this.running !== null || this.pending !== null;
     }
 
     /**
-     * Attempts to call the function.
-     * @param args
-     * @returns
+     * Asks for a run. The promise gives the result of the run these arguments
+     * ended up in.
      */
-    public async run(...args: PARAMETERS): Promise<RESULT> {
-        const promise = this.logic.run(...args);
-        return await promise;
-    }
-}
-
-class Properties<PARAMETERS extends Array<any>, RESULT> {
-    /** The state the throttler is currently in */
-    public state: State = State.READY;
-    /** The time the state last changed */
-    public last_state_change_at: number = performance.now();
-    /** The args given to the currently running call */
-    public callback_args: PARAMETERS | null = null;
-    /** The promise returned by the callback */
-    public callback_promise: Promise<RESULT> | null = null;
-    /** The last result returned by the callback */
-    public callback_result: RESULT | null = null;
-    /** The promise to when the throttler is awakened */
-    public awakening_promise: Promise<PARAMETERS> | null = null;
-    /** The promise to when the throttler is delayed */
-    public delay_promise: Promise<void> | null = null;
-
-    public constructor(public parent: Throttler<any, any>) {}
-}
-
-class Logic<PARAMETERS extends Array<any>, RESULT> {
-    public constructor(public parent: Throttler<PARAMETERS, RESULT>) {}
-
-    /**
-     * Attempts to call the function.
-     * @param args
-     * @returns
-     */
-    public async run(...args: PARAMETERS): Promise<RESULT> {
-        switch (this.parent.props.state) {
-            case State.SLEEPING:
-            case State.AWAKENING:
-                // If the throttler is sleeping, wake it up and run the function again.
-                return this.wake_up(...args).then((use_args) =>
-                    this.run(...use_args),
-                );
-            case State.READY:
-            case State.RUNNING:
-                return this.run_now(...args);
-            case State.DELAYING:
-                // If the throttler is delaying wait before calling the function again.
-                return await this.delay().then(() => this.run(...args));
-            default:
-                return assert_never(this.parent.props.state);
-        }
-    }
-
-    /**
-     * Start the wake up process for this throttler.
-     * @param args
-     * @returns
-     */
-    public async wake_up(...args: PARAMETERS): Promise<PARAMETERS> {
-        if (this.parent.settings.strategy.use_last_args) {
-            // while waking up the callback, always override the callback args, so the last before run will be used.
-            this.parent.props.callback_args = args;
-        } else {
-            // while waking up the callback, only write the args if not yet set, so the first before run will be used.
-            this.parent.props.callback_args =
-                this.parent.props.callback_args || args;
-        }
-        if (this.parent.props.state === State.AWAKENING) {
-            assert_ok(
-                this.parent.props.awakening_promise,
-                "The throttler is awakening but has no awakening promise.",
-            );
-            // if the throttler is already awakening, return the promise to when it has awoken.
-            return this.parent.props.awakening_promise;
-        }
-        assert_ok(
-            this.parent.props.state === State.SLEEPING,
-            "Unexpected call to wake_up when the throttler is not sleeping.",
-        );
-        // mark the throttler as awakening.
-        this.set_state(State.AWAKENING);
-        this.parent.props.awakening_promise = sleep(
-            this.parent.settings.wake_up_ms,
-        ).then(() => {
-            assert_ok(
-                this.parent.props.callback_args,
-                "The throttler has awoken but has no callback args are set.",
-            );
-            return this.parent.props.callback_args;
-        });
-        const use_args = await this.parent.props.awakening_promise;
-        // mark the throttler as ready.
-        this.set_state(State.READY);
-        this.parent.props.awakening_promise = null;
-        return use_args;
-    }
-
-    /**
-     * Promise a delay before running the callback again.
-     * @returns
-     */
-    public async delay(): Promise<void> {
-        if (this.parent.props.state === State.DELAYING) {
-            assert_ok(
-                this.parent.props.delay_promise,
-                "The throttler is delayed but has no delay promise.",
-            );
-            // if the throttler is already delaying, return the promise to when it has awoken.
-            return this.parent.props.delay_promise;
-        }
-        assert_ok(
-            this.parent.props.state === State.RUNNING,
-            "Unexpected call to delay when the throttler is not running.",
-        );
-        // mark the throttler as delaying.
-        this.set_state(State.DELAYING);
-        this.parent.props.delay_promise = sleep(this.parent.settings.delay_ms);
-        await this.parent.props.delay_promise;
-        // mark the throttler as sleeping. (It will not go into sleep as this should be called while a throttling occured.)
-        this.set_state(State.READY);
-        this.parent.props.delay_promise = null;
-    }
-
-    /**
-     * Runs the callback now.
-     * @param args
-     * @returns
-     */
-    public async run_now(...args: PARAMETERS): Promise<RESULT> {
-        if (this.parent.props.state === State.RUNNING) {
-            assert_ok(
-                this.parent.props.callback_promise,
-                "The throttler is running but has no callback promise.",
-            );
-            if (this.parent.settings.strategy.queue_when_running) {
-                // if the callback is currently running attempt to call again, after it has finished.
-                return this.parent.props.callback_promise.then(() =>
-                    this.run_now(...args),
-                );
+    public run(...args: PARAMETERS): Promise<RESULT> {
+        const { strategy, delay_ms, wake_up_ms } = this.settings;
+        if (this.pending !== null) {
+            if (strategy.use_last_args) {
+                this.pending.args = args;
             }
-            // if the callback is currently running, return the promise to when it has finished.
-            return this.parent.props.callback_promise;
+            return this.pending.promise;
         }
-        if (this.parent.settings.strategy.use_last_args) {
-            // while running the callback, the args are the first call's args.
-            this.parent.props.callback_args = args;
+        if (this.running !== null) {
+            if (!strategy.queue_when_running) {
+                return this.running;
+            }
+            // Scheduled when the run ends.
+            return this.wait(args).promise;
         }
-        try {
-            this.set_state(State.RUNNING);
-            this.parent.props.callback_args = args;
-            this.parent.props.callback_promise = this.parent.settings.callback(
-                ...this.parent.props.callback_args,
-            );
-            this.parent.props.callback_result =
-                await this.parent.props.callback_promise;
-            return this.parent.props.callback_result;
-        } finally {
-            this.parent.props.callback_promise = null;
-            this.delay();
+        const since_ms = Date.now() - this.last_end_ms;
+        if (since_ms < delay_ms) {
+            const batch = this.wait(args);
+            this.schedule(delay_ms - since_ms);
+            return batch.promise;
         }
+        if (wake_up_ms > 0) {
+            const batch = this.wait(args);
+            this.schedule(wake_up_ms);
+            return batch.promise;
+        }
+        return this.execute(args);
     }
 
-    /**
-     * Sets the new state for the throttler. And updates the last state change time.
-     * @param state The new state to change to.
-     */
-    public set_state(state: State) {
-        this.parent.props.state = state;
-        this.parent.props.last_state_change_at = performance.now();
+    private wait(args: PARAMETERS): Batch<PARAMETERS, RESULT> {
+        let resolve: (result: RESULT) => void = () => {};
+        let reject: (reason: unknown) => void = () => {};
+        const promise = new Promise<RESULT>((on_resolve, on_reject) => {
+            resolve = on_resolve;
+            reject = on_reject;
+        });
+        this.pending = { args, promise, resolve, reject };
+        return this.pending;
+    }
+
+    private schedule(ms: number): void {
+        this.timer = setTimeout(() => {
+            this.timer = null;
+            const batch = this.pending;
+            this.pending = null;
+            if (batch !== null) {
+                this.execute(batch.args).then(batch.resolve, batch.reject);
+            }
+        }, ms);
+    }
+
+    private execute(args: PARAMETERS): Promise<RESULT> {
+        // Async, so a callback that throws at once rejects like one that fails later.
+        const run = (async () => this.settings.callback(...args))();
+        this.running = run;
+        const settle = () => {
+            this.running = null;
+            this.last_end_ms = Date.now();
+            if (this.pending !== null && this.timer === null) {
+                this.schedule(this.settings.delay_ms);
+            }
+        };
+        run.then(settle, settle);
+        return run;
     }
 }
 
 /**
  * The strategy to use for throttling.
- *
  */
 interface ThrottleStrategy {
     /**
-     * Queue another callback while the callback is actively running?
-     * TRUE => Queue the callback and run it when the current callback is done and throttle delay is waited.
-     * FALSE => Combine the call with the currently running callback returning the same promise.
+     * A call while the callback runs:
+     * TRUE => waits, and runs after it and the delay, with the others that waited.
+     * FALSE => gets the running call's promise; its arguments are dropped.
      */
     queue_when_running: boolean;
     /**
-     * When combining calls, should the last call's arguments be used?
-     * TRUE => Use the last call's arguments.
-     * FALSE => Use the first call's arguments.
+     * Calls that wait together share one run:
+     * TRUE => with the last call's arguments.
+     * FALSE => with the first call's arguments.
      */
     use_last_args: boolean;
-}
-
-enum State {
-    SLEEPING,
-    AWAKENING,
-    READY,
-    RUNNING,
-    DELAYING,
 }

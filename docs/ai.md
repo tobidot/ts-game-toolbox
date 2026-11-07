@@ -229,7 +229,7 @@ async function run() {
 ```
 
 ### Throttler
-A decorator to throttle function calls.
+`new Throttler<ARGS, RESULT>({ delay_ms, callback: async (...args) => result })`, then `run(...args)`: at most one run per `delay_ms`. Calls while it runs or waits share one more run with the last arguments and get the same promise. `STRATEGIES.latest` (default) or `combine`; `is_busy`.
 
 ### Asserts
 - `assert_never(val: never)`: Used for exhaustive type checking in switch statements.
