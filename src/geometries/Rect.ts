@@ -249,6 +249,23 @@ export class Rect implements RectI {
     }
 
     /**
+     * The largest rect of a picture's shape that fits inside `box`, centered.
+     * A picture with no size yet gets the box.
+     */
+    public static contained(box: RectI, width: number, height: number): RectI {
+        if (width <= 0 || height <= 0) {
+            return { ...box };
+        }
+        const scale = Math.min(box.width / width, box.height / height);
+        return {
+            left: box.left + (box.width - width * scale) / 2,
+            top: box.top + (box.height - height * scale) / 2,
+            width: width * scale,
+            height: height * scale,
+        };
+    }
+
+    /**
      * Does the segment from `a` to `b` touch the rect, inside or across?
      * Cuts the segment down one border at a time (Liang-Barsky): if nothing
      * is left of it, it missed.

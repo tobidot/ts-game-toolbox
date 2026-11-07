@@ -1,4 +1,4 @@
-import { RectI } from "../geometries";
+import { Rect, RectI } from "../geometries";
 import { LayoutRect, StageLayout } from "../stage/StageLayout";
 import { draw_start_screen, start_screen_block } from "../stage/StartScreen";
 import { wrap_text } from "../ui/text";
@@ -502,27 +502,18 @@ export abstract class CanvasGameRenderer<
             return false;
         }
         const element = asset.element;
-        const scale = style.is_contained
-            ? Math.min(
-                  rect.width / element.naturalWidth,
-                  rect.height / element.naturalHeight,
-              )
-            : 1;
-        const width = style.is_contained
-            ? element.naturalWidth * scale
-            : rect.width;
-        const height = style.is_contained
-            ? element.naturalHeight * scale
-            : rect.height;
+        const target = style.is_contained
+            ? Rect.contained(rect, element.naturalWidth, element.naturalHeight)
+            : rect;
         const context = this.context;
         const was_smooth = context.imageSmoothingEnabled;
         context.imageSmoothingEnabled = style.is_smooth ?? false;
         context.drawImage(
             element,
-            rect.left + (rect.width - width) / 2,
-            rect.top + (rect.height - height) / 2,
-            width,
-            height,
+            target.left,
+            target.top,
+            target.width,
+            target.height,
         );
         context.imageSmoothingEnabled = was_smooth;
         return true;

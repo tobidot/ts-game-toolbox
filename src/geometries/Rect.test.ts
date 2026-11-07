@@ -88,4 +88,39 @@ describe("Rect", () => {
             ).toBe(false);
         });
     });
+
+    describe("contained", () => {
+        const box = { left: 10, top: 20, width: 200, height: 100 };
+
+        it("fits a tall picture to the height, centered", () => {
+            expect(Rect.contained(box, 50, 100)).toEqual({
+                left: 85,
+                top: 20,
+                width: 50,
+                height: 100,
+            });
+        });
+
+        it("fits a wide picture to the width, centered", () => {
+            expect(Rect.contained(box, 400, 100)).toEqual({
+                left: 10,
+                top: 45,
+                width: 200,
+                height: 50,
+            });
+        });
+
+        it("grows a small picture", () => {
+            expect(Rect.contained(box, 10, 10)).toEqual({
+                left: 60,
+                top: 20,
+                width: 100,
+                height: 100,
+            });
+        });
+
+        it("gives the box for a picture with no size yet", () => {
+            expect(Rect.contained(box, 0, 0)).toEqual(box);
+        });
+    });
 });
