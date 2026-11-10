@@ -1,5 +1,5 @@
 import type { ThemeRule } from "../ui/theme/Theme";
-import { LayoutRect, StageLayout } from "../stage/StageLayout";
+import { LayoutFor, LayoutRect, StageLayout } from "../stage/StageLayout";
 
 /** The house palette; a game may reference it but rarely needs to change it. */
 export const HOUSE_COLORS = {
@@ -64,6 +64,12 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     public readonly rule: string = "";
     /** Where `CanvasStage` may pick from; add a tall one (about 600x960) for phones. */
     public readonly layouts: readonly L[] = [{ width: 960, height: 640 } as L];
+    /**
+     * For a game that arranges itself in whatever room it gets: makes the layout for the stage's
+     * size (CSS pixels) on every resize. `layouts` then only holds what shows before the stage
+     * was measured, usually `[layout_for(960, 640)]`. Null: the stage picks from `layouts`.
+     */
+    public readonly layout_for: LayoutFor<L> | null = null;
     /** Low frame rates are the house style; a still game only repaints when something changed. */
     public readonly frames_per_second: number = 30;
     public readonly colors: HouseColors = HOUSE_COLORS;

@@ -57,6 +57,29 @@ describe("CanvasStage", () => {
         expect(stage.$canvas.width).toBe(390);
     });
 
+    it("makes the layout for the stage's size when it has a layout_for", () => {
+        const layout_for = vi.fn((width: number, height: number) => ({
+            width: Math.max(480, width),
+            height: Math.max(320, height),
+        }));
+        const stage = new CanvasStage($stage, [wide], { layout_for });
+        size($stage, 1280, 600);
+        size(stage.$canvas, 1280, 600);
+        expect(stage.resize()).toBe(true);
+        expect(stage.layout).toEqual({ width: 1280, height: 600 });
+        expect(stage.fit).toEqual({ scale: 1, offset_x: 0, offset_y: 0 });
+        // The same size again is the same layout: nothing to move.
+        expect(stage.resize()).toBe(false);
+        expect(layout_for).toHaveBeenCalledTimes(1);
+
+        // Smaller than the layout's minimum: the larger layout is fitted, as a fixed one would be.
+        size($stage, 240, 320);
+        size(stage.$canvas, 240, 320);
+        expect(stage.resize()).toBe(true);
+        expect(stage.layout).toEqual({ width: 480, height: 320 });
+        expect(stage.fit.scale).toBeCloseTo(0.5);
+    });
+
     it("places attached pages in the same rectangle as the scene", () => {
         const stage = stage_of(1280, 600);
         const page = new UiPage(

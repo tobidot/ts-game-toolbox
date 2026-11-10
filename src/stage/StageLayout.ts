@@ -13,6 +13,16 @@ export interface StageLayout {
 }
 
 /**
+ * A layout made for the stage's size (CSS pixels) instead of picked from a fixed list: the
+ * game arranges itself in whatever room it gets. The layout it returns may still be larger than
+ * the stage (a minimum the game needs); it is fitted like any other.
+ */
+export type LayoutFor<L extends StageLayout = StageLayout> = (
+    width: number,
+    height: number,
+) => L;
+
+/**
  * Where a layout sits on a canvas, in canvas (device) pixels: drawn at `scale`, its top left
  * corner at `offset_x`/`offset_y`.
  */

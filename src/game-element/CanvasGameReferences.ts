@@ -99,6 +99,7 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
         this.$stage.className = "game__stage";
         this.stage = new CanvasStage(this.$stage, settings.layouts, {
             canvas_class: "game__canvas",
+            layout_for: settings.layout_for,
         });
         this.stage.$canvas.setAttribute("role", "img");
         this.stage.$canvas.setAttribute("aria-label", settings.title);

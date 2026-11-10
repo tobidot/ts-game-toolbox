@@ -1,6 +1,7 @@
 import { Vector2I } from "../geometries";
 import { UiPage } from "../ui/UiPage";
 import {
+    LayoutFor,
     LayoutRect,
     StageFit,
     StageLayout,
@@ -8,9 +9,14 @@ import {
     pick_layout,
 } from "./StageLayout";
 
-export interface CanvasStageOptions {
+export interface CanvasStageOptions<L extends StageLayout = StageLayout> {
     /** The class of the canvas this stage creates. Default "stage__canvas". */
     canvas_class?: string;
+    /**
+     * Makes the layout for the stage's size on every resize, instead of picking one of
+     * `layouts`; those are then only what the stage shows before it was measured.
+     */
+    layout_for?: LayoutFor<L> | null;
 }
 
 /** Anything with client coordinates: a PointerEvent, a MouseEvent, a Touch. */
@@ -33,16 +39,20 @@ export class CanvasStage<L extends StageLayout = StageLayout> {
     public layout: L;
     public fit: StageFit = { scale: 1, offset_x: 0, offset_y: 0 };
     private readonly pages: UiPage[] = [];
+    private readonly layout_for: LayoutFor<L> | null;
+    /** The stage size the layout of `layout_for` was made for. */
+    private made_for: { width: number; height: number } | null = null;
 
     public constructor(
         public readonly $stage: HTMLElement,
         public readonly layouts: readonly L[],
-        options: CanvasStageOptions = {},
+        options: CanvasStageOptions<L> = {},
     ) {
         if (layouts.length === 0) {
             throw new Error("CanvasStage: at least one layout is required");
         }
         this.layout = layouts[0];
+        this.layout_for = options.layout_for ?? null;
         this.$canvas = document.createElement("canvas");
         this.$canvas.className = options.canvas_class ?? "stage__canvas";
         this.$canvas.width = 1;
@@ -96,7 +106,7 @@ export class CanvasStage<L extends StageLayout = StageLayout> {
         if (this.$canvas.height !== device_height) {
             this.$canvas.height = device_height;
         }
-        const layout = pick_layout(this.layouts, width, height);
+        const layout = this.layout_in(width, height);
         const is_layout_changed = layout !== this.layout;
         this.layout = layout;
         this.fit = fit_layout(layout, device_width, device_height);
@@ -104,6 +114,23 @@ export class CanvasStage<L extends StageLayout = StageLayout> {
             this.place(page);
         }
         return is_layout_changed;
+    }
+
+    /** The layout for a stage of this size: made for it, or the best of the fixed ones. */
+    private layout_in(width: number, height: number): L {
+        if (this.layout_for === null) {
+            return pick_layout(this.layouts, width, height);
+        }
+        const made_for = this.made_for;
+        if (
+            made_for !== null &&
+            made_for.width === width &&
+            made_for.height === height
+        ) {
+            return this.layout;
+        }
+        this.made_for = { width, height };
+        return this.layout_for(width, height);
     }
 
     /**
