@@ -355,6 +355,66 @@ describe("PhysicsWorld", () => {
         expect(stats.step_ms).toBeGreaterThanOrEqual(0);
     });
 
+    it("finds the same contacts with the grid as with no broad phase, on a seeded scene", () => {
+        const runs: { events: string[]; positions: string }[] = [];
+        for (const broad_phase of [
+            { kind: "none" as const },
+            { kind: "grid" as const, cell_size: 64 },
+            { kind: "grid" as const, cell_size: 17 },
+        ]) {
+            const world = boxed_world<number>({ broad_phase });
+            const random = new SeededRandom(11);
+            for (let index = 0; index < 150; index++) {
+                world.add({
+                    shape: index % 3 === 0 ? triangle(14) : crate(18, 12),
+                    position: {
+                        x: random.float(40, 760),
+                        y: random.float(0, 560),
+                    },
+                    velocity: {
+                        x: random.float(-300, 300),
+                        y: random.float(-300, 300),
+                    },
+                    data: index,
+                });
+            }
+            const events: string[] = [];
+            world.events.attach(ContactEvent, (event) => {
+                const contact = event as ContactEvent<number>;
+                events.push(
+                    `${contact.a.data} ${contact.b.data ?? "wall"} ${contact.speed.toFixed(6)}`,
+                );
+            });
+            run(world, 2);
+            runs.push({
+                events,
+                positions: world.bodies
+                    .map(
+                        (body) =>
+                            `${body.position.x.toFixed(6)},${body.position.y.toFixed(6)}`,
+                    )
+                    .join(" "),
+            });
+        }
+        expect(runs[0].events.length).toBeGreaterThan(100);
+        for (const other of runs.slice(1)) {
+            expect(other.events).toEqual(runs[0].events);
+            expect(other.positions).toEqual(runs[0].positions);
+        }
+    });
+
+    it("switches the broad phase between steps", () => {
+        const world = boxed_world();
+        expect(world.broad_phase).toEqual({ kind: "grid", cell_size: 64 });
+        world.add({ shape: crate(20), position: { x: 400, y: 100 } });
+        run(world, 0.5);
+        world.broad_phase = { kind: "none" };
+        run(world, 0.5);
+        world.broad_phase = { kind: "grid", cell_size: 32 };
+        run(world, 1);
+        expect(world.bodies[3].position.y).toBeCloseTo(590, 1);
+    });
+
     it("takes another rule between steps", () => {
         const world = boxed_world({ rule: AABB });
         expect(world.rule).toBe(AABB);

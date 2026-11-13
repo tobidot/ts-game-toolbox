@@ -2,8 +2,12 @@ import { RectI } from "../../geometries/Rect";
 import { Vector2I } from "../../geometries/Vector2";
 import { FixedStepClock } from "../../flow/timers/FixedStepClock";
 import { EventSocket } from "../../signals/EventSocket";
-import { aabb_overlaps } from "../aabb/Aabb";
 import { Contact, elastic_impact, reflect } from "../bounce/Bounce";
+import {
+    BroadPhase,
+    BroadPhaseOptions,
+    create_broad_phase,
+} from "./BroadPhase";
 import { CollisionRule, SAT_SWEEP } from "./CollisionRule";
 import { ContactEvent } from "./ContactEvent";
 import { BodyOptions, PhysicsBody } from "./PhysicsBody";
@@ -12,6 +16,8 @@ import { BodyOptions, PhysicsBody } from "./PhysicsBody";
 export interface PhysicsWorldOptions {
     /** How two shapes meet. Default: `SAT_SWEEP`. */
     rule?: CollisionRule;
+    /** How pairs are found. Default: a grid of 64 by 64. */
+    broad_phase?: BroadPhaseOptions;
     /** Units per second per second. Default: none. */
     gravity?: Vector2I;
     /** The share of the closing speed that comes back after a contact: 0 a thud, 1 a perfect bounce. Default: 0. */
@@ -107,8 +113,13 @@ export class PhysicsWorld<D = unknown> {
     private supported: boolean[] = [];
     /** Gravity's direction, or null without gravity. */
     private down: Vector2I | null = null;
+    private broad_phase_options: BroadPhaseOptions;
+    private broad: BroadPhase;
+    /** The still bodies changed: the broad phase must stand them anew. */
+    private is_still_changed = true;
     private readonly pairs: number[] = [];
     private readonly boxes: RectI[] = [];
+    private readonly wall_indices: number[] = [];
     private readonly walls: PhysicsBody<D>[] = [];
 
     public constructor(options: PhysicsWorldOptions = {}) {
@@ -121,7 +132,23 @@ export class PhysicsWorld<D = unknown> {
         this.passes = options.passes ?? 2;
         this.contact_event_speed = options.contact_event_speed ?? 0;
         this.step_seconds = options.step_seconds ?? 1 / 60;
+        this.broad_phase_options = options.broad_phase ?? {
+            kind: "grid",
+            cell_size: 64,
+        };
+        this.broad = create_broad_phase(this.broad_phase_options);
         this.clock = new FixedStepClock(this.step_seconds);
+    }
+
+    /** How pairs are found; a new value takes effect from the next step. */
+    public get broad_phase(): BroadPhaseOptions {
+        return this.broad_phase_options;
+    }
+
+    public set broad_phase(options: BroadPhaseOptions) {
+        this.broad_phase_options = options;
+        this.broad = create_broad_phase(options);
+        this.is_still_changed = true;
     }
 
     /** Every body in the world, in the order they were added. */
@@ -137,6 +164,7 @@ export class PhysicsWorld<D = unknown> {
         this.all.push(body);
         if (body.is_static) {
             this.still.push(body);
+            this.is_still_changed = true;
         } else {
             this.moving.push(body);
         }
@@ -150,6 +178,9 @@ export class PhysicsWorld<D = unknown> {
         }
         body.is_in_world = false;
         this.has_removed = true;
+        if (body.is_static) {
+            this.is_still_changed = true;
+        }
         return true;
     }
 
@@ -204,12 +235,22 @@ export class PhysicsWorld<D = unknown> {
         this.has_removed = false;
     }
 
+    /** Lets the broad phase know the still bodies, when they changed. */
+    private stand_still_bodies(): void {
+        if (!this.is_still_changed) {
+            return;
+        }
+        this.broad.stand(this.still.map((body) => ({ ...body.box })));
+        this.is_still_changed = false;
+    }
+
     /**
      * Sorts the moving bodies lowest first along gravity. From one step to the next the order
      * hardly changes, and the engine's sort is close to linear on an almost sorted list.
      */
     private sort_bodies(): void {
         this.compact();
+        this.stand_still_bodies();
         const gravity = this.gravity;
         const length = Math.hypot(gravity.x, gravity.y);
         if (length === 0) {
@@ -226,14 +267,15 @@ export class PhysicsWorld<D = unknown> {
         );
     }
 
-    /** The still bodies a box may touch. */
+    /** The still bodies a box may touch, in the order they were added. */
     private walls_near(box: RectI): PhysicsBody<D>[] {
+        const indices = this.wall_indices;
+        this.broad.near(box, indices);
         const walls = this.walls;
-        walls.length = 0;
-        for (const wall of this.still) {
-            walls.push(wall);
+        walls.length = indices.length;
+        for (let index = 0; index < indices.length; index++) {
+            walls[index] = this.still[indices[index]];
         }
-        void box;
         return walls;
     }
 
@@ -267,25 +309,19 @@ export class PhysicsWorld<D = unknown> {
     private find_pairs(): void {
         const moving = this.moving;
         const boxes = this.boxes;
+        while (boxes.length < moving.length) {
+            boxes.push({ left: 0, top: 0, width: 0, height: 0 });
+        }
         boxes.length = moving.length;
         for (let index = 0; index < moving.length; index++) {
             const box = moving[index].box;
-            boxes[index] = {
-                left: box.left - PAIR_MARGIN,
-                top: box.top - PAIR_MARGIN,
-                width: box.width + 2 * PAIR_MARGIN,
-                height: box.height + 2 * PAIR_MARGIN,
-            };
+            const grown = boxes[index];
+            grown.left = box.left - PAIR_MARGIN;
+            grown.top = box.top - PAIR_MARGIN;
+            grown.width = box.width + 2 * PAIR_MARGIN;
+            grown.height = box.height + 2 * PAIR_MARGIN;
         }
-        const pairs = this.pairs;
-        pairs.length = 0;
-        for (let first = 0; first < boxes.length; first++) {
-            for (let second = first + 1; second < boxes.length; second++) {
-                if (aabb_overlaps(boxes[first], boxes[second])) {
-                    pairs.push(first, second);
-                }
-            }
-        }
+        this.broad.pairs(boxes, this.pairs);
     }
 
     /** One pass: moving pairs apart, then whatever got pushed out of the walls again. */
