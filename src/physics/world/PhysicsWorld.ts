@@ -32,6 +32,11 @@ export interface PhysicsWorldOptions {
     friction?: number;
     /** The length of one even step, in seconds. Default: 1/60. */
     step_seconds?: number;
+    /**
+     * At most this many steps per `update()`; the time still due after them is dropped, so one
+     * slow frame never makes the next one slower. Default: 4.
+     */
+    max_steps_per_update?: number;
     /** How often a step pushes overlapping bodies apart. More settles a pile faster and costs more. Default: 2. */
     passes?: number;
     /** Contacts closing slower than this, in units per second, send no event. Default: 0, every contact. */
@@ -89,6 +94,7 @@ export class PhysicsWorld<D = unknown> {
     public friction: number;
     public passes: number;
     public contact_event_speed: number;
+    public max_steps_per_update: number;
     public readonly step_seconds: number;
     /** `ContactEvent`s, sent after each step. */
     public readonly events = new EventSocket<ContactEvent<D>>();
@@ -132,6 +138,7 @@ export class PhysicsWorld<D = unknown> {
         this.passes = options.passes ?? 2;
         this.contact_event_speed = options.contact_event_speed ?? 0;
         this.step_seconds = options.step_seconds ?? 1 / 60;
+        this.max_steps_per_update = options.max_steps_per_update ?? 4;
         this.broad_phase_options = options.broad_phase ?? {
             kind: "grid",
             cell_size: 64,
@@ -184,12 +191,18 @@ export class PhysicsWorld<D = unknown> {
         return true;
     }
 
-    /** Runs the even steps that `delta_seconds` of frame time makes due. */
+    /**
+     * Runs the even steps that `delta_seconds` of frame time makes due, at most
+     * `max_steps_per_update`. A device that can't keep up then runs slower instead of ever
+     * slower: the time still due after the last step is dropped (with it, less than a step
+     * that would have carried over).
+     */
     public update(delta_seconds: number): void {
         let steps = 0;
         this.clock.advance(delta_seconds, () => {
             this.step();
             steps += 1;
+            return steps >= this.max_steps_per_update ? true : undefined;
         });
         this.stats.steps = steps;
     }

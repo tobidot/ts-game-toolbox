@@ -339,6 +339,30 @@ describe("PhysicsWorld", () => {
         }
     });
 
+    it("runs at most 4 steps an update and drops the rest: no spiral of death", () => {
+        const slow = boxed_world();
+        const stepped = boxed_world();
+        const body = slow.add({ shape: crate(20), position: { x: 400, y: 0 } });
+        const twin = stepped.add({
+            shape: crate(20),
+            position: { x: 400, y: 0 },
+        });
+        // half a second of frame: 30 steps due, 4 run
+        slow.update(0.5);
+        expect(slow.stats.steps).toBe(4);
+        for (let step = 0; step < 4; step++) {
+            stepped.step();
+        }
+        expect(body.position).toEqual(twin.position);
+        // the rest is gone: the next frame runs one step, not 27
+        slow.update(1 / 60);
+        expect(slow.stats.steps).toBe(1);
+        // a game may allow more, or fewer
+        const patient = boxed_world({ max_steps_per_update: 10 });
+        patient.update(0.5);
+        expect(patient.stats.steps).toBe(10);
+    });
+
     it("counts its bodies, the pairs it tested, the contacts and the time of a step", () => {
         const world = boxed_world();
         for (let index = 0; index < 10; index++) {
