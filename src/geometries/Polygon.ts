@@ -54,6 +54,36 @@ export class Polygon implements PolygonI {
         });
     }
 
+    /** A copy moved by `offset`; this polygon stays as it is. */
+    public translated(offset: Vector2I): Polygon {
+        return new Polygon(
+            this._points.map((point) => ({
+                x: point.x + offset.x,
+                y: point.y + offset.y,
+            })),
+        );
+    }
+
+    /**
+     * A copy turned by `radians` around `pivot`; this polygon stays as it
+     * is. Positive turns the way canvas `rotate()` does: clockwise on
+     * screen, where y grows downwards.
+     */
+    public rotated(radians: number, pivot: Vector2I): Polygon {
+        const cos = Math.cos(radians);
+        const sin = Math.sin(radians);
+        return new Polygon(
+            this._points.map((point) => {
+                const x = point.x - pivot.x;
+                const y = point.y - pivot.y;
+                return {
+                    x: pivot.x + x * cos - y * sin,
+                    y: pivot.y + x * sin + y * cos,
+                };
+            }),
+        );
+    }
+
     /**
      * Is the point inside? Counts the edges a line going right from the point
      * crosses: an odd number means inside. An edge counts when one of its ends

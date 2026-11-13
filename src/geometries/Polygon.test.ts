@@ -80,4 +80,46 @@ describe("Polygon", () => {
         expect(notch.contains({ x: 80, y: 50 })).toBe(false);
         expect(notch.contains({ x: 80, y: 10 })).toBe(true);
     });
+
+    it("translated() returns a moved copy and leaves the original", () => {
+        const triangle = new Polygon([
+            { x: 0, y: 0 },
+            { x: 10, y: 0 },
+            { x: 0, y: 5 },
+        ]);
+        const moved = triangle.translated({ x: 3, y: -2 });
+        expect(moved).not.toBe(triangle);
+        expect(moved.points).toEqual([
+            { x: 3, y: -2 },
+            { x: 13, y: -2 },
+            { x: 3, y: 3 },
+        ]);
+        expect(triangle.points[1]).toEqual({ x: 10, y: 0 });
+    });
+
+    it("rotated() turns around the pivot, clockwise on screen like canvas rotate()", () => {
+        const square = new Polygon([
+            { x: 10, y: 0 },
+            { x: 20, y: 0 },
+            { x: 20, y: 10 },
+            { x: 10, y: 10 },
+        ]);
+        const turned = square.rotated(Math.PI / 2, { x: 10, y: 0 });
+        const expected = [
+            { x: 10, y: 0 },
+            { x: 10, y: 10 },
+            { x: 0, y: 10 },
+            { x: 0, y: 0 },
+        ];
+        turned.points.forEach((point, index) => {
+            expect(point.x).toBeCloseTo(expected[index].x);
+            expect(point.y).toBeCloseTo(expected[index].y);
+        });
+        expect(square.points[1]).toEqual({ x: 20, y: 0 });
+        const back = turned.rotated(-Math.PI / 2, { x: 10, y: 0 });
+        back.points.forEach((point, index) => {
+            expect(point.x).toBeCloseTo(square.points[index].x);
+            expect(point.y).toBeCloseTo(square.points[index].y);
+        });
+    });
 });
