@@ -29,6 +29,7 @@ class Logic extends CanvasGameLogic<Game> {
     public spaces = 0;
     public key_presses = 0;
     public syncs = 0;
+    public wheel_pixels = 0;
     protected override update(): boolean {
         if (this.properties.keyboard.was_pressed(" ")) {
             this.spaces += 1;
@@ -51,6 +52,11 @@ class Logic extends CanvasGameLogic<Game> {
     }
     protected override sync(): void {
         this.syncs += 1;
+    }
+    /** Only the wheel turned "up" is the game's. */
+    protected override on_wheel(_point: unknown, pixels: number): boolean {
+        this.wheel_pixels += pixels;
+        return pixels < 0;
     }
     protected override live_status(game: Game): string {
         return `${game.clicks} Klicks`;
@@ -213,5 +219,26 @@ describe("CanvasGameElement", () => {
         // nothing changed: no repaint, no sync
         frames[frames.length - 1](2000);
         expect($element.logic.syncs).toBe(1);
+    });
+
+    it("gives the wheel to on_wheel, and the page stays still when the game took it", () => {
+        const $element = document.createElement(
+            "test-counter",
+        ) as CounterElement;
+        $element.setAttribute("init-intro", "false");
+        document.body.append($element);
+        const $canvas = $element.shadowRoot!.querySelector("canvas")!;
+        const turn = (pixels: number): boolean => {
+            const event = new WheelEvent("wheel", {
+                // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
+                deltaY: pixels,
+                cancelable: true,
+            });
+            $canvas.dispatchEvent(event);
+            return event.defaultPrevented;
+        };
+        expect(turn(-40)).toBe(true);
+        expect(turn(25)).toBe(false);
+        expect($element.logic.wheel_pixels).toBe(-15);
     });
 });

@@ -26,6 +26,11 @@ export interface StageInputHandlers {
     on_release?: (point: Vector2I, event: PointerEvent) => void;
     /** The pointer left the canvas; a held press may want to end here. */
     on_leave?: (event: PointerEvent) => void;
+    /**
+     * A wheel no widget took, in pixels (negative: turned away from the player, "up").
+     * Return true when the game used it: the page then doesn't scroll as well.
+     */
+    on_wheel?: (point: Vector2I, pixels: number, event: WheelEvent) => boolean;
     /** Keys without Ctrl, Alt or Meta. */
     on_key_down?: (event: KeyboardEvent) => void;
     /** Keys with Ctrl, Alt or Meta: shortcuts like Ctrl+Z. */
@@ -124,13 +129,17 @@ export function bind_stage_input(
             handlers.on_leave?.(event);
         }
     });
-    // A wheel a widget took doesn't scroll the page as well; any other stays the browser's or the game's.
+    // A wheel a widget or the game took doesn't scroll the page as well; any other stays the browser's.
     $canvas.addEventListener(
         "wheel",
         (event) => {
+            if (!is_playing()) {
+                return;
+            }
+            const pixels = wheel_pixels(event);
             if (
-                is_playing() &&
-                ui.wheel(stage.to_canvas(event), wheel_pixels(event))
+                ui.wheel(stage.to_canvas(event), pixels) ||
+                handlers.on_wheel?.(stage.to_layout(event), pixels, event)
             ) {
                 event.preventDefault();
                 changed();

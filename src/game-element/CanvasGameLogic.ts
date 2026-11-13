@@ -182,6 +182,8 @@ export abstract class CanvasGameLogic<
                     mark_dirty();
                     this.on_leave(event);
                 },
+                on_wheel: (point, pixels, event) =>
+                    this.on_wheel(point, pixels, event),
                 on_key_down: (event) => {
                     if (!event.repeat && this.mute_by_key(event)) {
                         return;
@@ -428,6 +430,22 @@ export abstract class CanvasGameLogic<
 
     protected on_leave(event: PointerEvent): void {
         void event;
+    }
+
+    /**
+     * The wheel over the scene where no widget took it, in layout coordinates, `pixels`
+     * negative when turned "up". Return true when the game used it: the page then doesn't
+     * scroll, and the frame repaints. Default: false, the page scrolls.
+     */
+    protected on_wheel(
+        point: Vector2I,
+        pixels: number,
+        event: WheelEvent,
+    ): boolean {
+        void point;
+        void pixels;
+        void event;
+        return false;
     }
 
     /** A key without Ctrl, Alt or Meta, after the intro; repeats while it is held. */

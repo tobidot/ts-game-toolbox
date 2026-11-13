@@ -74,6 +74,51 @@ describe("bind_stage_input", () => {
         expect(wheel).toHaveBeenLastCalledWith(expect.anything(), 2000);
     });
 
+    it("gives a wheel no widget took to the game, which keeps the page still by taking it", () => {
+        const wheel = vi.spyOn(ui, "wheel").mockReturnValue(false);
+        const on_wheel = vi.fn().mockReturnValue(false);
+        const on_change = vi.fn();
+        bind_stage_input(
+            controller.signal,
+            { stage, ui, intro: waiting_intro(), host: $host },
+            { on_wheel, on_change },
+        );
+        const turn = (delta_mode: number = 0): WheelEvent => {
+            const event = new WheelEvent("wheel", {
+                deltaY: -3,
+                deltaMode: delta_mode,
+                cancelable: true,
+            });
+            stage.$canvas.dispatchEvent(event);
+            return event;
+        };
+        // nothing reaches the game before the intro
+        expect(turn().defaultPrevented).toBe(false);
+        expect(on_wheel).not.toHaveBeenCalled();
+        stage.$canvas.dispatchEvent(pointer("pointerdown"));
+        on_change.mockClear();
+        expect(turn().defaultPrevented).toBe(false);
+        expect(on_wheel).toHaveBeenLastCalledWith(
+            expect.objectContaining({ x: expect.any(Number) }),
+            -3,
+            expect.any(WheelEvent),
+        );
+        expect(on_change).not.toHaveBeenCalled();
+        on_wheel.mockReturnValue(true);
+        expect(turn(WheelEvent.DOM_DELTA_LINE).defaultPrevented).toBe(true);
+        expect(on_wheel).toHaveBeenLastCalledWith(
+            expect.anything(),
+            -60,
+            expect.anything(),
+        );
+        expect(on_change).toHaveBeenCalledTimes(1);
+        // a widget that takes the wheel keeps it from the game
+        wheel.mockReturnValue(true);
+        on_wheel.mockClear();
+        turn();
+        expect(on_wheel).not.toHaveBeenCalled();
+    });
+
     it("gives the first click to the start screen only, later ones to the UI and the game", () => {
         const on_press = vi.fn();
         const on_change = vi.fn();
