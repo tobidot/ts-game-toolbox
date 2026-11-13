@@ -153,6 +153,17 @@ describe("aabb_move", () => {
             { x: -1, y: 0 },
         ]);
     });
+
+    it("says which wall each hit was, by its index in the list", () => {
+        const wall = box(50, 0, 10, 100);
+        const far = box(500, 0, 10, 10);
+        const result = aabb_move(box(0, 90, 10, 10), { x: 100, y: 10 }, [
+            far,
+            floor,
+            wall,
+        ]);
+        expect(result.hits.map((hit) => hit.wall)).toEqual([1, 2]);
+    });
 });
 
 describe("aabb_union", () => {

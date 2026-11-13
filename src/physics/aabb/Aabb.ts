@@ -25,6 +25,12 @@ export interface Hit {
     overlap: { x: number; y: number };
 }
 
+/** A hit from `aabb_move` or `sat_move`, which also says what was hit. */
+export interface WallHit extends Hit {
+    /** The index of the wall that was hit in the `walls` given to the move. */
+    wall: number;
+}
+
 /** Boxes overlap (touching edges do not count). */
 export function aabb_overlaps(a: RectI, b: RectI): boolean {
     return (
@@ -147,37 +153,39 @@ export function aabb_sweep(
  * Moves `mover` by `delta` against many walls, sliding along them: the move
  * stops at the first wall hit, the part of `delta` into that wall is dropped
  * and the rest is moved again (at most once per axis). Returns the final box
- * (a new object, `mover` is not changed) and the walls hit in order.
+ * (a new object, `mover` is not changed) and the walls hit in order, each
+ * with its index in `walls`.
  */
 export function aabb_move(
     mover: RectI,
     delta: { x: number; y: number },
     walls: readonly RectI[],
-): { rect: RectI; hits: Hit[] } {
+): { rect: RectI; hits: WallHit[] } {
     const rect: RectI = {
         left: mover.left,
         top: mover.top,
         width: mover.width,
         height: mover.height,
     };
-    const hits: Hit[] = [];
+    const hits: WallHit[] = [];
     let remaining = { x: delta.x, y: delta.y };
     for (let pass = 0; pass < 3; pass++) {
         let first: Hit | null = null;
-        let first_wall: RectI | null = null;
-        for (const wall of walls) {
-            const hit = aabb_sweep(rect, remaining, wall);
+        let first_index = -1;
+        for (let index = 0; index < walls.length; index++) {
+            const hit = aabb_sweep(rect, remaining, walls[index]);
             if (hit !== null && (first === null || hit.time < first.time)) {
                 first = hit;
-                first_wall = wall;
+                first_index = index;
             }
         }
-        if (first === null || first_wall === null) {
+        if (first === null) {
             rect.left += remaining.x;
             rect.top += remaining.y;
             return { rect, hits };
         }
-        hits.push(first);
+        const first_wall = walls[first_index];
+        hits.push({ ...first, wall: first_index });
         rect.left += remaining.x * first.time + first.overlap.x;
         rect.top += remaining.y * first.time + first.overlap.y;
         // snap to the face that was hit, so rounding never leaves the box inside

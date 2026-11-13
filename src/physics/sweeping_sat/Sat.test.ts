@@ -284,6 +284,23 @@ describe("sat_move", () => {
         expect(result.hits).toHaveLength(2);
     });
 
+    it("says which wall each hit was, by its index in the list", () => {
+        const far = box(500, 500, 10, 10);
+        const floor = box(-50, 20, 100, 10);
+        const wall = box(20, -50, 10, 100);
+        const result = sat_move(box(0, 0, 10, 10), { x: 40, y: 40 }, [
+            wall,
+            far,
+            floor,
+        ]);
+        expect(result.hits.map((hit) => hit.wall).sort()).toEqual([0, 2]);
+        for (const hit of result.hits) {
+            const expected = hit.wall === 0 ? { x: -1, y: 0 } : { x: 0, y: -1 };
+            expect(hit.normal.x).toBeCloseTo(expected.x);
+            expect(hit.normal.y).toBeCloseTo(expected.y);
+        }
+    });
+
     it("works with triangles and hexagons, not only boxes", () => {
         const hexagon: PolygonI = {
             points: [0, 1, 2, 3, 4, 5].map((index) => ({

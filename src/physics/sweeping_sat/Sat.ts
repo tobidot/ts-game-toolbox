@@ -1,6 +1,6 @@
 import { PolygonI } from "../../geometries/Polygon";
 import { Vector2I } from "../../geometries/Vector2";
-import { Hit } from "../aabb/Aabb";
+import { Hit, WallHit } from "../aabb/Aabb";
 import { Contact } from "../bounce/Bounce";
 
 /**
@@ -149,15 +149,15 @@ export function sat_sweep(
  * dropped, and the remainder is moved again, at most 3 passes. A mover that starts inside a
  * wall is pushed out first. It ends `SAT_SKIN` off every face it hit, so rounding never leaves
  * it inside. Returns how far the mover actually went (`mover` is not changed) and the hits in
- * order.
+ * order, each with its index in `walls`.
  */
 export function sat_move(
     mover: PolygonI,
     delta: Vector2I,
     walls: readonly PolygonI[],
-): { offset: Vector2I; hits: Hit[] } {
+): { offset: Vector2I; hits: WallHit[] } {
     const offset = { x: 0, y: 0 };
-    const hits: Hit[] = [];
+    const hits: WallHit[] = [];
     let remaining = { x: delta.x, y: delta.y };
     for (let pass = 0; pass < 3; pass++) {
         const at: PolygonI = {
@@ -167,10 +167,12 @@ export function sat_move(
             })),
         };
         let first: Hit | null = null;
-        for (const wall of walls) {
-            const hit = sat_sweep(at, remaining, wall);
+        let first_index = -1;
+        for (let index = 0; index < walls.length; index++) {
+            const hit = sat_sweep(at, remaining, walls[index]);
             if (hit !== null && (first === null || hit.time < first.time)) {
                 first = hit;
+                first_index = index;
             }
         }
         if (first === null) {
@@ -178,7 +180,7 @@ export function sat_move(
             offset.y += remaining.y;
             return { offset, hits };
         }
-        hits.push(first);
+        hits.push({ ...first, wall: first_index });
         const normal = first.normal;
         offset.x +=
             remaining.x * first.time + first.overlap.x + normal.x * SAT_SKIN;
