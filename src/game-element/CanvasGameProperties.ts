@@ -403,6 +403,12 @@ export class CanvasGameProperties<
     /** How long the current round has been finished; see `settings.round_end_hold_seconds`. */
     public round_over_seconds = 0;
     public last_tick_ms: number | null = null;
+    /**
+     * How long the last frame really took, in seconds; 0 on the first. `update()` gets the same
+     * time capped at 0.1 s so a slow frame can't throw the game; this is the honest one, for a
+     * frame rate meter.
+     */
+    public frame_seconds = 0;
     public is_dirty = true;
 
     /** The toolbox UI: one page in the layout's size, placed on the canvas by the stage. */

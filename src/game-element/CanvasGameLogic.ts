@@ -668,8 +668,8 @@ export abstract class CanvasGameLogic<
             return;
         }
         const last = properties.last_tick_ms;
-        const delta_seconds =
-            last === null ? 0 : Math.min(0.1, (time_ms - last) / 1000);
+        properties.frame_seconds = last === null ? 0 : (time_ms - last) / 1000;
+        const delta_seconds = Math.min(0.1, properties.frame_seconds);
         properties.last_tick_ms = time_ms;
         const keyboard = properties.keyboard;
         if (!this.is_playing) {
