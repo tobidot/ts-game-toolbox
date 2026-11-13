@@ -21,6 +21,12 @@ export interface IntroGateOptions {
     background?: string;
     /** A failed intro (no library, no network, no codec); the game starts anyway. */
     on_error?: (error: unknown) => void;
+    /**
+     * True (the default): without a user activation the gate first shows the start screen, so
+     * the intro plays with sound. False: the intro plays at once, muted when the page has no
+     * activation yet; the game opens straight after it.
+     */
+    waits_for_activation?: boolean;
 }
 
 /**
@@ -28,6 +34,8 @@ export interface IntroGateOptions {
  * hold on its last frame. Browsers play sound only after the visitor clicked or typed on the
  * page, so without that "user activation" the gate first waits for one (`waiting`); the
  * element paints its start screen meanwhile and passes the first click or key to `leave()`.
+ * With `waits_for_activation: false` there is no start screen: the intro plays at once,
+ * muted unless the page already has an activation.
  *
  * Every way out ends in `done`: the video ended, was skipped, timed out, failed or was refused
  * (then it is retried muted). The game never depends on the intro. Aborting the signal given to
@@ -58,8 +66,8 @@ export class IntroGate {
 
     /**
      * Called on every connection. The first time, it plays at once when the page already has a
-     * user activation, waits for one otherwise, or skips straight to `done` when `is_enabled`
-     * is false. Later calls only remember the new container, signal and listener.
+     * user activation or the gate doesn't wait for one, waits for one otherwise, or skips
+     * straight to `done` when `is_enabled` is false. Later calls only remember the new container, signal and listener.
      */
     public start(
         $container: HTMLElement,
@@ -76,7 +84,10 @@ export class IntroGate {
         if (options.is_enabled === false) {
             this.set_state("done");
         } else if (IntroGate.has_user_activation()) {
-            void this.play();
+            void this.play(false);
+        } else if (this.options.waits_for_activation === false) {
+            // Without an activation the browser would refuse the sound: go muted right away.
+            void this.play(true);
         } else {
             this.set_state("waiting");
         }
@@ -90,7 +101,8 @@ export class IntroGate {
         if (this._state !== "waiting") {
             return false;
         }
-        void this.play();
+        // This gesture is the activation the sound needs.
+        void this.play(false);
         return true;
     }
 
@@ -100,7 +112,7 @@ export class IntroGate {
         return navigator.userActivation?.hasBeenActive ?? false;
     }
 
-    private async play(): Promise<void> {
+    private async play(is_muted: boolean): Promise<void> {
         const $container = this.$container;
         const signal = this.signal;
         if ($container === null || signal === null || signal.aborted) {
@@ -120,10 +132,10 @@ export class IntroGate {
             };
             let outcome = await play_video_splash($container, url, {
                 ...options,
-                muted: false,
+                muted: is_muted,
             });
             // A browser that still refuses sound gets the intro muted rather than not at all.
-            if (outcome === "blocked") {
+            if (outcome === "blocked" && !is_muted) {
                 outcome = await play_video_splash($container, url, options);
             }
             if (outcome === "aborted") {

@@ -57,6 +57,21 @@ describe("IntroGate", () => {
         expect(intro.state).toBe("playing");
     });
 
+    it("plays at once, muted, when it does not wait for an activation", async () => {
+        const intro = new IntroGate({
+            load_url: () => Promise.resolve("blob:intro"),
+            waits_for_activation: false,
+        });
+        intro.start($container, new AbortController().signal, {
+            on_change: (state) => states.push(state),
+        });
+        expect(intro.state).toBe("playing");
+        expect(intro.leave()).toBe(false);
+        await flush();
+        expect($container.querySelector("video")?.muted).toBe(true);
+        expect(states).toEqual(["playing"]);
+    });
+
     it("skips to done when disabled", () => {
         const intro = gate();
         intro.start($container, new AbortController().signal, {

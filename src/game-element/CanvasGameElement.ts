@@ -40,8 +40,9 @@ const HOST_ELEMENT: typeof HTMLElement =
 /**
  * The custom element of a canvas game: a shallow delegate to its logic. A game subclasses it
  * and names its five classes in `assemble()`; everything else (intro, input, fitting, loop) is
- * the base classes' business. Where the intro video comes from, and what happens on connect
- * (e.g. retitling a window), are the two hooks a hosting framework fills in.
+ * the base classes' business. Where the intro video comes from, whether it waits for a click,
+ * and what happens on connect (e.g. retitling a window) are the hooks a hosting framework
+ * fills in.
  */
 
 export abstract class CanvasGameElement<
@@ -64,6 +65,7 @@ export abstract class CanvasGameElement<
             timeout_ms: settings.intro_timeout_ms,
             hold_ms: settings.intro_hold_ms,
             background: settings.colors.black,
+            waits_for_activation: this.intro_waits_for_click(),
             on_error: (error) =>
                 console.warn(`<${this.localName}>: intro skipped:`, error),
         });
@@ -86,6 +88,15 @@ export abstract class CanvasGameElement<
     /** The intro video's URL; rejecting (the default) skips the intro. */
     protected load_intro_url(): Promise<string> {
         return Promise.reject(new Error("no intro source"));
+    }
+
+    /**
+     * True (the default): on a page nobody clicked yet, a start screen asks for a click so the
+     * intro plays with sound. False: the intro plays at once (muted on such a page) and the
+     * game opens straight after it.
+     */
+    protected intro_waits_for_click(): boolean {
+        return true;
     }
 
     /** After every connection, with the game's title. */
