@@ -1,4 +1,4 @@
-import { Rect, RectI } from "../geometries";
+import { Rect, RectI, Vector2I } from "../geometries";
 import { LayoutRect, StageLayout } from "../stage/StageLayout";
 import { draw_start_screen, start_screen_block } from "../stage/StartScreen";
 import { wrap_text } from "../ui/text";
@@ -363,6 +363,43 @@ export abstract class CanvasGameRenderer<
         context.beginPath();
         context.ellipse(x, y, radius_x, radius_y, 0, 0, Math.PI * 2);
         context.fill();
+    }
+
+    /**
+     * Adds the closed outline of `points` to the current path, without starting a new one: many
+     * shapes traced into one path cost one `fill()`, which is what a scene of thousands needs.
+     */
+    protected trace_polygon(points: readonly Vector2I[]): void {
+        const context = this.context;
+        if (points.length === 0) {
+            return;
+        }
+        context.moveTo(points[0].x, points[0].y);
+        for (let index = 1; index < points.length; index++) {
+            context.lineTo(points[index].x, points[index].y);
+        }
+        context.closePath();
+    }
+
+    /** A polygon in one call: filled with `fill` (null: not), outlined with round corners when `outline` says so. */
+    protected polygon(
+        points: readonly Vector2I[],
+        fill: string | null,
+        outline?: { color: string; width: number },
+    ): void {
+        const context = this.context;
+        context.beginPath();
+        this.trace_polygon(points);
+        if (fill !== null) {
+            context.fillStyle = fill;
+            context.fill();
+        }
+        if (outline !== undefined) {
+            context.strokeStyle = outline.color;
+            context.lineWidth = outline.width;
+            context.lineJoin = "round";
+            context.stroke();
+        }
     }
 
     /** A HUD card: a muted label at the top, the value large and bold at the bottom. */
