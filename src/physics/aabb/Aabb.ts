@@ -11,8 +11,9 @@ import { RectI } from "../../geometries/Rect";
 /** The result of a swept test: when and from which side a mover meets a wall. */
 export interface Hit {
     /**
-     * The side of the wall that was hit, as a unit axis vector pointing away
-     * from the wall: `(0, -1)` is the top of a floor, `(-1, 0)` the left face.
+     * The side of the wall that was hit, as a unit vector pointing away from
+     * the wall: `(0, -1)` is the top of a floor, `(-1, 0)` the left face. For
+     * `aabb_*` always an axis; `sat_*` gives any face's normal.
      */
     normal: { x: number; y: number };
     /** 0..1 of the move at which the boxes touch; 0 when they already overlapped. */
