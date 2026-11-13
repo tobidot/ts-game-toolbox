@@ -1,41 +1,50 @@
 import { TestClass } from "../../src";
 import { Rect } from "../../src";
-import { Vector2I } from "../../src";
-import { PhysicsBody, SweepingSatWorld } from "../../src";
+import { PolygonI, Vector2I } from "../../src";
+import { sat_move, sat_overlap } from "../../src";
 
 type Mode = "naive" | "swept";
 
+/** A square bullet; the game owns it and moves it, `sat_*` only answers. */
 class Bullet {
-    public body: PhysicsBody<void>;
-    public width: number;
-    public height: number;
+    public x: number;
+    public y: number;
+    public velocity: Vector2I;
+    public size: number;
     public tunneled: boolean = false;
     public blocked: boolean = false;
     public blocked_at: number | null = null;
 
-    public constructor(body: PhysicsBody<void>, width: number, height: number) {
-        this.body = body;
-        this.width = width;
-        this.height = height;
+    public constructor(x: number, y: number, velocity: Vector2I, size: number) {
+        this.x = x;
+        this.y = y;
+        this.velocity = velocity;
+        this.size = size;
     }
 
     public get rect(): Rect {
-        return new Rect(
-            this.body.position.x,
-            this.body.position.y,
-            this.width,
-            this.height,
-        );
+        return new Rect(this.x, this.y, this.size, this.size);
+    }
+
+    public get polygon(): PolygonI {
+        return {
+            points: [
+                { x: this.x, y: this.y },
+                { x: this.x + this.size, y: this.y },
+                { x: this.x + this.size, y: this.y + this.size },
+                { x: this.x, y: this.y + this.size },
+            ],
+        };
     }
 }
 
-export class SweepingSatWorldTest extends TestClass {
+export class SweepingSatTest extends TestClass {
     private animation_frame: number | null = null;
     private canvas: HTMLCanvasElement | null = null;
     private click_handler: ((e: MouseEvent) => void) | null = null;
 
     public get_name(): string {
-        return "Sweeping SAT Physics";
+        return "Sweeping SAT (sat_move)";
     }
 
     public override tear_down() {
@@ -66,22 +75,14 @@ export class SweepingSatWorldTest extends TestClass {
 
         // A thin static wall, vertically centered on the horizontal axis.
         const wall = new Rect(canvas.width / 2 - 6, 45, 12, canvas.height - 55);
-        const wall_shape = {
+        const wall_polygon: PolygonI = {
             points: [
-                { x: 0, y: 0 },
-                { x: wall.width, y: 0 },
-                { x: wall.width, y: wall.height },
-                { x: 0, y: wall.height },
+                { x: wall.left, y: wall.top },
+                { x: wall.left + wall.width, y: wall.top },
+                { x: wall.left + wall.width, y: wall.top + wall.height },
+                { x: wall.left, y: wall.top + wall.height },
             ],
         };
-        const wall_body = new PhysicsBody<void>(
-            wall_shape,
-            { x: wall.left, y: wall.top },
-            { x: 0, y: 0 },
-            true,
-        );
-
-        const world = new SweepingSatWorld();
 
         let mode: Mode = "naive";
         let bullets: Array<Bullet> = [];
@@ -103,21 +104,7 @@ export class SweepingSatWorldTest extends TestClass {
                 ? 2400 + Math.random() * 600
                 : 1200 + Math.random() * 800;
             const top = wall.top + Math.random() * (wall.height - size);
-            const bullet_shape = {
-                points: [
-                    { x: 0, y: 0 },
-                    { x: size, y: 0 },
-                    { x: size, y: size },
-                    { x: 0, y: size },
-                ],
-            };
-            const body = new PhysicsBody<void>(
-                bullet_shape,
-                { x: 0, y: top },
-                { x: speed, y: 0 },
-                false,
-            );
-            bullets.push(new Bullet(body, size, size));
+            bullets.push(new Bullet(0, top, { x: speed, y: 0 }, size));
             total_fired++;
         };
 
@@ -125,37 +112,34 @@ export class SweepingSatWorldTest extends TestClass {
         // A bullet whose movement carries it entirely past the wall in one
         // frame is never caught by the overlap check, so it tunnels through.
         const step_naive = (bullet: Bullet, dt: number) => {
-            const before_left = bullet.body.position.x;
-            bullet.body.position.x += bullet.body.velocity.x * dt;
-            bullet.body.position.y += bullet.body.velocity.y * dt;
-            if (
-                before_left < wall.left &&
-                bullet.body.position.x > wall.get_right()
-            ) {
+            const before_left = bullet.x;
+            bullet.x += bullet.velocity.x * dt;
+            bullet.y += bullet.velocity.y * dt;
+            if (before_left < wall.left && bullet.x > wall.get_right()) {
                 bullet.tunneled = true;
                 tunneled_count++;
-            } else if (Rect.intersects(bullet.rect, wall)) {
-                bullet.body.velocity.x = 0;
+            } else if (sat_overlap(bullet.polygon, wall_polygon) !== null) {
+                bullet.velocity.x = 0;
                 bullet.blocked = true;
                 bullet.blocked_at = performance.now();
             }
         };
 
-        // Swept mode: let the SweepingSatWorld clamp movement to the time of
-        // impact, so the bullet always stops exactly at the wall surface.
-        const step_swept = (dt: number) => {
-            world.bodies = [wall_body, ...bullets.map((bullet) => bullet.body)];
-            world.update(dt);
-            for (const bullet of bullets) {
-                if (
-                    !bullet.blocked &&
-                    bullet.body.velocity.x === 0 &&
-                    bullet.body.velocity.y === 0
-                ) {
-                    bullet.blocked = true;
-                    bullet.blocked_at = performance.now();
-                    blocked_count++;
-                }
+        // Swept mode: sat_move looks at the whole path of the move, so the
+        // bullet always stops at the wall's surface, however fast it is.
+        const step_swept = (bullet: Bullet, dt: number) => {
+            const delta = {
+                x: bullet.velocity.x * dt,
+                y: bullet.velocity.y * dt,
+            };
+            const moved = sat_move(bullet.polygon, delta, [wall_polygon]);
+            bullet.x += moved.offset.x;
+            bullet.y += moved.offset.y;
+            if (moved.hits.length > 0) {
+                bullet.velocity.x = 0;
+                bullet.blocked = true;
+                bullet.blocked_at = performance.now();
+                blocked_count++;
             }
         };
 
@@ -171,19 +155,19 @@ export class SweepingSatWorldTest extends TestClass {
                 spawn_timer = 0.12 + Math.random() * 0.08;
             }
 
-            if (mode === "naive") {
-                for (const bullet of bullets) {
-                    if (bullet.blocked) {
-                        continue;
-                    }
-                    step_naive(bullet, dt);
+            for (const bullet of bullets) {
+                if (bullet.blocked) {
+                    continue;
                 }
-            } else {
-                step_swept(dt);
+                if (mode === "naive") {
+                    step_naive(bullet, dt);
+                } else {
+                    step_swept(bullet, dt);
+                }
             }
 
             bullets = bullets.filter((bullet) => {
-                if (bullet.body.position.x > canvas.width + 20) {
+                if (bullet.x > canvas.width + 20) {
                     return false;
                 }
                 if (
@@ -207,12 +191,7 @@ export class SweepingSatWorldTest extends TestClass {
                     : bullet.blocked
                       ? "#f59e0b"
                       : "#2563eb";
-                ctx.fillRect(
-                    bullet.body.position.x,
-                    bullet.body.position.y,
-                    bullet.width,
-                    bullet.height,
-                );
+                ctx.fillRect(bullet.x, bullet.y, bullet.size, bullet.size);
             }
 
             ctx.fillStyle = mode === "naive" ? "#dc2626" : "#16a34a";
@@ -262,7 +241,7 @@ export class SweepingSatWorldTest extends TestClass {
         canvas.addEventListener("click", this.click_handler);
 
         console.log(
-            "Sweeping SAT physics demo created. In 'Naive' mode fast bullets visually tunnel straight through the thin wall because the overlap check runs after they already moved past it; toggle to 'Swept' mode to see SweepingSatWorld's swept-AABB time-of-impact test clamp every bullet exactly at the wall surface, no matter how fast it travels.",
+            "Sweeping SAT physics demo created. In 'Naive' mode fast bullets visually tunnel straight through the thin wall because the overlap check runs after they already moved past it; toggle to 'Swept' mode to see sat_move's swept time-of-impact test clamp every bullet exactly at the wall surface, no matter how fast it travels.",
         );
     }
 }

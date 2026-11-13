@@ -14,7 +14,7 @@ import { ThemeTest } from "./ui/ThemeTest";
 import { AssetManagerTest } from "./assets/AssetManagerTest";
 import { ColorTest } from "./commons/ColorTest";
 import { SignalSocketTest } from "./signals/SignalSocketTest";
-import { SweepingSatWorldTest } from "./physics/SweepingSatWorldTest";
+import { SweepingSatTest } from "./physics/SweepingSatTest";
 import { PlaygroundTest } from "./PlaygroundTest";
 
 const element = document.getElementById("test-dashboard");
@@ -26,7 +26,7 @@ element.append(dashboard.get_element());
 
 dashboard.add_test([
     new PlaygroundTest(),
-    new SweepingSatWorldTest(),
+    new SweepingSatTest(),
     new QuadTreeTest(),
     new QuadTreePerformanceTest(),
     new RectTest(),
