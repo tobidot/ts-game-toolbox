@@ -4,7 +4,7 @@ import { SeededRandom } from "../../random/SeededRandom";
 import { sat_overlap } from "../sweeping_sat/Sat";
 import { AABB, AABB_SWEEP, CollisionRule, SAT_SWEEP } from "./CollisionRule";
 import { ContactEvent } from "./ContactEvent";
-import { PhysicsBody } from "./PhysicsBody";
+import { ALL_LAYERS, PhysicsBody } from "./PhysicsBody";
 import { PhysicsWorld, PhysicsWorldOptions } from "./PhysicsWorld";
 
 /** A box around its own middle. */
@@ -413,6 +413,70 @@ describe("PhysicsWorld", () => {
         world.broad_phase = { kind: "grid", cell_size: 32 };
         run(world, 1);
         expect(world.bodies[3].position.y).toBeCloseTo(590, 1);
+    });
+
+    it("skips the pairs layers and masks rule out: bullets don't hit bullets", () => {
+        const WALLS = 1;
+        const BULLETS = 2;
+        const ZOMBIES = 4;
+        for (const broad_phase of [
+            { kind: "none" as const },
+            { kind: "grid" as const, cell_size: 32 },
+        ]) {
+            const world = new PhysicsWorld<string>({ broad_phase });
+            world.add({
+                shape: crate(10, 200),
+                position: { x: 300, y: 0 },
+                is_static: true,
+                layer: WALLS,
+                data: "wall",
+            });
+            const bullets = [0, 1, 2].map((index) =>
+                world.add({
+                    shape: crate(4),
+                    position: { x: index * 3, y: 0 },
+                    velocity: { x: 600, y: 0 },
+                    layer: BULLETS,
+                    mask: WALLS | ZOMBIES,
+                    data: "bullet",
+                }),
+            );
+            const zombie = world.add({
+                shape: crate(20),
+                position: { x: 100, y: 40 },
+                velocity: { x: 0, y: -60 },
+                layer: ZOMBIES,
+                data: "zombie",
+            });
+            expect(zombie.mask).toBe(ALL_LAYERS);
+            const met: string[] = [];
+            world.events.attach(ContactEvent, (event) => {
+                const contact = event as ContactEvent<string>;
+                met.push(`${contact.a.data}-${contact.b.data}`);
+            });
+            // the bullets overlap each other from the start and are never pushed apart
+            world.step();
+            expect(bullets[1].position.x - bullets[0].position.x).toBeCloseTo(
+                3,
+            );
+            // without a broad phase the wall is handed to every move; never a bullet to a bullet
+            expect(world.stats.pairs_tested).toBe(
+                broad_phase.kind === "none" ? 4 : 0,
+            );
+            run(world, 1);
+            expect(met).not.toContain("bullet-bullet");
+            expect(met).toContain("bullet-wall");
+            // a ghost passes through the wall: its mask leaves the walls out
+            const ghost = world.add({
+                shape: crate(10),
+                position: { x: 200, y: 0 },
+                velocity: { x: 600, y: 0 },
+                layer: 8,
+                mask: ALL_LAYERS & ~WALLS,
+            });
+            run(world, 0.5);
+            expect(ghost.position.x).toBeGreaterThan(400);
+        }
     });
 
     it("takes another rule between steps", () => {

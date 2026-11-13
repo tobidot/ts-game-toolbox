@@ -14,9 +14,16 @@ export interface BodyOptions<D> {
     is_static?: boolean;
     /** Only the ratio between two bodies matters. Default: 1, and `Infinity` for a still body. */
     mass?: number;
+    /** The layers the body is on, as bits. Default: 1. */
+    layer?: number;
+    /** The layers it meets, as bits. Default: `ALL_LAYERS`. Two bodies meet when each one's layer is in the other's mask. */
+    mask?: number;
     /** Whatever the game wants back from an event: its own object, a kind, a number. */
     data?: D;
 }
+
+/** Every layer: a mask that meets everything. */
+export const ALL_LAYERS = 0xffffffff;
 
 /**
  * One body of a `PhysicsWorld`: a convex shape that translates and never turns. The game may
@@ -32,6 +39,10 @@ export class PhysicsBody<D = unknown> implements ShapeAt {
     public velocity: Vector2I;
     public readonly is_static: boolean;
     public readonly mass: number;
+    /** The layers the body is on, as bits. */
+    public layer: number;
+    /** The layers it meets, as bits. */
+    public mask: number;
     public data: D;
     /** False once `PhysicsWorld.remove()` took it out. */
     public is_in_world = true;
@@ -56,6 +67,8 @@ export class PhysicsBody<D = unknown> implements ShapeAt {
         this.velocity = { x: velocity.x, y: velocity.y };
         this.is_static = options.is_static ?? false;
         this.mass = this.is_static ? Infinity : (options.mass ?? 1);
+        this.layer = options.layer ?? 1;
+        this.mask = options.mask ?? ALL_LAYERS;
         this.data = options.data as D;
         let left = Infinity;
         let top = Infinity;
@@ -89,6 +102,13 @@ export class PhysicsBody<D = unknown> implements ShapeAt {
     public get box(): RectI {
         this.place();
         return this.world_box;
+    }
+
+    /** Whether this body and `other` meet: each one's layer is in the other's mask. */
+    public meets(other: PhysicsBody<unknown>): boolean {
+        return (
+            (this.layer & other.mask) !== 0 && (other.layer & this.mask) !== 0
+        );
     }
 
     /** Moves the cached shape and box to `position`, when it changed since the last read. */

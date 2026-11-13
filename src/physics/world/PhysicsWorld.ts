@@ -267,14 +267,17 @@ export class PhysicsWorld<D = unknown> {
         );
     }
 
-    /** The still bodies a box may touch, in the order they were added. */
-    private walls_near(box: RectI): PhysicsBody<D>[] {
+    /** The still bodies `body` meets that its `box` may touch, in the order they were added. */
+    private walls_near(body: PhysicsBody<D>, box: RectI): PhysicsBody<D>[] {
         const indices = this.wall_indices;
         this.broad.near(box, indices);
         const walls = this.walls;
-        walls.length = indices.length;
-        for (let index = 0; index < indices.length; index++) {
-            walls[index] = this.still[indices[index]];
+        walls.length = 0;
+        for (const index of indices) {
+            const wall = this.still[index];
+            if (body.meets(wall)) {
+                walls.push(wall);
+            }
         }
         return walls;
     }
@@ -289,7 +292,7 @@ export class PhysicsWorld<D = unknown> {
             width: box.width + Math.abs(delta.x),
             height: box.height + Math.abs(delta.y),
         };
-        const walls = this.walls_near(swept);
+        const walls = this.walls_near(body, swept);
         if (walls.length === 0) {
             body.position.x += delta.x;
             body.position.y += delta.y;
@@ -321,7 +324,20 @@ export class PhysicsWorld<D = unknown> {
             grown.width = box.width + 2 * PAIR_MARGIN;
             grown.height = box.height + 2 * PAIR_MARGIN;
         }
-        this.broad.pairs(boxes, this.pairs);
+        const pairs = this.pairs;
+        this.broad.pairs(boxes, pairs);
+        // the pairs whose layers and masks rule them out are never tested
+        let kept = 0;
+        for (let at = 0; at < pairs.length; at += 2) {
+            const first = pairs[at];
+            const second = pairs[at + 1];
+            if (moving[first].meets(moving[second])) {
+                pairs[kept] = first;
+                pairs[kept + 1] = second;
+                kept += 2;
+            }
+        }
+        pairs.length = kept;
     }
 
     /** One pass: moving pairs apart, then whatever got pushed out of the walls again. */
@@ -443,7 +459,7 @@ export class PhysicsWorld<D = unknown> {
 
     private push_out_of_walls(index: number): void {
         const body = this.moving[index];
-        const walls = this.walls_near(body.box);
+        const walls = this.walls_near(body, body.box);
         const rule = this.rule;
         for (const wall of walls) {
             this.stats.pairs_tested += 1;
