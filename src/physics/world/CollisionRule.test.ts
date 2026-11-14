@@ -160,6 +160,24 @@ describe("SAT_SWEEP", () => {
     });
 });
 
+describe("every rule", () => {
+    it("hands out one contact, written anew by each overlap: use it before asking again", () => {
+        for (const rule of [AABB, AABB_SWEEP, SAT_SWEEP]) {
+            const first = rule.overlap(
+                boxed(rect(0, 0, 10, 10)),
+                boxed(rect(8, 2, 10, 10)),
+            );
+            const copy = { normal: { ...first!.normal }, depth: first!.depth };
+            const second = rule.overlap(
+                boxed(rect(0, 0, 10, 10)),
+                boxed(rect(-7, 1, 10, 10)),
+            );
+            expect(second).toBe(first);
+            expect(second).not.toEqual(copy);
+        }
+    });
+});
+
 describe("AABB", () => {
     it("overlaps as AABB_SWEEP does", () => {
         for (const [a, b] of box_pairs) {

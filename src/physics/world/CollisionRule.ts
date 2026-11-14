@@ -30,11 +30,18 @@ export interface CollisionRule {
     readonly name: string;
     /** Whether `move()` looks at the whole path, so that nothing tunnels through a still shape. */
     readonly is_swept: boolean;
-    /** Where two shapes overlap now: the smallest push of `a` out of `b`, `normal` from `b` towards `a`. Null when apart. */
+    /**
+     * Where two shapes overlap now: the smallest push of `a` out of `b`, `normal` from `b`
+     * towards `a`. Null when apart. The contact may be the same object on every call, written
+     * anew: read it before asking again, and copy what you keep.
+     */
     overlap(a: ShapeAt, b: ShapeAt): Contact | null;
     /** Moves `mover` by `delta` against still `walls`, sliding along what it hits. `mover` isn't changed. */
     move(mover: ShapeAt, delta: Vector2I, walls: readonly ShapeAt[]): RuleMove;
 }
+
+/** The contact the box rules hand out, written anew by each overlap. */
+const box_contact: Contact = { normal: { x: 0, y: 0 }, depth: 0 };
 
 /** `aabb_resolve` as a contact: the push's direction and length. */
 function box_overlap(a: ShapeAt, b: ShapeAt): Contact | null {
@@ -42,9 +49,14 @@ function box_overlap(a: ShapeAt, b: ShapeAt): Contact | null {
     if (push === null) {
         return null;
     }
-    const depth = Math.abs(push.x) + Math.abs(push.y);
-    return { normal: { x: Math.sign(push.x), y: Math.sign(push.y) }, depth };
+    box_contact.normal.x = Math.sign(push.x);
+    box_contact.normal.y = Math.sign(push.y);
+    box_contact.depth = Math.abs(push.x) + Math.abs(push.y);
+    return box_contact;
 }
+
+/** The contact `SAT_SWEEP` hands out, written anew by each overlap. */
+const sat_contact: Contact = { normal: { x: 0, y: 0 }, depth: 0 };
 
 /**
  * Boxes, the naive way: every shape counts as its bounding box, a move goes the whole way
@@ -122,7 +134,7 @@ export const SAT_SWEEP: CollisionRule = {
     name: "sat_sweep",
     is_swept: true,
     overlap(a, b) {
-        return sat_overlap_shapes(a, b);
+        return sat_overlap_shapes(a, b, sat_contact);
     },
     move(mover, delta, walls) {
         return sat_move_shapes(mover, delta, walls);

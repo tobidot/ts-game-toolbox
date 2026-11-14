@@ -148,6 +148,10 @@ export class PhysicsWorld<D = unknown> {
     private readonly boxes: RectI[] = [];
     private readonly wall_indices: number[] = [];
     private readonly walls: PhysicsBody<D>[] = [];
+    /** Scratch for a move and a push, so a step allocates nothing per body. */
+    private readonly delta: Vector2I = { x: 0, y: 0 };
+    private readonly swept: RectI = { left: 0, top: 0, width: 0, height: 0 };
+    private readonly up: Vector2I = { x: 0, y: 0 };
 
     public constructor(options: PhysicsWorldOptions = {}) {
         this.rule = options.rule ?? SAT_SWEEP;
@@ -255,10 +259,9 @@ export class PhysicsWorld<D = unknown> {
             const body = moving[index];
             body.velocity.x += this.gravity.x * dt;
             body.velocity.y += this.gravity.y * dt;
-            this.move(index, {
-                x: body.velocity.x * dt,
-                y: body.velocity.y * dt,
-            });
+            this.delta.x = body.velocity.x * dt;
+            this.delta.y = body.velocity.y * dt;
+            this.move(index, this.delta);
         }
         this.find_pairs();
         for (let pass = 0; pass < this.passes; pass++) {
@@ -332,12 +335,11 @@ export class PhysicsWorld<D = unknown> {
     private move(index: number, delta: Vector2I): void {
         const body = this.moving[index];
         const box = body.box;
-        const swept = {
-            left: box.left + Math.min(0, delta.x),
-            top: box.top + Math.min(0, delta.y),
-            width: box.width + Math.abs(delta.x),
-            height: box.height + Math.abs(delta.y),
-        };
+        const swept = this.swept;
+        swept.left = box.left + Math.min(0, delta.x);
+        swept.top = box.top + Math.min(0, delta.y);
+        swept.width = box.width + Math.abs(delta.x);
+        swept.height = box.height + Math.abs(delta.y);
         const walls = this.walls_near(body, swept);
         if (walls.length === 0) {
             body.position.x += delta.x;
@@ -439,7 +441,9 @@ export class PhysicsWorld<D = unknown> {
                 return;
             }
             if (along >= SUPPORT_SLOPE && supported[first]) {
-                const up = { x: -normal.x, y: -normal.y };
+                const up = this.up;
+                up.x = -normal.x;
+                up.y = -normal.y;
                 b.position.x += up.x * depth;
                 b.position.y += up.y * depth;
                 this.land(second, a, up);
@@ -484,23 +488,21 @@ export class PhysicsWorld<D = unknown> {
         normal: Vector2I,
         closing: number,
     ): void {
-        const tangent = { x: -normal.y, y: normal.x };
+        // the tangent is the normal turned a quarter: (-normal.y, normal.x)
+        const tangent_x = -normal.y;
+        const tangent_y = normal.x;
         const sliding =
-            (after_a.x - after_b.x) * tangent.x +
-            (after_a.y - after_b.y) * tangent.y;
+            (after_a.x - after_b.x) * tangent_x +
+            (after_a.y - after_b.y) * tangent_y;
         const loss = Math.min(Math.abs(sliding), this.friction * closing);
         const inverse_a = 1 / a.mass;
         const inverse_b = 1 / b.mass;
         const share_a = inverse_a / (inverse_a + inverse_b);
         const change = Math.sign(sliding) * loss;
-        a.velocity = {
-            x: after_a.x - change * share_a * tangent.x,
-            y: after_a.y - change * share_a * tangent.y,
-        };
-        b.velocity = {
-            x: after_b.x + change * (1 - share_a) * tangent.x,
-            y: after_b.y + change * (1 - share_a) * tangent.y,
-        };
+        a.velocity.x = after_a.x - change * share_a * tangent_x;
+        a.velocity.y = after_a.y - change * share_a * tangent_y;
+        b.velocity.x = after_b.x + change * (1 - share_a) * tangent_x;
+        b.velocity.y = after_b.y + change * (1 - share_a) * tangent_y;
     }
 
     private push_out_of_walls(index: number): void {
@@ -537,15 +539,15 @@ export class PhysicsWorld<D = unknown> {
             return;
         }
         const after = reflect(velocity, normal, this.restitution_at(into));
-        const tangent = { x: -normal.y, y: normal.x };
-        const sliding = after.x * tangent.x + after.y * tangent.y;
+        // the tangent is the normal turned a quarter: (-normal.y, normal.x)
+        const tangent_x = -normal.y;
+        const tangent_y = normal.x;
+        const sliding = after.x * tangent_x + after.y * tangent_y;
         const slowed =
             Math.sign(sliding) *
             Math.max(0, Math.abs(sliding) - this.friction * into);
-        body.velocity = {
-            x: after.x + (slowed - sliding) * tangent.x,
-            y: after.y + (slowed - sliding) * tangent.y,
-        };
+        velocity.x = after.x + (slowed - sliding) * tangent_x;
+        velocity.y = after.y + (slowed - sliding) * tangent_y;
         if (into >= this.contact_event_speed) {
             this.pending.push(
                 new ContactEvent(body, wall, { ...normal }, into),

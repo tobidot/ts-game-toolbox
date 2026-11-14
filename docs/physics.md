@@ -8,7 +8,7 @@
 - **`sat_overlap(a, b)`**: the smallest push that moves `a` out of `b`, as bounce's `Contact` (`normal` from `b` towards `a`, `depth`), or `null`. Touching edges don't count.
 - **`sat_sweep(mover, delta, wall)`**: when `mover`, moving by `delta`, first touches a still `wall`, as aabb's `Hit` (`time` 0..1, `normal` the wall face's unit normal). Exact for any speed, so nothing tunnels. Already overlapping is a hit at time 0 with the push in `overlap`.
 - **`sat_move(mover, delta, walls)`**: moves with sliding like `aabb_move`, at most 3 passes, and returns `{ offset, hits }`: how far the mover went. It stays `SAT_SKIN` (0.01) off what it hit.
-- **Prepared shapes.** Each call above works out the edge normals of both shapes. A shape that never turns keeps them: `sat_shape(polygon)` gives `{ polygon, axes }` (`sat_axes`, each edge direction once, so a box has 2), and `sat_overlap_shapes`, `sat_sweep_shapes` and `sat_move_shapes` take that form. `PhysicsBody` keeps its `axes`, and `SAT_SWEEP` uses them.
+- **Prepared shapes.** Each call above works out the edge normals of both shapes. A shape that never turns keeps them: `sat_shape(polygon)` gives `{ polygon, axes }` (`sat_axes`, each edge direction once, so a box has 2), and `sat_overlap_shapes`, `sat_sweep_shapes` and `sat_move_shapes` take that form. `PhysicsBody` keeps its `axes`, and `SAT_SWEEP` uses them. `sat_overlap_shapes(a, b, out)` writes the contact into `out`, so a hot loop allocates nothing.
 
 ```ts
 const shape = new Polygon(crate_points).translated(parcel.position);
@@ -45,5 +45,6 @@ world.remove(body);
 - **Broad phase.** `broad_phase: { kind: "grid", cell_size: 64 }` (the default) lays a uniform grid over the moving bodies' boxes anew every step and compares a pair only in the cell where their overlap starts; still bodies stand in a grid of their own until one is added or removed. `{ kind: "none" }` compares every pair, to measure against. Both hand out the same pairs in the same order, so a world plays exactly the same with either; `world.broad_phase` switches between steps. Pick a cell about twice the size of a common body.
 - **Layers and masks.** A body is on `layer` (bits, default 1) and meets the layers in its `mask` (default `ALL_LAYERS`). Two bodies meet when each one's layer is in the other's mask; pairs that don't are never tested, so bullets (`layer: BULLETS, mask: WALLS | ZOMBIES`) cost nothing against each other. A still body's walls are filtered the same way.
 - **Events.** `ContactEvent`s go out after the step, never during it, so a listener may remove bodies. Contacts closing slower than `contact_event_speed` send none.
+- **Contacts are lent.** A rule's `overlap()` may hand out the same contact object on every call, written anew: read it before asking again. A step allocates nothing per pair.
 - **Stats.** `world.stats`: `bodies`, `pairs_tested`, `contacts`, `step_ms` and `steps`, for the last step and update.
 - **No spin.** A crate that lands flat on a corner stays balanced there. Step 26 (Paketrutsche) tips such a body off by hand; the world leaves that to the game until bodies can turn.

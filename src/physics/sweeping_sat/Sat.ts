@@ -74,17 +74,35 @@ interface Shadow {
     max: number;
 }
 
-/** The shadow of `polygon` moved by `offset` on `axis`. */
-function shadow(polygon: PolygonI, axis: Vector2I, offset: Vector2I): Shadow {
+/**
+ * Two shadows to write into, so that a test allocates nothing per axis: a step of a world tests
+ * thousands of pairs. Nothing here calls itself while one is in use.
+ */
+const of_first: Shadow = { min: 0, max: 0 };
+const of_second: Shadow = { min: 0, max: 0 };
+
+/** Writes into `out` the shadow of `polygon` on `axis`, moved along it by `shift`. */
+function shadow(
+    polygon: PolygonI,
+    axis: Vector2I,
+    shift: number,
+    out: Shadow,
+): Shadow {
+    const points = polygon.points;
     let min = Infinity;
     let max = -Infinity;
-    for (const point of polygon.points) {
-        const along = point.x * axis.x + point.y * axis.y;
-        min = Math.min(min, along);
-        max = Math.max(max, along);
+    for (let index = 0; index < points.length; index++) {
+        const along = points[index].x * axis.x + points[index].y * axis.y;
+        if (along < min) {
+            min = along;
+        }
+        if (along > max) {
+            max = along;
+        }
     }
-    const shift = offset.x * axis.x + offset.y * axis.y;
-    return { min: min + shift, max: max + shift };
+    out.min = min + shift;
+    out.max = max + shift;
+    return out;
 }
 
 const NOWHERE: Vector2I = { x: 0, y: 0 };
@@ -98,30 +116,47 @@ export function sat_overlap(a: PolygonI, b: PolygonI): Contact | null {
     return sat_overlap_shapes(sat_shape(a), sat_shape(b));
 }
 
-/** `sat_overlap` on shapes whose axes are worked out already. */
-export function sat_overlap_shapes(a: SatShape, b: SatShape): Contact | null {
-    let best: Contact | null = null;
-    for (const axes of [a.axes, b.axes]) {
-        for (const axis of axes) {
-            const of_a = shadow(a.polygon, axis, NOWHERE);
-            const of_b = shadow(b.polygon, axis, NOWHERE);
+/**
+ * `sat_overlap` on shapes whose axes are worked out already. With `out`, the contact is written
+ * into it (its `normal` too) and returned, so a hot loop allocates nothing.
+ */
+export function sat_overlap_shapes(
+    a: SatShape,
+    b: SatShape,
+    out?: Contact,
+): Contact | null {
+    let depth = Infinity;
+    let normal_x = 0;
+    let normal_y = 0;
+    for (let side = 0; side < 2; side++) {
+        const axes = side === 0 ? a.axes : b.axes;
+        for (let index = 0; index < axes.length; index++) {
+            const axis = axes[index];
+            const of_a = shadow(a.polygon, axis, 0, of_first);
+            const of_b = shadow(b.polygon, axis, 0, of_second);
             // `a` leaves along +axis by `forward`, along -axis by `backward`
             const forward = of_b.max - of_a.min;
             const backward = of_a.max - of_b.min;
             if (forward <= 0 || backward <= 0) {
                 return null;
             }
-            const depth = Math.min(forward, backward);
-            if (best === null || depth < best.depth) {
+            const least = Math.min(forward, backward);
+            if (least < depth) {
+                depth = least;
                 const sign = forward < backward ? 1 : -1;
-                best = {
-                    normal: { x: axis.x * sign, y: axis.y * sign },
-                    depth,
-                };
+                normal_x = axis.x * sign;
+                normal_y = axis.y * sign;
             }
         }
     }
-    return best;
+    if (depth === Infinity) {
+        return null;
+    }
+    const contact = out ?? { normal: { x: 0, y: 0 }, depth: 0 };
+    contact.normal.x = normal_x;
+    contact.normal.y = normal_y;
+    contact.depth = depth;
+    return contact;
 }
 
 /**
@@ -163,27 +198,35 @@ function sweep(
     // the overlap now: the smallest push out, while every axis overlaps
     let is_inside = true;
     let depth = Infinity;
-    let push: Vector2I = NOWHERE;
+    let push_x = 0;
+    let push_y = 0;
     // the swept test: when the shadows meet on every axis, and when they part on one
     let entry = -Infinity;
     let exit = Infinity;
-    let normal: Vector2I | null = null;
-    for (const axes of [mover.axes, wall.axes]) {
-        for (const axis of axes) {
-            const of_mover = shadow(mover.polygon, axis, offset);
-            const of_wall = shadow(wall.polygon, axis, NOWHERE);
+    let normal_x = 0;
+    let normal_y = 0;
+    let has_normal = false;
+    for (let side = 0; side < 2; side++) {
+        const axes = side === 0 ? mover.axes : wall.axes;
+        for (let index = 0; index < axes.length; index++) {
+            const axis = axes[index];
+            const shift = offset.x * axis.x + offset.y * axis.y;
+            const of_mover = shadow(mover.polygon, axis, shift, of_first);
+            const of_wall = shadow(wall.polygon, axis, 0, of_second);
             const forward = of_wall.max - of_mover.min;
             const backward = of_mover.max - of_wall.min;
-            if (forward <= 0 || backward <= 0) {
+            const is_apart = forward <= 0 || backward <= 0;
+            if (is_apart) {
                 is_inside = false;
             } else if (is_inside && Math.min(forward, backward) < depth) {
                 depth = Math.min(forward, backward);
                 const sign = forward < backward ? 1 : -1;
-                push = { x: axis.x * sign, y: axis.y * sign };
+                push_x = axis.x * sign;
+                push_y = axis.y * sign;
             }
             const speed = delta.x * axis.x + delta.y * axis.y;
             if (speed === 0) {
-                if (forward <= 0 || backward <= 0) {
+                if (is_apart) {
                     // apart on this axis and never closer along it
                     return null;
                 }
@@ -201,22 +244,32 @@ function sweep(
                 entry = axis_entry;
                 // the face the mover runs into faces against its motion
                 const sign = speed > 0 ? -1 : 1;
-                normal = { x: axis.x * sign, y: axis.y * sign };
+                normal_x = axis.x * sign;
+                normal_y = axis.y * sign;
+                has_normal = true;
+            }
+            if (axis_entry > 1 || axis_exit <= 0) {
+                // apart on this axis, and still apart, or apart again, at the end of the move
+                return null;
             }
             exit = Math.min(exit, axis_exit);
         }
     }
-    if (is_inside) {
+    if (is_inside && depth !== Infinity) {
         return {
-            normal: push,
+            normal: { x: push_x, y: push_y },
             time: 0,
-            overlap: { x: push.x * depth, y: push.y * depth },
+            overlap: { x: push_x * depth, y: push_y * depth },
         };
     }
-    if (normal === null || entry >= exit || entry < 0 || entry > 1) {
+    if (!has_normal || entry >= exit || entry < 0 || entry > 1) {
         return null;
     }
-    return { normal, time: entry, overlap: { x: 0, y: 0 } };
+    return {
+        normal: { x: normal_x, y: normal_y },
+        time: entry,
+        overlap: { x: 0, y: 0 },
+    };
 }
 
 /**

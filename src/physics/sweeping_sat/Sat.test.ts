@@ -380,6 +380,19 @@ describe("prepared shapes", () => {
         }
     });
 
+    it("write the contact into out when given, so a hot loop allocates nothing", () => {
+        const out = { normal: { x: 0, y: 0 }, depth: 0 };
+        const normal = out.normal;
+        const a = sat_shape(box(0, 0, 10, 10));
+        const b = sat_shape(box(8, 2, 10, 10));
+        expect(sat_overlap_shapes(a, b, out)).toBe(out);
+        expect(out.normal).toBe(normal);
+        expect(out).toEqual(sat_overlap(a.polygon, b.polygon));
+        expect(
+            sat_overlap_shapes(a, sat_shape(box(30, 0, 5, 5)), out),
+        ).toBeNull();
+    });
+
     it("give what sat_overlap, sat_sweep and sat_move give, on random convex shapes", () => {
         const random = new SeededRandom(27);
         let overlaps = 0;
