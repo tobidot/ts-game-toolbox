@@ -1,6 +1,6 @@
 # Ts Game Toolbox - AI Documentation Context
 
-This file provides a consolidated view of the library's documentation, optimized for ingestion by AI agents (LLMs). It is the single docs in `docs/` put together, one section each; the package is `@game.object/ts-game-toolbox`. What changed between versions, and how to migrate to 6.0.0: `CHANGELOG.md`.
+This file provides a consolidated view of the library's documentation, optimized for ingestion by AI agents (LLMs). It is the single docs in `docs/` put together, one section each; the package is `@game.object/ts-game-toolbox`. What changed between versions, and how to migrate to 6.0.0: `changelog/v6.md` (one document per major version in `changelog/`).
 
 ## Table of Contents
 1. [Overview](#overview)

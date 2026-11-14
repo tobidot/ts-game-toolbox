@@ -3,10 +3,10 @@
 A collection of reusable functions and classes for Games or Programs developed in Javascript/Typescript.
 
 ## Main
-- [Overview](README.md): Basic overview and coordinate system information.
+- [Overview](README.md): What the toolbox is for, and a table of its features with links to the docs.
 - [AI Documentation Context](docs/ai.md): Consolidated documentation optimized for LLMs and AI agents.
 - [Handover Guide](docs/handover.md): Instructions for sharing this library with other agents.
-- [Changelog](CHANGELOG.md): Changes per version and the migration to 6.0.0.
+- [Changelog](changelog/README.md): One document per major version, with the migration from the one before (6.0.0: changelog/v6.md).
 - [Game Shell](docs/game-shell.md): CanvasGameElement and its five parts, the stage, AudioPlayer.
 - [Assets](docs/assets.md): AssetManager, loading sets and queued requests.
 - [Geometries](docs/geometries.md): Vector2, Rect, Polygon and other geometric primitives.
