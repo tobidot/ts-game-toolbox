@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PolygonI } from "../../geometries/Polygon";
-import { aabb_move, aabb_resolve, aabb_sweep } from "../aabb/Aabb";
+import { aabb_move, aabb_resolve, aabb_sweep, Hit } from "../aabb/Aabb";
+import { Contact } from "../bounce/Bounce";
 import { SeededRandom } from "../../random/SeededRandom";
 import {
     SAT_SKIN,
@@ -353,6 +354,183 @@ const random_convex = (
         }),
     };
 };
+
+/** Every edge normal of both shapes, none left out: the plain test the fast paths must agree with. */
+const every_axis = (a: PolygonI, b: PolygonI): { x: number; y: number }[] =>
+    [a, b].flatMap((polygon) =>
+        polygon.points.map((from, index) => {
+            const to = polygon.points[(index + 1) % polygon.points.length];
+            const length = Math.hypot(to.x - from.x, to.y - from.y);
+            return {
+                x: (from.y - to.y) / length,
+                y: (to.x - from.x) / length,
+            };
+        }),
+    );
+
+const plain_shadow = (polygon: PolygonI, axis: { x: number; y: number }) => {
+    const along = polygon.points.map(
+        (point) => point.x * axis.x + point.y * axis.y,
+    );
+    return { min: Math.min(...along), max: Math.max(...along) };
+};
+
+/** `sat_overlap` as first written: every axis, a new shadow each. */
+const plain_overlap = (a: PolygonI, b: PolygonI): Contact | null => {
+    let best: Contact | null = null;
+    for (const axis of every_axis(a, b)) {
+        const of_a = plain_shadow(a, axis);
+        const of_b = plain_shadow(b, axis);
+        const forward = of_b.max - of_a.min;
+        const backward = of_a.max - of_b.min;
+        if (forward <= 0 || backward <= 0) {
+            return null;
+        }
+        const depth = Math.min(forward, backward);
+        if (best === null || depth < best.depth) {
+            const sign = forward < backward ? 1 : -1;
+            best = { normal: { x: axis.x * sign, y: axis.y * sign }, depth };
+        }
+    }
+    return best;
+};
+
+/** `sat_sweep` as first written. */
+const plain_sweep = (
+    mover: PolygonI,
+    delta: { x: number; y: number },
+    wall: PolygonI,
+): Hit | null => {
+    const contact = plain_overlap(mover, wall);
+    if (contact !== null) {
+        return {
+            normal: contact.normal,
+            time: 0,
+            overlap: {
+                x: contact.normal.x * contact.depth,
+                y: contact.normal.y * contact.depth,
+            },
+        };
+    }
+    let entry = -Infinity;
+    let exit = Infinity;
+    let normal: { x: number; y: number } | null = null;
+    for (const axis of every_axis(mover, wall)) {
+        const of_mover = plain_shadow(mover, axis);
+        const of_wall = plain_shadow(wall, axis);
+        const speed = delta.x * axis.x + delta.y * axis.y;
+        if (speed === 0) {
+            if (of_mover.max <= of_wall.min || of_mover.min >= of_wall.max) {
+                return null;
+            }
+            continue;
+        }
+        const axis_entry =
+            speed > 0
+                ? (of_wall.min - of_mover.max) / speed
+                : (of_wall.max - of_mover.min) / speed;
+        const axis_exit =
+            speed > 0
+                ? (of_wall.max - of_mover.min) / speed
+                : (of_wall.min - of_mover.max) / speed;
+        if (axis_entry > entry) {
+            entry = axis_entry;
+            const sign = speed > 0 ? -1 : 1;
+            normal = { x: axis.x * sign, y: axis.y * sign };
+        }
+        exit = Math.min(exit, axis_exit);
+    }
+    if (normal === null || entry >= exit || entry < 0 || entry > 1) {
+        return null;
+    }
+    return { normal, time: entry, overlap: { x: 0, y: 0 } };
+};
+
+describe("the fast paths", () => {
+    it("agree with the plain test over every edge of both shapes, shared axes and all", () => {
+        const random = new SeededRandom(29);
+        let overlaps = 0;
+        let hits = 0;
+        for (let round = 0; round < 600; round++) {
+            const a = random_convex(random, {
+                x: random.float(-30, 30),
+                y: random.float(-30, 30),
+            });
+            // a stranger, a twin with every axis shared, or a box with a box's axes
+            const kind = round % 3;
+            const b =
+                kind === 0
+                    ? random_convex(random, { x: 0, y: 0 })
+                    : kind === 1
+                      ? moved(a, {
+                            x: random.float(-30, 30),
+                            y: random.float(-30, 30),
+                        })
+                      : box(
+                            random.float(-20, 0),
+                            random.float(-20, 0),
+                            random.float(5, 30),
+                            random.float(5, 30),
+                        );
+            const a_box =
+                kind === 2
+                    ? box(
+                          random.float(-30, 10),
+                          random.float(-30, 10),
+                          random.float(5, 30),
+                          random.float(5, 30),
+                      )
+                    : a;
+            const delta = {
+                x: random.float(-60, 60),
+                y: random.float(-60, 60),
+            };
+            const expected = plain_overlap(a_box, b);
+            const contact = sat_overlap_shapes(sat_shape(a_box), sat_shape(b));
+            if (expected === null) {
+                expect(contact).toBeNull();
+            } else {
+                overlaps += 1;
+                expect(contact!.depth).toBeCloseTo(expected.depth, 9);
+                expect(contact!.normal.x).toBeCloseTo(expected.normal.x, 9);
+                expect(contact!.normal.y).toBeCloseTo(expected.normal.y, 9);
+            }
+            const expected_hit = plain_sweep(a_box, delta, b);
+            const hit = sat_sweep(a_box, delta, b);
+            if (expected_hit === null) {
+                expect(hit).toBeNull();
+            } else {
+                hits += 1;
+                expect(hit!.time).toBeCloseTo(expected_hit.time, 9);
+                expect(hit!.normal.x).toBeCloseTo(expected_hit.normal.x, 9);
+                expect(hit!.normal.y).toBeCloseTo(expected_hit.normal.y, 9);
+                expect(hit!.overlap.x).toBeCloseTo(expected_hit.overlap.x, 9);
+                expect(hit!.overlap.y).toBeCloseTo(expected_hit.overlap.y, 9);
+            }
+        }
+        expect(overlaps).toBeGreaterThan(100);
+        expect(hits).toBeGreaterThan(100);
+    });
+
+    it("test an axis the two shapes share once: a crate on a crate has 2 axes to look at, not 4", () => {
+        // a shadow is cheap to count through a polygon whose points are read
+        let reads = 0;
+        const counted = (polygon: PolygonI): PolygonI => ({
+            get points() {
+                reads += 1;
+                return polygon.points;
+            },
+        });
+        const a = sat_shape(box(0, 0, 10, 10));
+        const b = sat_shape(box(8, 2, 10, 10));
+        sat_overlap_shapes(
+            { polygon: counted(a.polygon), axes: a.axes },
+            { polygon: counted(b.polygon), axes: b.axes },
+        );
+        // two axes, a shadow of each shape on each
+        expect(reads).toBe(4);
+    });
+});
 
 describe("prepared shapes", () => {
     it("work out each edge direction once: a box has 2 axes, a hexagon 3, a triangle 3", () => {

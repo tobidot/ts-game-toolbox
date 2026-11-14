@@ -107,6 +107,19 @@ function shadow(
 
 const NOWHERE: Vector2I = { x: 0, y: 0 };
 
+/** Whether `axes` has `axis`, or its opposite: a shadow on either is the same test. */
+function is_among(axis: Vector2I, axes: readonly Vector2I[]): boolean {
+    for (let index = 0; index < axes.length; index++) {
+        if (
+            Math.abs(axis.x * axes[index].y - axis.y * axes[index].x) <=
+            PARALLEL
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /**
  * Where `a` and `b` overlap: the smallest push that moves `a` out of `b`, as bounce's `Contact`
  * (`normal` a unit vector from `b` towards `a`, `depth` how far along it). Null when they are
@@ -132,6 +145,9 @@ export function sat_overlap_shapes(
         const axes = side === 0 ? a.axes : b.axes;
         for (let index = 0; index < axes.length; index++) {
             const axis = axes[index];
+            if (side === 1 && is_among(axis, a.axes)) {
+                continue;
+            }
             const of_a = shadow(a.polygon, axis, 0, of_first);
             const of_b = shadow(b.polygon, axis, 0, of_second);
             // `a` leaves along +axis by `forward`, along -axis by `backward`
@@ -210,6 +226,9 @@ function sweep(
         const axes = side === 0 ? mover.axes : wall.axes;
         for (let index = 0; index < axes.length; index++) {
             const axis = axes[index];
+            if (side === 1 && is_among(axis, mover.axes)) {
+                continue;
+            }
             const shift = offset.x * axis.x + offset.y * axis.y;
             const of_mover = shadow(mover.polygon, axis, shift, of_first);
             const of_wall = shadow(wall.polygon, axis, 0, of_second);

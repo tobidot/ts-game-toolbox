@@ -160,6 +160,37 @@ describe("SAT_SWEEP", () => {
     });
 });
 
+describe("SAT_SWEEP's box test first", () => {
+    it("never asks about the polygons of shapes whose boxes are apart", () => {
+        let reads = 0;
+        const counted = (box: RectI): ShapeAt => {
+            const at = boxed(box);
+            return {
+                box: at.box,
+                axes: at.axes,
+                get polygon() {
+                    reads += 1;
+                    return at.polygon;
+                },
+            };
+        };
+        expect(
+            SAT_SWEEP.overlap(
+                counted(rect(0, 0, 10, 10)),
+                counted(rect(10, 0, 10, 10)),
+            ),
+        ).toBeNull();
+        expect(reads).toBe(0);
+        expect(
+            SAT_SWEEP.overlap(
+                counted(rect(0, 0, 10, 10)),
+                counted(rect(8, 0, 10, 10)),
+            ),
+        ).not.toBeNull();
+        expect(reads).toBeGreaterThan(0);
+    });
+});
+
 describe("every rule", () => {
     it("hands out one contact, written anew by each overlap: use it before asking again", () => {
         for (const rule of [AABB, AABB_SWEEP, SAT_SWEEP]) {

@@ -1,7 +1,7 @@
 import { PolygonI } from "../../geometries/Polygon";
 import { RectI } from "../../geometries/Rect";
 import { Vector2I } from "../../geometries/Vector2";
-import { aabb_move, aabb_resolve, WallHit } from "../aabb/Aabb";
+import { aabb_move, aabb_overlaps, aabb_resolve, WallHit } from "../aabb/Aabb";
 import { Contact } from "../bounce/Bounce";
 import { sat_move_shapes, sat_overlap_shapes } from "../sweeping_sat/Sat";
 
@@ -134,6 +134,10 @@ export const SAT_SWEEP: CollisionRule = {
     name: "sat_sweep",
     is_swept: true,
     overlap(a, b) {
+        // shapes whose boxes are apart are apart: four comparisons spare the shadows
+        if (!aabb_overlaps(a.box, b.box)) {
+            return null;
+        }
         return sat_overlap_shapes(a, b, sat_contact);
     },
     move(mover, delta, walls) {
