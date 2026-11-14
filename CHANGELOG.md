@@ -1,0 +1,63 @@
+# Changelog
+
+Earlier versions are listed in short in the README's "Quick Version Log" and in the `Release vX.Y.Z` commit messages.
+
+## 6.0.0
+
+The modules of the Spielwerk series, steps 15 to 29, and the canvas game shell every step runs on. A major version because the old sweeping SAT world is gone and a few widgets and helpers changed their signatures or defaults; see "Migration" at the end.
+
+### Added
+
+- **Game shell** (`game-element/`, `stage/`; see `docs/game-shell.md`): `CanvasGameElement` with its five parts `CanvasGameSettings`, `CanvasGameReferences`, `CanvasGameProperties`, `CanvasGameRenderer` and `CanvasGameLogic`; `StageLayout` and `layout_for`, `CanvasStage`, `IntroGate`, `StartScreen`, `bind_stage_input`. Rounds and `round_end_hold_seconds`, `message_card()`, `polygon()` and `trace_polygon()` in the renderer, `properties.frame_seconds`, `on_wheel(point, pixels)`, mute buttons (`MuteButton`), `SessionBest`, `TimedNotice`, `HouseSlider`, `FrameBudget` (a game held to a frame rate, step 27). A file from `references.assets.request()` repaints when it arrives.
+- **Audio** (`audio/`): `AudioPlayer`, sound channels, one music track, mutes; the music holds while the tab is hidden (step 17).
+- **Physics**
+    - `physics/world`: `PhysicsWorld`, a world that owns its bodies, with the collision rules `AABB`, `AABB_SWEEP` and `SAT_SWEEP` (or a game's own `CollisionRule`), a grid broad phase, layers and masks (`ALL_LAYERS`), sleeping bodies, `ContactEvent`s with `contact_event_speed` and `contact_event_layers`, `catch_up_ms` and `max_steps_per_update`, `holds_up()`, `stats` (steps 27 and 29).
+    - `physics/sweeping_sat`: `sat_overlap`, `sat_sweep`, `sat_move`, `SAT_SKIN`, and the prepared forms `sat_shape`, `sat_axes`, `sat_overlap_shapes`, `sat_sweep_shapes`, `sat_move_shapes` (step 26).
+    - `physics/bounce`: `reflect`, `circle_contact`, `circle_rect_contact`, `elastic_impact` (step 16).
+    - `physics/steering`: `steer_towards` (arrives after slowing down, a crowd stands still), `separate_bodies`, `seek_velocity` (step 19).
+    - `aabb_move` and `sat_move` hits are `WallHit`s: `wall` is the index of the wall that was hit.
+- **Assets**: `AssetManager.request()`: a queue of files off the network, `max_parallel` at a time, by `priority` (`set_priority()`), each with an `AssetLoad` (`state`, `reason`, bytes, `progress`); `cancel()` withdraws a file that still waits; `loads`, `counts`, `loaded_bytes`, `progress`, `timeout_ms`; `AssetManagerOptions` for tests (step 28).
+- **Flow**: `Tween` and the easings (step 15), `FixedStepClock` (uneven frames into even steps), `Progress.append_child_progress()` and `remove_child_progress()` for tasks that arrive later.
+- **UI**
+    - `Menu` (a tree and a cursor, step 18), `MenuInput` (keys and presses with a buffer) and `MenuView` (a menu on the page, in a style; step 21).
+    - `ScrollGroup`, drags that reach a parent, the wheel (`UiManager.wheel`), `Group.remove`, `stays_on_top`.
+    - Element states `selected`, `disabled`, `refused`, `entering`; `ElementRefusedEvent`; `show_refused()`, `show_entering()`.
+    - Themes: transitions (`transition_seconds`, `transition_easing`), `theme_pulse`, `theme_shake`, `theme_slide`, color and transform tweens, `set_theme` with a fade, themes by name, rules per layout, `blend_table`, `theme_now` / `set_theme_clock`, the house look for every widget (`default_theme`), `border_style` `"raised"` and `"sunken"`, `accent_color`, `thumb_color`, `caption_color`, `caption_font_size`, `theme_font()`.
+    - Text: `wrap_text`, `ellipsize_text`, `Label.is_wrapped`, `Label.text_padding`, `Button.text_overflow`, `Button.columns` (also as a caption), `Button` honors `text_align`.
+    - `Image` and `Gallery`: a picture can come later and change (`null` until then), `is_contained`, `is_smooth`; `Gallery` shows its title and "No Image". `Video`: built without a film, `is_contained`, `is_playing`, and a paused film stays paused when drawn (steps 23 and 28).
+    - `UiManager.drag_threshold`.
+- **Canvas**: `SpriteBatch`, many sprites drawn image by image with one `setTransform` each (step 29).
+- **Geometries and trees**: `Vector2.limit`, `Rect.contained`, `Rect.touches_segment`, `Polygon.bounding_rect`, `Polygon.translated`, `Polygon.rotated`, `QuadTree.pick_polygon`, `QuadTree.clear(keep_levels)`.
+- **Math helpers**: `clamp`, `lerp` and `angle_difference`, exported from the root.
+- **Signals**: `ObservableSocket.watch()` (attach and call at once), `ObserverSignal` is exported.
+- **DOM**: `play_video_splash` takes `hold_ms`, to keep the last frame on screen.
+- **Docs**: `docs/game-shell.md`; physics, flow, assets, geometries, trees and misc brought up to date; this changelog.
+
+### Changed
+
+- `Progress.get_percent()` of a task with nothing to do (`max <= 0`) is `1`, as for any finished task; it was `100`.
+- `Throttler`: rewritten. The default strategy is `STRATEGIES.latest` (the last call's arguments always run); it was `combine`. `STRATEGIES` is a typed object instead of an index signature. `is_busy` is new; the public internals `logic` and `props` are gone.
+- `ObservableSocket.set()` stores the value before it tells the listeners, and a value equal to the current one (`Object.is`) tells nobody.
+- `Gallery`'s constructor takes `Asset<HTMLImageElement>[]` (`{ element, url, ready }`), as `Image` does; it took `HTMLImageElement[]`. `images` is no longer `readonly`.
+- `Image.image` and `Video.video` may be `null` and may be set later; both were `readonly` and never null.
+- Theme: the default `font_weight` is 400; it was 600. `default_theme()` styles every widget, not only buttons, and the base `Slider` draws from the theme. `ThemeBorderStyle` and `ElementEvents` have more members, so an exhaustive `switch` over them needs the new cases.
+- `ThemeValueAnimator.start` and `ThemeValueTween.start` are in seconds from `theme_now()`; they were `performance.now()` milliseconds.
+- `UiManager`: a press that ends outside the button doesn't click it. `mouse_locked_element` is an accessor that forgets an element no longer held. The UI gets no pointer moves before the intro is over (in the shell).
+- A transform on a `Group` moves what is in it.
+- `Polygon.contains()`: a ray that grazed a corner counted it as crossed. `QuadTree.pick()`: a rect over a whole split branch returned its elements twice.
+- `PhysicsBody` is now the body of a `PhysicsWorld` (`physics/world`), made by `world.add()`; it is not the old sweeping SAT body.
+
+### Removed
+
+- `SweepingSatWorld` and the old `PhysicsBody` of `physics/sweeping_sat` (step 26).
+
+### Migration
+
+- **`SweepingSatWorld`**: for bodies the library should own, use `PhysicsWorld` with `rule: SAT_SWEEP`: `world.add({ shape, position, velocity, is_static })` and `world.update(delta_seconds)`. For a game that owns its bodies, call `sat_move(shape, delta, walls)` per body and apply the returned `offset`; `sat_shape()` once per shape that never turns. See `docs/physics.md`.
+- **The old `PhysicsBody`**: a world's body comes from `world.add()`; its `shape` is a convex polygon around its origin and `position` places it.
+- **`Gallery`**: wrap the pictures: `images.map((element) => ({ element, url: element.src, ready: true }))`, or pass the `Asset`s from an `AssetManager`.
+- **`Image` / `Video`**: code that reads `.image` or `.video` checks for `null`.
+- **`Progress`**: code that compared `get_percent()` with 100 for an empty task compares with 1.
+- **`Throttler`**: for the old behaviour pass `strategy: Throttler.STRATEGIES.combine`.
+- **`ObservableSocket`**: a listener that relied on a signal for setting the same value again calls its handler itself; `watch()` does that for the start.
+- **Theme**: a game that relied on bold-ish default text sets `font_weight: 600` in its rules.
