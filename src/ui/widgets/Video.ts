@@ -1,27 +1,45 @@
-import { RectI } from "../../geometries";
+import { Rect, RectI } from "../../geometries";
 import { Element } from "../Element";
 import { Asset } from "../../assets";
 import { ThemeRule } from "../theme/Theme";
 
+/**
+ * A film on the canvas: each draw paints the video element's current frame. A new video is
+ * muted and loops, and plays as soon as it is drawn; `pause()` holds it until `play()`, and a
+ * film that ended (with `loop` switched off) stays at its end. Sound is the game's call: unmute
+ * the element after a click, when the browser allows it.
+ */
 export class Video extends Element {
-    public readonly video: Asset<HTMLVideoElement>;
     public pixel_size: number;
+    /** Keep the film's shape, centered in the box, instead of stretching it. */
+    public is_contained: boolean = false;
+    private _video: Asset<HTMLVideoElement> | null = null;
+    /** False after `pause()`: a draw doesn't start it again. */
+    private _is_playing: boolean = true;
     private offscreen_canvas: HTMLCanvasElement | null = null;
     private offscreen_ctx: CanvasRenderingContext2D | null = null;
 
     public constructor(
-        video: Asset<HTMLVideoElement>,
+        video: Asset<HTMLVideoElement> | null,
         rect: RectI,
         is_visible: boolean = true,
         theme_rules?: Array<ThemeRule>,
         pixel_size: number = 1,
     ) {
         super(rect, is_visible, theme_rules);
-        this.video = video;
         this.type = "video";
         this.pixel_size = pixel_size;
+        this.video = video;
+    }
 
-        const element = this.video.element;
+    /** The film; null draws nothing, for a widget built before its assets exist. */
+    public get video(): Asset<HTMLVideoElement> | null {
+        return this._video;
+    }
+
+    public set video(video: Asset<HTMLVideoElement> | null) {
+        this._video = video;
+        const element = video?.element;
         if (element) {
             element.loop = true;
             element.muted = true;
@@ -30,8 +48,14 @@ export class Video extends Element {
         }
     }
 
+    /** Whether it plays when drawn: true until `pause()`, again after `play()`. */
+    public get is_playing(): boolean {
+        return this._is_playing;
+    }
+
     public play(): void {
-        const element = this.video.element;
+        this._is_playing = true;
+        const element = this._video?.element;
         if (element && element.paused) {
             const play_promise = element.play();
             if (
@@ -44,7 +68,8 @@ export class Video extends Element {
     }
 
     public pause(): void {
-        const element = this.video.element;
+        this._is_playing = false;
+        const element = this._video?.element;
         if (element && !element.paused) {
             element.pause();
         }
@@ -86,13 +111,17 @@ export class Video extends Element {
 
         this.apply_transforms(ctx);
 
-        const video_asset = this.video;
+        const video_asset = this._video;
         const border_box = this.get_local_border_box_size();
-        const content_box = this.get_local_content_box_size();
+        const box = this.get_local_content_box_size();
 
-        if (video_asset.ready && video_asset.element) {
+        if (video_asset !== null && video_asset.ready && video_asset.element) {
             const el = video_asset.element;
-            if (el.paused && !el.ended) {
+            const content_box =
+                this.is_contained && el.videoWidth > 0 && el.videoHeight > 0
+                    ? Rect.contained(box, el.videoWidth, el.videoHeight)
+                    : box;
+            if (this._is_playing && el.paused && !el.ended) {
                 const play_promise = el.play();
                 if (
                     play_promise !== undefined &&
