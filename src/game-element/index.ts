@@ -8,3 +8,4 @@ export * from "./SessionBest";
 export * from "./TimedNotice";
 export * from "./HouseSlider";
 export * from "./MuteButton";
+export * from "./FrameBudget";
