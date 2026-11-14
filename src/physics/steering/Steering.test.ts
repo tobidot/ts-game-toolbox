@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { SeparatedBody, separate_bodies, steer_towards } from "./Steering";
+import {
+    SeparatedBody,
+    seek_velocity,
+    separate_bodies,
+    steer_towards,
+} from "./Steering";
 
 const STEP = 1 / 30;
 
@@ -191,5 +196,49 @@ describe("separate_bodies", () => {
             }
         }
         expect(closest).toBeGreaterThan(6);
+    });
+});
+
+describe("seek_velocity", () => {
+    it("is the walk of steer_towards as a velocity, for a body a physics world moves", () => {
+        const options = { speed: 60, stop_distance: 10, slow_distance: 40 };
+        const target = { x: 0, y: 0 };
+        for (const start of [
+            { x: 300, y: 0 },
+            { x: -120, y: 90 },
+            { x: 30, y: 0 },
+            { x: 0, y: -45 },
+        ]) {
+            const walked = { ...start };
+            steer_towards(walked, target, 0.001, options);
+            const velocity = seek_velocity(start, target, options);
+            expect(velocity.x).toBeCloseTo((walked.x - start.x) / 0.001, 6);
+            expect(velocity.y).toBeCloseTo((walked.y - start.y) / 0.001, 6);
+        }
+    });
+
+    it("stands still once there, and slows to no less than a tenth on the last stretch", () => {
+        const options = { speed: 60, stop_distance: 10, slow_distance: 40 };
+        expect(seek_velocity({ x: 8, y: 0 }, { x: 0, y: 0 }, options)).toEqual({
+            x: 0,
+            y: 0,
+        });
+        const far = seek_velocity({ x: 500, y: 0 }, { x: 0, y: 0 }, options);
+        expect(far.x).toBeCloseTo(-60);
+        const near = seek_velocity({ x: 10.5, y: 0 }, { x: 0, y: 0 }, options);
+        expect(near.x).toBeCloseTo(-6);
+    });
+
+    it("writes into out when given one, and returns it", () => {
+        const out = { x: 99, y: 99 };
+        const result = seek_velocity(
+            { x: 0, y: 10 },
+            { x: 0, y: 0 },
+            { speed: 5 },
+            out,
+        );
+        expect(result).toBe(out);
+        expect(out.x).toBeCloseTo(0);
+        expect(out.y).toBeCloseTo(-5);
     });
 });

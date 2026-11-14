@@ -4,7 +4,8 @@ import { Vector2I } from "../../geometries";
  * How things walk somewhere and stand together, as pure functions: `steer_towards` moves a body
  * to a point at a speed and stops it there without shaking, `separate_bodies` keeps bodies from
  * standing on one spot. Call both once per step, the moves first; the same `delta_seconds` every
- * step (see `FixedStepClock`) keeps a crowd steady.
+ * step (see `FixedStepClock`) keeps a crowd steady. In a `PhysicsWorld`, which moves bodies and
+ * keeps them apart itself, `seek_velocity` gives the same walk as a velocity.
  */
 
 export interface SteerOptions {
@@ -62,6 +63,37 @@ export function steer_towards(
     body.x += (to_x / distance) * step;
     body.y += (to_y / distance) * step;
     return step === left;
+}
+
+/**
+ * The velocity `steer_towards` walks at, for a body a physics world moves (and keeps apart from
+ * the others): `speed` towards `target`, slower on the last `slow_distance` (never below a
+ * tenth), and none once within `stop_distance`. The world's step is short, so the body doesn't
+ * overshoot noticeably. Written into `out` and returned; a crowd of thousands passes one vector.
+ */
+export function seek_velocity(
+    body: Readonly<Vector2I>,
+    target: Readonly<Vector2I>,
+    options: SteerOptions,
+    out: Vector2I = { x: 0, y: 0 },
+): Vector2I {
+    const to_x = target.x - body.x;
+    const to_y = target.y - body.y;
+    const distance = Math.hypot(to_x, to_y);
+    const left = distance - (options.stop_distance ?? 0);
+    if (left <= 0) {
+        out.x = 0;
+        out.y = 0;
+        return out;
+    }
+    const slow_distance = options.slow_distance ?? 0;
+    const speed =
+        left < slow_distance
+            ? options.speed * Math.max(MIN_SLOW_SHARE, left / slow_distance)
+            : options.speed;
+    out.x = (to_x / distance) * speed;
+    out.y = (to_y / distance) * speed;
+    return out;
 }
 
 /**
