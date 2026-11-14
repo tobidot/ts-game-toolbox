@@ -32,6 +32,7 @@ The modules of the Spielwerk series, steps 15 to 29, and the canvas game shell e
 - **Signals**: `ObservableSocket.watch()` (attach and call at once), `ObserverSignal` is exported.
 - **DOM**: `play_video_splash` takes `hold_ms`, to keep the last frame on screen.
 - **Docs**: `docs/game-shell.md`; physics, flow, assets, geometries, trees and misc brought up to date; this changelog.
+- **Playground** (`npm run dev`): a `PhysicsWorld` page (the three rules side by side, click to drop a shape) and an `AssetManager.request()` page (a queue over a slow made-up network).
 
 ### Changed
 
