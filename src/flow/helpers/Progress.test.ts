@@ -32,4 +32,19 @@ describe("Progress", () => {
         expect(progress.get_percent()).toBe(0.75);
         expect(heard).toEqual([0, 1, 0.5, 0.75]);
     });
+
+    it("takes an appended task back, and its share with it", () => {
+        const progress = new Progress(0);
+        const done = progress.append_child_progress();
+        const dropped = progress.append_child_progress();
+        done.mark_as_done();
+        expect(progress.get_percent()).toBe(0.5);
+        expect(progress.remove_child_progress(dropped)).toBe(true);
+        expect(progress.get_percent()).toBe(1);
+        // Not a child (any more): nothing changes.
+        expect(progress.remove_child_progress(dropped)).toBe(false);
+        expect(progress.get_percent()).toBe(1);
+        progress.remove_child_progress(done);
+        expect(progress.get_percent()).toBe(1);
+    });
 });

@@ -65,6 +65,21 @@ export class Progress {
     }
 
     /**
+     * Takes back a child of `append_child_progress()` (work that was withdrawn before it ran):
+     * this task's total shrinks by one again. Returns false for anything that isn't a child.
+     */
+    public remove_child_progress(child: Progress): boolean {
+        const index = this.children.indexOf(child);
+        if (index < 0) {
+            return false;
+        }
+        this.children.splice(index, 1);
+        this.max -= 1;
+        this.notify_listeners();
+        return true;
+    }
+
+    /**
      * Mark this task as 100% complete.
      */
     public mark_as_done(): void {

@@ -111,8 +111,9 @@ function default_create_element(kind: AssetKind): MediaElement {
  * (inlined files: `import.meta.glob("/assets/images/**\/*.png", { query: "url", eager: true,
  * import: 'default' })`). `request()` is for files off the network, many of them: they wait in
  * a queue and load `max_parallel` at a time, lowest `priority` first, which the game may change
- * while they wait (the ones scrolled into view first). Each has a state, a reason when it
- * failed and its own progress; `progress` is all of them. A file on the page's own origin (or
+ * while they wait (the ones scrolled into view first) or withdraw with `cancel()` (the ones
+ * scrolled far away). Each has a state, a reason when it failed and its own progress;
+ * `progress` is all of them. A file on the page's own origin (or
  * one with CORS) is fetched as bytes, so its progress follows them and a missing one says
  * `HTTP 404`; any other goes straight into its element, which loads without CORS.
  */
@@ -192,6 +193,25 @@ export class AssetManager {
         if (load !== undefined) {
             load.priority = priority;
         }
+    }
+
+    /**
+     * Withdraws a file that still waits, as if it had never been asked for: it leaves the queue,
+     * `loads`, `counts` and `progress`, and `request()` queues it afresh. A file that loads or
+     * finished stays. Returns whether it was withdrawn; the `AssetLoad` given out is dropped.
+     */
+    public cancel(name: string): boolean {
+        const load = this.loads.get(name);
+        if (load === undefined || load.state !== "queued") {
+            return false;
+        }
+        const index = this.queue.indexOf(load);
+        if (index >= 0) {
+            this.queue.splice(index, 1);
+        }
+        this.loads.delete(name);
+        this.progress.remove_child_progress(load.progress);
+        return true;
     }
 
     /** How many requested files are in each state. */

@@ -283,6 +283,83 @@ describe("AssetManager.request", () => {
         expect(elements.length).toBe(1);
     });
 
+    it("withdraws a file that still waits: it never loads, and leaves loads, counts and progress", async () => {
+        const manager = new AssetManager(options);
+        manager.max_parallel = 1;
+        for (const name of ["a", "b", "c"]) {
+            manager.request({
+                name,
+                url: `https://cdn.test/${name}.png`,
+                kind: "image",
+            });
+        }
+        expect(manager.cancel("b")).toBe(true);
+        expect(manager.loads.has("b")).toBe(false);
+        expect(manager.counts).toEqual({
+            queued: 1,
+            loading: 1,
+            ready: 0,
+            failed: 0,
+        });
+        element_of("https://cdn.test/a.png").fire("load");
+        await settle();
+        // c is next: b is gone from the queue.
+        expect(manager.loads.get("c")?.state).toBe("loading");
+        expect(manager.progress.get_percent()).toBe(0.5);
+        element_of("https://cdn.test/c.png").fire("load");
+        await settle();
+        expect(manager.progress.get_percent()).toBe(1);
+        expect(elements.some((element) => element.src.endsWith("/b.png"))).toBe(
+            false,
+        );
+    });
+
+    it("keeps a file that already loads or finished, and an unknown name, when asked to cancel", async () => {
+        const manager = new AssetManager(options);
+        manager.max_parallel = 1;
+        const loading = manager.request({
+            name: "a",
+            url: "https://cdn.test/a.png",
+            kind: "image",
+        });
+        expect(manager.cancel("a")).toBe(false);
+        expect(manager.cancel("nothing")).toBe(false);
+        expect(loading.state).toBe("loading");
+        element_of("https://cdn.test/a.png").fire("load");
+        await settle();
+        expect(manager.cancel("a")).toBe(false);
+        expect(manager.images.has("a")).toBe(true);
+        expect(manager.loads.get("a")).toBe(loading);
+    });
+
+    it("queues a withdrawn name afresh when it is asked for again", async () => {
+        const manager = new AssetManager(options);
+        manager.max_parallel = 1;
+        manager.request({
+            name: "a",
+            url: "https://cdn.test/a.png",
+            kind: "image",
+        });
+        const first = manager.request({
+            name: "b",
+            url: "https://cdn.test/b.png",
+            kind: "image",
+        });
+        manager.cancel("b");
+        const again = manager.request({
+            name: "b",
+            url: "https://cdn.test/b.png",
+            kind: "image",
+            priority: 2,
+        });
+        expect(again).not.toBe(first);
+        expect(again.state).toBe("queued");
+        expect(manager.progress.get_percent()).toBe(0);
+        element_of("https://cdn.test/a.png").fire("load");
+        await settle();
+        expect(again.state).toBe("loading");
+    });
+
     describe("a file it may fetch (same origin, or CORS)", () => {
         beforeEach(() => {
             for (const [key, value] of [
