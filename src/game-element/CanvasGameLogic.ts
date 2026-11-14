@@ -117,6 +117,9 @@ export abstract class CanvasGameLogic<
     P extends CanvasGameProperties<G, S> = CanvasGameProperties<G, S>,
     F extends GameFrame<G> = GameFrame<G>,
 > {
+    /** `settings.music` is due but comes from the catalogue and has not arrived yet. */
+    private is_music_waiting = false;
+
     public constructor(
         protected readonly host: HTMLElement,
         public readonly references: CanvasGameReferences<LayoutOf<S>>,
@@ -129,6 +132,14 @@ export abstract class CanvasGameLogic<
         // `settings.images` does: a still game repaints only when something changed.
         references.assets.progress.listen(() => {
             properties.is_dirty = true;
+            const music = settings.music;
+            if (
+                this.is_music_waiting &&
+                music !== null &&
+                references.assets.audios.has(music)
+            ) {
+                this.start_music();
+            }
         });
     }
 
@@ -259,6 +270,7 @@ export abstract class CanvasGameLogic<
 
     /** Called on every disconnection; the state stays for a reconnect. */
     public stop(): void {
+        this.is_music_waiting = false;
         this.properties.abort_controller?.abort();
         this.properties.abort_controller = null;
         this.properties.audio.destroy();
@@ -579,12 +591,23 @@ export abstract class CanvasGameLogic<
         });
     }
 
-    /** Starts `settings.music`, but never before the intro is over. */
+    /**
+     * Starts `settings.music`, but never before the intro is over. A track from
+     * `settings.catalogue_sounds` that has not come yet starts when it arrives.
+     */
     private start_music(): void {
         const music = this.settings.music;
-        if (music !== null && this.is_playing) {
-            this.properties.audio.play_music(music);
+        if (music === null || !this.is_playing) {
+            return;
         }
+        const is_late =
+            music in this.settings.catalogue_sounds &&
+            !this.references.assets.audios.has(music);
+        this.is_music_waiting = is_late;
+        if (is_late) {
+            return;
+        }
+        this.properties.audio.play_music(music);
     }
 
     /** A track the browser refused (no intro, so no click yet) gets another try from every gesture. */
@@ -649,7 +672,10 @@ export abstract class CanvasGameLogic<
     /** A sound, unless the sounds are muted, and the buttons repaint in their new state. */
     private answer_mute_toggle(): void {
         const name = this.settings.mute_answer_sound;
-        if (name in this.settings.sounds) {
+        if (
+            name in this.settings.sounds ||
+            name in this.settings.catalogue_sounds
+        ) {
             this.properties.audio.play_sound(name);
         }
         this.properties.is_dirty = true;

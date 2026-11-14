@@ -126,6 +126,19 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
      */
     public readonly music: string | null = null;
     /**
+     * Images from a catalogue instead of the bundle: name to the catalogue's id. The element's
+     * `load_catalogue_url()` turns each id into a URL (a hosting framework fills that hook in),
+     * and the file then loads like a `references.assets.request()`. `paint_image()` paints them
+     * by name; until one has come, or when it never does, the game paints its own fallback.
+     */
+    public readonly catalogue_images: Readonly<Record<string, string>> = {};
+    /**
+     * Sounds and music tracks from a catalogue, the same way. They count as the game's sounds:
+     * the sound button shows for them, `properties.audio` plays them by name once they came, and
+     * `music` may name one: the track starts when it arrives, if the game is playing by then.
+     */
+    public readonly catalogue_sounds: Readonly<Record<string, string>> = {};
+    /**
      * The key that does what the sound button does, while that button shows; it never reaches
      * the game's key hooks then. Null for none, or another letter, when the game needs this one.
      */

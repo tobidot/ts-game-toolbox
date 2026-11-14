@@ -31,6 +31,13 @@ export interface CanvasGameParts<S, R, P, Q, U> {
     css?: string;
 }
 
+/** Where the catalogue keeps one entry: `CanvasGameElement.load_catalogue_url()` answers with it. */
+export interface CatalogueFile {
+    readonly url: string;
+    /** Its server sends CORS headers (see `AssetRequest.cors`). */
+    readonly cors?: boolean;
+}
+
 /** `HTMLElement` where there is a DOM; a stand-in where the module is only imported (tests of a game). */
 const HOST_ELEMENT: typeof HTMLElement =
     typeof HTMLElement === "undefined"
@@ -49,6 +56,8 @@ export abstract class CanvasGameElement<
 > extends HOST_ELEMENT {
     public abstract readonly logic: T;
     private title_of_game = "";
+    /** Asks for `settings.catalogue_images` and `catalogue_sounds`; null once asked. */
+    private request_catalogue: (() => void) | null = null;
 
     protected assemble<
         S extends CanvasGameSettings<StageLayout>,
@@ -74,6 +83,35 @@ export abstract class CanvasGameElement<
             ? new parts.properties(settings, intro)
             : (new CanvasGameProperties(settings, intro) as P);
         const renderer = new parts.renderer(references, settings);
+        const assets = (references as unknown as CanvasGameReferences).assets;
+        this.request_catalogue = () => {
+            const wanted = [
+                ...Object.entries(settings.catalogue_images).map(
+                    ([name, id]) => ({ name, id, kind: "image" as const }),
+                ),
+                ...Object.entries(settings.catalogue_sounds).map(
+                    ([name, id]) => ({ name, id, kind: "audio" as const }),
+                ),
+            ];
+            for (const { name, id, kind } of wanted) {
+                this.load_catalogue_url(id, kind).then(
+                    (file) => {
+                        assets.request({
+                            name,
+                            url: file.url,
+                            kind,
+                            cors: file.cors,
+                        });
+                    },
+                    (error: unknown) => {
+                        console.warn(
+                            `<${this.localName}>: "${id}" from the catalogue not loaded:`,
+                            error,
+                        );
+                    },
+                );
+            }
+        };
         return new parts.logic(
             this,
             references,
@@ -88,6 +126,19 @@ export abstract class CanvasGameElement<
         return Promise.reject(new Error("no intro source"));
     }
 
+    /**
+     * Where the catalogue entry `id` of `settings.catalogue_images` or `catalogue_sounds` lives;
+     * rejecting (the default) leaves it unloaded, and the game paints or plays its fallback.
+     * Asked once per element, at its first connection.
+     */
+    protected load_catalogue_url(
+        id: string,
+        kind: "image" | "audio",
+    ): Promise<CatalogueFile> {
+        void kind;
+        return Promise.reject(new Error(`no catalogue for "${id}"`));
+    }
+
     /** After every connection, with the game's title. */
     protected on_connected(title: string): void {
         void title;
@@ -96,6 +147,11 @@ export abstract class CanvasGameElement<
     // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
     public connectedCallback(): void {
         this.logic.start();
+        if (this.request_catalogue !== null) {
+            const request = this.request_catalogue;
+            this.request_catalogue = null;
+            request();
+        }
         this.on_connected(this.title_of_game);
     }
 

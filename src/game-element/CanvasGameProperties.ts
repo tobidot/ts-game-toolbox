@@ -481,9 +481,10 @@ export class CanvasGameProperties<
             this.all_theme_rules(),
         );
         this.ui.active_menu = this.page;
-        const has_sounds = Object.keys(settings.sounds).some(
-            (name) => name !== settings.music,
-        );
+        const has_sounds = [
+            ...Object.keys(settings.sounds),
+            ...Object.keys(settings.catalogue_sounds),
+        ].some((name) => name !== settings.music);
         this.sound_button = has_sounds
             ? this.place_mute_button((rects) => rects.sound_button)
             : null;
