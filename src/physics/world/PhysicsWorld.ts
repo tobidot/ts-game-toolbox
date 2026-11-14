@@ -10,7 +10,7 @@ import {
 } from "./BroadPhase";
 import { CollisionRule, SAT_SWEEP } from "./CollisionRule";
 import { ContactEvent } from "./ContactEvent";
-import { BodyOptions, PhysicsBody } from "./PhysicsBody";
+import { ALL_LAYERS, BodyOptions, PhysicsBody } from "./PhysicsBody";
 
 /** What `new PhysicsWorld()` takes; every field has a default. */
 export interface PhysicsWorldOptions {
@@ -50,6 +50,12 @@ export interface PhysicsWorldOptions {
     passes?: number;
     /** Contacts closing slower than this, in units per second, send no event. Default: 0, every contact. */
     contact_event_speed?: number;
+    /**
+     * Only a contact with a body on one of these layers (bits) sends an event. A crowd that
+     * pushes itself apart makes thousands of contacts a step that no game listens to: an event
+     * each costs time and garbage. Default: `ALL_LAYERS`, every contact.
+     */
+    contact_event_layers?: number;
     /**
      * A body falls asleep once it has stayed within `sleep_distance` of one spot for this many
      * seconds: the world stops moving it and doesn't test two sleepers against each other, so a
@@ -133,6 +139,7 @@ export class PhysicsWorld<D = unknown> {
     public friction: number;
     public passes: number;
     public contact_event_speed: number;
+    public contact_event_layers: number;
     public max_steps_per_update: number;
     public catch_up_ms: number;
     public sleep_seconds: number;
@@ -195,6 +202,7 @@ export class PhysicsWorld<D = unknown> {
         this.friction = options.friction ?? 0;
         this.passes = options.passes ?? 2;
         this.contact_event_speed = options.contact_event_speed ?? 0;
+        this.contact_event_layers = options.contact_event_layers ?? ALL_LAYERS;
         this.step_seconds = options.step_seconds ?? 1 / 60;
         this.max_steps_per_update = options.max_steps_per_update ?? 4;
         this.catch_up_ms = options.catch_up_ms ?? 8;
@@ -692,7 +700,7 @@ export class PhysicsWorld<D = unknown> {
             this.restitution_at(-closing),
         );
         this.rub(a, after.a, b, after.b, normal, -closing);
-        if (-closing >= this.contact_event_speed) {
+        if (this.is_event(a, b, -closing)) {
             this.pending.push(new ContactEvent(a, b, { ...normal }, -closing));
         }
     }
@@ -770,11 +778,23 @@ export class PhysicsWorld<D = unknown> {
             Math.max(0, Math.abs(sliding) - this.friction * into);
         velocity.x = after.x + (slowed - sliding) * tangent_x;
         velocity.y = after.y + (slowed - sliding) * tangent_y;
-        if (into >= this.contact_event_speed) {
+        if (this.is_event(body, wall, into)) {
             this.pending.push(
                 new ContactEvent(body, wall, { ...normal }, into),
             );
         }
+    }
+
+    /** Whether a contact of `a` and `b` closing at `speed` sends an event: fast enough, and one of them on `contact_event_layers`. */
+    private is_event(
+        a: PhysicsBody<D>,
+        b: PhysicsBody<D>,
+        speed: number,
+    ): boolean {
+        return (
+            speed >= this.contact_event_speed &&
+            ((a.layer | b.layer) & this.contact_event_layers) !== 0
+        );
     }
 
     /** `restitution`, or none for a contact closing slower than `bounce_speed`. */

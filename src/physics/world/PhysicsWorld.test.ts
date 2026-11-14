@@ -562,6 +562,65 @@ describe("PhysicsWorld", () => {
         }
     });
 
+    it("sends events only for contacts with a body on contact_event_layers: a crowd pushing itself stays quiet", () => {
+        const CROWD = 1;
+        const BULLETS = 2;
+        const WALLS = 4;
+        const world = new PhysicsWorld<string>({
+            contact_event_layers: BULLETS,
+        });
+        expect(world.contact_event_layers).toBe(BULLETS);
+        world.add({
+            shape: crate(10, 400),
+            position: { x: 200, y: 0 },
+            is_static: true,
+            layer: WALLS,
+            data: "wall",
+        });
+        // two of the crowd walk into each other and into the wall
+        world.add({
+            shape: crate(20),
+            position: { x: 100, y: 0 },
+            velocity: { x: 80, y: 0 },
+            layer: CROWD,
+            data: "crowd",
+        });
+        world.add({
+            shape: crate(20),
+            position: { x: 140, y: 0 },
+            velocity: { x: -80, y: 0 },
+            layer: CROWD,
+            data: "crowd",
+        });
+        // a bullet flies into the crowd from the left, another into the wall
+        world.add({
+            shape: crate(4),
+            position: { x: 0, y: 0 },
+            velocity: { x: 600, y: 0 },
+            layer: BULLETS,
+            mask: CROWD | WALLS,
+            data: "bullet",
+        });
+        world.add({
+            shape: crate(4),
+            position: { x: 0, y: 100 },
+            velocity: { x: 600, y: 0 },
+            layer: BULLETS,
+            mask: CROWD | WALLS,
+            data: "bullet",
+        });
+        const met = new Set<string>();
+        world.events.attach(ContactEvent, (event) => {
+            const contact = event as ContactEvent<string>;
+            met.add([contact.a.data, contact.b.data].sort().join("-"));
+        });
+        run(world, 1);
+        expect([...met].sort()).toEqual(["bullet-crowd", "bullet-wall"]);
+        expect(world.stats.contacts).toBeGreaterThan(0);
+        // the default sends them all
+        expect(new PhysicsWorld().contact_event_layers).toBe(ALL_LAYERS);
+    });
+
     it("takes another rule between steps", () => {
         const world = boxed_world({ rule: AABB });
         expect(world.rule).toBe(AABB);
