@@ -723,6 +723,72 @@ describe("PhysicsWorld sleeping", () => {
         expect(deepest_overlap(world)).toBeLessThan(1);
     });
 
+    it("keeps a body awake while a contact pushes it deep, though it stays where it is: a crate wedged in a slot", () => {
+        const world = new PhysicsWorld<number>({ gravity: { x: 0, y: 900 } });
+        world.add({
+            shape: crate(100, 20),
+            position: { x: 0, y: 110 },
+            is_static: true,
+        });
+        const left = world.add({
+            shape: crate(20),
+            position: { x: -9, y: 90 },
+        });
+        const right = world.add({
+            shape: crate(20),
+            position: { x: 9, y: 90 },
+        });
+        // two walls 36 apart hold two crates of 20: they overlap by 4 and can't get out
+        world.add({
+            shape: crate(20, 60),
+            position: { x: -28, y: 70 },
+            is_static: true,
+        });
+        world.add({
+            shape: crate(20, 60),
+            position: { x: 28, y: 70 },
+            is_static: true,
+        });
+        run(world, 3);
+        expect(left.position.x).toBeCloseTo(-8, 0);
+        expect(left.is_sleeping).toBe(false);
+        expect(right.is_sleeping).toBe(false);
+        // a body that rests on the floor beside them sleeps as before
+        const free = world.add({
+            shape: crate(20),
+            position: { x: 300, y: 90 },
+        });
+        world.add({
+            shape: crate(100, 20),
+            position: { x: 300, y: 110 },
+            is_static: true,
+        });
+        run(world, 2);
+        expect(free.is_sleeping).toBe(true);
+    });
+
+    it("wakes a sleeper that a body is pushed deep into, so that both give way", () => {
+        const world = boxed_world<number>();
+        const [a, b] = [380, 420].map((x) =>
+            world.add({ shape: crate(20), position: { x, y: 590 } }),
+        );
+        run(world, 2);
+        expect(a.is_sleeping && b.is_sleeping).toBe(true);
+        // the game moves a 3 deep into b: a wakes, and b wakes too
+        a.position.x = 403;
+        world.step();
+        expect(b.is_sleeping).toBe(false);
+        expect(b.position.x).toBeGreaterThan(420.5);
+        // a shallow touch leaves a sleeper asleep: it holds like a wall
+        run(world, 2);
+        expect(a.is_sleeping && b.is_sleeping).toBe(true);
+        const before = { ...b.position };
+        a.position.x = b.position.x - 19.8;
+        world.step();
+        expect(b.is_sleeping).toBe(true);
+        expect(b.position).toEqual(before);
+    });
+
     it("never sleeps with sleep_seconds Infinity", () => {
         const world = boxed_world<number>({ sleep_seconds: Infinity });
         heap(world, 60, 3);
@@ -816,7 +882,8 @@ describe("PhysicsWorld sleeping", () => {
     });
 
     it("keeps a sleeping heap whole while its oldest are taken out one by one, as a fade does", () => {
-        const world = boxed_world<number>({ rule: SAT_SWEEP });
+        // four passes, as Sandkasten runs: with two, small triangles stay wedged 1.6 into each other on the floor
+        const world = boxed_world<number>({ rule: SAT_SWEEP, passes: 4 });
         heap(world, 300, 8);
         run(world, 8);
         expect(world.stats.sleeping).toBeGreaterThan(280);

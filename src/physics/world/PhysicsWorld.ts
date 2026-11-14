@@ -96,6 +96,12 @@ export function holds_up(normal: Vector2I, down: Vector2I): boolean {
 /** A sleeper wakes when a neighbour moved more than this share of `sleep_distance` in its last step: a falling body does at once, a resting one that jitters doesn't. */
 const WAKE_SHARE = 0.2;
 
+/**
+ * A body pushed deeper than this share of `sleep_distance` in a step is wedged, not resting: a
+ * resting one sinks in by a step's fall (0.25 at gravity 900) and is pushed out again.
+ */
+const WEDGED_SHARE = 2;
+
 /** A pair of moving bodies is looked at when their boxes come this close, so a push in an early pass still finds its neighbours. */
 const PAIR_MARGIN = 1;
 
@@ -168,6 +174,8 @@ export class PhysicsWorld<D = unknown> {
     private readonly delta: Vector2I = { x: 0, y: 0 };
     private readonly swept: RectI = { left: 0, top: 0, width: 0, height: 0 };
     private readonly up: Vector2I = { x: 0, y: 0 };
+    /** The deepest push each moving body took in this step: a body pushed deep isn't resting, however still it stands. */
+    private deepest = new Float64Array(0);
     /** Where each moving body was when the step began. */
     private start_x = new Float64Array(0);
     private start_y = new Float64Array(0);
@@ -320,7 +328,9 @@ export class PhysicsWorld<D = unknown> {
         if (this.start_x.length < moving.length) {
             this.start_x = new Float64Array(moving.length * 2);
             this.start_y = new Float64Array(moving.length * 2);
+            this.deepest = new Float64Array(moving.length * 2);
         }
+        this.deepest.fill(0, 0, moving.length);
         const gravity = this.gravity;
         const is_new_gravity =
             gravity.x !== this.last_gravity.x ||
@@ -349,9 +359,18 @@ export class PhysicsWorld<D = unknown> {
         this.sleepers = sleepers;
     }
 
+    /** Notes that moving body `index` was pushed `depth` deep in this step. */
+    private note_push(index: number, depth: number): void {
+        if (depth > this.deepest[index]) {
+            this.deepest[index] = depth;
+        }
+    }
+
     /**
      * After the step: how far each awake body went, and whether it has rested at one spot for
-     * `sleep_seconds`, which puts it to sleep.
+     * `sleep_seconds`, which puts it to sleep. A body that a contact pushed further than twice
+     * `sleep_distance` isn't resting, even when the pushes leave it where it was: it is wedged,
+     * and asleep it would stay inside what it is wedged into.
      */
     private settle(): void {
         const moving = this.moving;
@@ -373,7 +392,10 @@ export class PhysicsWorld<D = unknown> {
                 position.x - rest.x,
                 position.y - rest.y,
             );
-            if (strayed <= this.sleep_distance) {
+            const is_resting =
+                strayed <= this.sleep_distance &&
+                this.deepest[index] <= this.sleep_distance * WEDGED_SHARE;
+            if (is_resting) {
                 rest.seconds += dt;
             } else {
                 rest.x = position.x;
@@ -473,6 +495,7 @@ export class PhysicsWorld<D = unknown> {
         body.position.y += moved.offset.y;
         for (const hit of moved.hits) {
             this.stats.contacts += 1;
+            this.note_push(index, Math.hypot(hit.overlap.x, hit.overlap.y));
             this.land(index, walls[hit.wall], hit.normal);
         }
     }
@@ -593,7 +616,8 @@ export class PhysicsWorld<D = unknown> {
      * takes the whole push and lands on it as on a wall. So a pile doesn't sink into itself,
      * doesn't pass its weight down as speed, and a landing column doesn't bounce each crate off
      * the bounce of the one below. Lowest pairs come first, so the support climbs a pile in one
-     * pass. A sleeping body holds still like a wall, whichever side it is on.
+     * pass. A sleeping body holds still like a wall, whichever side it is on, unless the other
+     * is pushed deep into it: then it wakes and gives way.
      */
     private push_apart(first: number, second: number, contact: Contact): void {
         const a = this.moving[first];
@@ -602,6 +626,17 @@ export class PhysicsWorld<D = unknown> {
         const normal = contact.normal;
         const depth = contact.depth;
         const down = this.down;
+        this.note_push(first, depth);
+        this.note_push(second, depth);
+        if (depth > this.sleep_distance * WEDGED_SHARE) {
+            // pushed deep into a sleeper: it gives way too, or the knot never loosens
+            if (a.is_sleeping) {
+                a.wake();
+            }
+            if (b.is_sleeping) {
+                b.wake();
+            }
+        }
         if (b.is_sleeping) {
             a.position.x += normal.x * depth;
             a.position.y += normal.y * depth;
@@ -702,6 +737,7 @@ export class PhysicsWorld<D = unknown> {
                 continue;
             }
             this.stats.contacts += 1;
+            this.note_push(index, contact.depth);
             body.position.x += contact.normal.x * contact.depth;
             body.position.y += contact.normal.y * contact.depth;
             this.land(index, wall, contact.normal);
