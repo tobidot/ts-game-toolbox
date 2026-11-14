@@ -68,9 +68,20 @@ export interface PhysicsWorldStats {
 
 /**
  * A contact whose normal points at least this much against gravity holds the upper body up:
- * a slope up to 60 degrees carries, a steeper one doesn't.
+ * a slope up to 60 degrees carries, a steeper one doesn't. Less a hair, so that a face of
+ * exactly 60 degrees carries however its normal was rounded: a triangle's and a hexagon's
+ * slanted faces come out a hair either side of 0.5, and one side of a triangle would carry
+ * while the other didn't.
  */
-const SUPPORT_SLOPE = 0.5;
+const SUPPORT_SLOPE = 0.5 - 1e-9;
+
+/**
+ * Whether a contact with `normal`, pointing from the lower body towards the upper one, holds the
+ * upper one up against gravity along `down` (a unit vector): a slope up to 60 degrees does.
+ */
+export function holds_up(normal: Vector2I, down: Vector2I): boolean {
+    return -(normal.x * down.x + normal.y * down.y) >= SUPPORT_SLOPE;
+}
 
 /** A pair of moving bodies is looked at when their boxes come this close, so a push in an early pass still finds its neighbours. */
 const PAIR_MARGIN = 1;
@@ -421,7 +432,7 @@ export class PhysicsWorld<D = unknown> {
         if (down !== null) {
             // the normal points from b towards a: against gravity means a is on top
             const along = normal.x * down.x + normal.y * down.y;
-            if (along <= -SUPPORT_SLOPE && supported[second]) {
+            if (-along >= SUPPORT_SLOPE && supported[second]) {
                 a.position.x += normal.x * depth;
                 a.position.y += normal.y * depth;
                 this.land(first, b, normal);
@@ -517,10 +528,7 @@ export class PhysicsWorld<D = unknown> {
     private land(index: number, wall: PhysicsBody<D>, normal: Vector2I): void {
         const body = this.moving[index];
         const down = this.down;
-        if (
-            down !== null &&
-            normal.x * down.x + normal.y * down.y <= -SUPPORT_SLOPE
-        ) {
+        if (down !== null && holds_up(normal, down)) {
             this.supported[index] = true;
         }
         const velocity = body.velocity;

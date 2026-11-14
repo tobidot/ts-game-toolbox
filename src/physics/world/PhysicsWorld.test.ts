@@ -5,7 +5,7 @@ import { sat_axes, sat_overlap } from "../sweeping_sat/Sat";
 import { AABB, AABB_SWEEP, CollisionRule, SAT_SWEEP } from "./CollisionRule";
 import { ContactEvent } from "./ContactEvent";
 import { ALL_LAYERS, PhysicsBody } from "./PhysicsBody";
-import { PhysicsWorld, PhysicsWorldOptions } from "./PhysicsWorld";
+import { PhysicsWorld, PhysicsWorldOptions, holds_up } from "./PhysicsWorld";
 
 /** A box around its own middle. */
 const crate = (width: number, height: number = width): PolygonI => ({
@@ -115,6 +115,52 @@ describe("PhysicsBody", () => {
         expect(wall.mass).toBe(Infinity);
         expect(ball.mass).toBe(1);
         expect(ball.velocity).toEqual({ x: 0, y: 0 });
+    });
+});
+
+/** A regular polygon around its own middle, its first corner at `turn`. */
+const regular = (corners: number, radius: number, turn: number): PolygonI => ({
+    points: Array.from({ length: corners }, (_, index) => ({
+        x: radius * Math.cos(turn + (index * Math.PI * 2) / corners),
+        y: radius * Math.sin(turn + (index * Math.PI * 2) / corners),
+    })),
+});
+
+describe("holds_up", () => {
+    it("lets a face of 60 degrees carry, whatever the rounding: triangles and hexagons have them on both sides", () => {
+        const down = { x: 0, y: 1 };
+        let sixty = 0;
+        for (const shape of [
+            regular(3, 6.5, -Math.PI / 2),
+            regular(3, 14, -Math.PI / 2),
+            regular(6, 5.5, 0),
+        ]) {
+            for (const axis of sat_axes(shape)) {
+                for (const sign of [1, -1]) {
+                    const normal = { x: axis.x * sign, y: axis.y * sign };
+                    if (Math.abs(-normal.y - 0.5) < 1e-6) {
+                        sixty += 1;
+                        expect(holds_up(normal, down)).toBe(true);
+                    }
+                }
+            }
+        }
+        // a triangle's two slanted faces, two of a hexagon's
+        expect(sixty).toBe(6);
+    });
+
+    it("carries up to 60 degrees and not a hair steeper", () => {
+        const down = { x: 0, y: 1 };
+        const slope = (degrees: number) => {
+            const angle = (degrees * Math.PI) / 180;
+            return { x: Math.sin(angle), y: -Math.cos(angle) };
+        };
+        expect(holds_up(slope(0), down)).toBe(true);
+        expect(holds_up(slope(59.99), down)).toBe(true);
+        expect(holds_up(slope(-59.99), down)).toBe(true);
+        expect(holds_up(slope(60.01), down)).toBe(false);
+        expect(holds_up(slope(90), down)).toBe(false);
+        expect(holds_up({ x: 0, y: 1 }, down)).toBe(false);
     });
 });
 
