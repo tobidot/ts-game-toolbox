@@ -125,6 +125,11 @@ export abstract class CanvasGameLogic<
         protected readonly settings: S,
     ) {
         properties.audio = new AudioPlayer(references.assets);
+        // A file asked for with `references.assets.request()` repaints as it comes, as an image of
+        // `settings.images` does: a still game repaints only when something changed.
+        references.assets.progress.listen(() => {
+            properties.is_dirty = true;
+        });
     }
 
     // ---- lifecycle ----

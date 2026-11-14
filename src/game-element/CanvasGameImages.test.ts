@@ -23,6 +23,10 @@ class FakeImage {
         this.listeners.set(type, listener);
     }
 
+    public removeEventListener(type: string): void {
+        this.listeners.delete(type);
+    }
+
     public fire(type: "load" | "error"): void {
         this.listeners.get(type)?.();
     }
@@ -171,6 +175,26 @@ describe("the shell's images", () => {
             100,
             100,
         );
+    });
+
+    it("repaints when a file asked for with references.assets.request() arrives", async () => {
+        const $element = connect();
+        const assets = $element.logic.references.assets;
+        assets.request({
+            name: "far",
+            url: "https://cdn.test/far.png",
+            kind: "image",
+        });
+        $element.logic.properties.is_dirty = false;
+        const far = FakeImage.created.find(
+            (image) => image.src === "https://cdn.test/far.png",
+        );
+        far?.fire("load");
+        for (let index = 0; index < 5; index++) {
+            await Promise.resolve();
+        }
+        expect(assets.loads.get("far")?.state).toBe("ready");
+        expect($element.logic.properties.is_dirty).toBe(true);
     });
 
     it("keeps the proportions and the sharp pixels unless told otherwise", () => {
