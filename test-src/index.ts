@@ -16,6 +16,7 @@ import { ColorTest } from "./commons/ColorTest";
 import { SignalSocketTest } from "./signals/SignalSocketTest";
 import { SweepingSatTest } from "./physics/SweepingSatTest";
 import { PhysicsWorldTest } from "./physics/PhysicsWorldTest";
+import { AssetRequestTest } from "./assets/AssetRequestTest";
 import { PlaygroundTest } from "./PlaygroundTest";
 
 const element = document.getElementById("test-dashboard");
@@ -44,4 +45,5 @@ dashboard.add_test([
     new GalleryTest(),
     new ColorTest(),
     new AssetManagerTest(),
+    new AssetRequestTest(),
 ]);
