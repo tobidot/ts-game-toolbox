@@ -2,6 +2,7 @@
 
 One document per major version: what it added, changed and removed, and how to move code from the major before.
 
+- [6.1.0 (unreleased)](v6.md#610-unreleased): `ScrollGroup` gets a scroll bar to grab.
 - [6.0.0](v6.md): the Spielwerk modules of steps 15 to 29 and the canvas game shell; `PhysicsWorld` replaces `SweepingSatWorld`.
 - [5.x](v5.md): general helpers only (the MVC part is gone); from 5.4 on, the Spielwerk modules of steps 2 to 14.
 

@@ -355,6 +355,7 @@ Set `row_height` and it stacks its children top to bottom, in the order of addin
 - `scroll`: the offset, kept between 0 and `max_scroll`.
 - `content_height`, `max_scroll`.
 - `scroll_to(child)`: the least scroll that shows the child, for following a keyboard cursor.
+- `scroll_bar = "bar"` (6.1.0): a scroll bar for a mouse in place of the thin line. A track `scroll_bar_width` (12) wide with a thumb as tall as the share in view (`thumb_rect`); dragging the thumb scrolls, a press on the track pages towards it, and the bar takes a press before the rows under it. Content drags and the wheel stay. Its look is the `bar` element, theme type `scroll_bar` (`background_color` the track, `text_color` the thumb, states `hover` and `active`); stacked rows leave it `gutter` (16).
 
 A press locks the element under it, and moves go to that element's `drag()`. If it returns false, and the press has moved more than `UiManager.drag_threshold` (10 reference units), the parents are offered the drag, the nearest first. The one that takes it holds the press from then on, and the release is no click. So a tap on a row presses the row, even a shaky one, and a drag starting on a row scrolls the list.
 

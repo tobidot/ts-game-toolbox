@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { RgbColor } from "../../data/RgbColor";
 import { ElementClickEvent } from "../events";
 import { theme_rules_from } from "../theme/ThemeRuleBuilder";
 import { UiManager } from "../UiManager";
@@ -339,6 +340,116 @@ describe("ScrollGroup stacking its rows", () => {
         it("gives rows the whole width while they fit, if asked", () => {
             expect(stacked(4, false)[0].rect.width).toBe(200);
             expect(stacked(5, false)[0].rect.width).toBe(190);
+        });
+    });
+
+    describe('scroll_bar = "bar"', () => {
+        /** The bar is 12 wide inside the list's right edge: x 288 to 300. */
+        const BAR_X = 294;
+
+        function with_bar(rows: number = 10) {
+            const made = setup(rows);
+            made.list.scroll_bar = "bar";
+            return made;
+        }
+
+        it("draws a thumb as tall as the share in view, where the scroll is", () => {
+            const { list } = with_bar();
+            // 200 of 500 in view: 80 tall, over a travel of 120.
+            expect(list.thumb_rect).toEqual({
+                left: 288,
+                top: 100,
+                width: 12,
+                height: 80,
+            });
+            list.scroll = 150;
+            expect(list.thumb_rect.top).toBe(160);
+            expect(setup(3).list.thumb_rect.height).toBe(0);
+        });
+
+        it("takes a press on the bar over the rows under it", () => {
+            const { page, list, buttons, ui, clicks } = with_bar();
+            expect(page.hit({ x: BAR_X, y: 150 })[0]).toBe(list);
+            expect(page.hit({ x: 200, y: 150 })[0]).toBe(buttons[1]);
+            ui.pointer_down({ x: BAR_X, y: 150 });
+            ui.pointer_up({ x: BAR_X, y: 150 });
+            expect(clicks).not.toHaveBeenCalled();
+        });
+
+        it("follows the thumb: dragged to the bottom, it shows the end", () => {
+            const { list, ui, clicks } = with_bar();
+            ui.pointer_down({ x: BAR_X, y: 140 });
+            ui.pointer_move({ x: BAR_X, y: 170 });
+            // 30 of the 120 the thumb can travel: a quarter of 300.
+            expect(list.scroll).toBe(75);
+            ui.pointer_move({ x: 150, y: 400 });
+            expect(list.scroll).toBe(300);
+            ui.pointer_up({ x: 150, y: 400 });
+            expect(clicks).not.toHaveBeenCalled();
+            expect(list.scroll).toBe(300);
+        });
+
+        it("pages on a press on the track, towards the press", () => {
+            const { list, ui } = with_bar();
+            ui.pointer_down({ x: BAR_X, y: 280 });
+            expect(list.scroll).toBe(200);
+            // Holding and moving doesn't drag the content.
+            ui.pointer_move({ x: BAR_X, y: 200 });
+            expect(list.scroll).toBe(200);
+            ui.pointer_up({ x: BAR_X, y: 200 });
+            ui.pointer_down({ x: BAR_X, y: 110 });
+            expect(list.scroll).toBe(0);
+            ui.pointer_up({ x: BAR_X, y: 110 });
+        });
+
+        it("hovers and is active in the theme's scroll_bar states", () => {
+            const { list, ui } = with_bar();
+            list.theme_rules = theme_rules_from([
+                ["scroll_bar", { text_color: new RgbColor(17, 17, 17) }],
+                ["scroll_bar:hover", { text_color: new RgbColor(34, 34, 34) }],
+                ["scroll_bar:active", { text_color: new RgbColor(51, 51, 51) }],
+            ]);
+            list.update_theme_instance();
+            expect(list.bar.state).toBe(null);
+            ui.pointer_move({ x: 200, y: 150 });
+            expect(list.bar.state).toBe(null);
+            ui.pointer_move({ x: BAR_X, y: 150 });
+            expect(list.bar.state).toBe("hover");
+            expect(list.bar.theme.text_color.toString()).toBe(
+                new RgbColor(34, 34, 34).toString(),
+            );
+            ui.pointer_down({ x: BAR_X, y: 150 });
+            expect(list.bar.state).toBe("active");
+            ui.pointer_up({ x: BAR_X, y: 150 });
+            ui.pointer_exit();
+            expect(list.bar.state).toBe(null);
+        });
+
+        it("keeps dragging the content, and the wheel", () => {
+            const { list, ui } = with_bar();
+            ui.pointer_down({ x: 200, y: 200 });
+            ui.pointer_move({ x: 200, y: 180 });
+            ui.pointer_move({ x: 200, y: 130 });
+            ui.pointer_up({ x: 200, y: 130 });
+            expect(list.scroll).toBe(50);
+            expect(list.wheel(40)).toBe(true);
+            expect(list.scroll).toBe(90);
+        });
+
+        it("leaves stacked rows room for the wider bar", () => {
+            const list = new ScrollGroup([], LIST);
+            list.row_height = ROW_HEIGHT;
+            list.scroll_bar = "bar";
+            const row = new Button("", {
+                left: 0,
+                top: 0,
+                width: 0,
+                height: 0,
+            });
+            list.add(row);
+            expect(list.content_height).toBeGreaterThan(0);
+            expect(row.rect.width).toBe(200 - list.gutter);
+            expect(list.gutter).toBe(16);
         });
     });
 });

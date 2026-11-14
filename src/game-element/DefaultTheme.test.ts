@@ -174,4 +174,17 @@ describe("the house look moves", () => {
         time += 1;
         expect(button.theme.background_color.equals(rest)).toBe(true);
     });
+
+    it("gives a grabbable scroll bar a track and a thumb that answers the pointer", () => {
+        const c = HOUSE_COLORS;
+        const list = themed(new ScrollGroup([], UNPLACED));
+        list.scroll_bar = "bar";
+        const bar = list.bar;
+        expect_color(bar.theme.background_color, c.line);
+        expect_color(bar.theme.text_color, c.muted);
+        bar.update_mouse_hover_status(true);
+        expect_color(bar.theme.text_color, c.turquoise);
+        bar.update_mouse_down_status(true);
+        expect_color(bar.theme.text_color, c.white);
+    });
 });
