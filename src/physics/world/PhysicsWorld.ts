@@ -50,6 +50,14 @@ export interface PhysicsWorldOptions {
     passes?: number;
     /** Contacts closing slower than this, in units per second, send no event. Default: 0, every contact. */
     contact_event_speed?: number;
+    /**
+     * A body falls asleep once it has stayed within `sleep_distance` of one spot for this many
+     * seconds: the world stops moving it and doesn't test two sleepers against each other, so a
+     * settled heap costs next to nothing. Default: 0.5. `Infinity`: never.
+     */
+    sleep_seconds?: number;
+    /** How far a resting body may stray and still count as resting, in world units. Default: 0.5. */
+    sleep_distance?: number;
 }
 
 /** What the last step cost and found. */
@@ -64,6 +72,8 @@ export interface PhysicsWorldStats {
     step_ms: number;
     /** Steps the last `update()` ran. */
     steps: number;
+    /** Moving bodies asleep after the last step. */
+    sleeping: number;
 }
 
 /**
@@ -82,6 +92,9 @@ const SUPPORT_SLOPE = 0.5 - 1e-9;
 export function holds_up(normal: Vector2I, down: Vector2I): boolean {
     return -(normal.x * down.x + normal.y * down.y) >= SUPPORT_SLOPE;
 }
+
+/** A sleeper wakes when a neighbour moved more than this share of `sleep_distance` in its last step: a falling body does at once, a resting one that jitters doesn't. */
+const WAKE_SHARE = 0.2;
 
 /** A pair of moving bodies is looked at when their boxes come this close, so a push in an early pass still finds its neighbours. */
 const PAIR_MARGIN = 1;
@@ -116,6 +129,8 @@ export class PhysicsWorld<D = unknown> {
     public contact_event_speed: number;
     public max_steps_per_update: number;
     public catch_up_ms: number;
+    public sleep_seconds: number;
+    public sleep_distance: number;
     public readonly step_seconds: number;
     /** `ContactEvent`s, sent after each step. */
     public readonly events = new EventSocket<ContactEvent<D>>();
@@ -125,6 +140,7 @@ export class PhysicsWorld<D = unknown> {
         contacts: 0,
         step_ms: 0,
         steps: 0,
+        sleeping: 0,
     };
     private readonly clock: FixedStepClock;
     private all: PhysicsBody<D>[] = [];
@@ -152,6 +168,15 @@ export class PhysicsWorld<D = unknown> {
     private readonly delta: Vector2I = { x: 0, y: 0 };
     private readonly swept: RectI = { left: 0, top: 0, width: 0, height: 0 };
     private readonly up: Vector2I = { x: 0, y: 0 };
+    /** Where each moving body was when the step began. */
+    private start_x = new Float64Array(0);
+    private start_y = new Float64Array(0);
+    /** The boxes of bodies removed since the last step: what rested on them wakes. */
+    private readonly wake_boxes: RectI[] = [];
+    /** Moving bodies asleep when the step began. */
+    private sleepers = 0;
+    /** Gravity in the last step: a change wakes every body. */
+    private last_gravity: Vector2I = { x: NaN, y: NaN };
 
     public constructor(options: PhysicsWorldOptions = {}) {
         this.rule = options.rule ?? SAT_SWEEP;
@@ -165,6 +190,8 @@ export class PhysicsWorld<D = unknown> {
         this.step_seconds = options.step_seconds ?? 1 / 60;
         this.max_steps_per_update = options.max_steps_per_update ?? 4;
         this.catch_up_ms = options.catch_up_ms ?? 8;
+        this.sleep_seconds = options.sleep_seconds ?? 0.5;
+        this.sleep_distance = options.sleep_distance ?? 0.5;
         this.broad_phase_options = options.broad_phase ?? {
             kind: "grid",
             cell_size: 64,
@@ -211,6 +238,13 @@ export class PhysicsWorld<D = unknown> {
         }
         body.is_in_world = false;
         this.has_removed = true;
+        const box = body.box;
+        this.wake_boxes.push({
+            left: box.left - PAIR_MARGIN,
+            top: box.top - PAIR_MARGIN,
+            width: box.width + 2 * PAIR_MARGIN,
+            height: box.height + 2 * PAIR_MARGIN,
+        });
         if (body.is_static) {
             this.is_still_changed = true;
         }
@@ -255,8 +289,12 @@ export class PhysicsWorld<D = unknown> {
         const moving = this.moving;
         this.supported.length = moving.length;
         this.supported.fill(false);
+        this.note_starts();
         for (let index = 0; index < moving.length; index++) {
             const body = moving[index];
+            if (body.is_sleeping) {
+                continue;
+            }
             body.velocity.x += this.gravity.x * dt;
             body.velocity.y += this.gravity.y * dt;
             this.delta.x = body.velocity.x * dt;
@@ -267,9 +305,92 @@ export class PhysicsWorld<D = unknown> {
         for (let pass = 0; pass < this.passes; pass++) {
             this.separate();
         }
+        this.settle();
         stats.bodies = this.all.length;
         stats.step_ms = now_ms() - started;
         this.send_events();
+    }
+
+    /**
+     * Notes where every moving body starts the step, and wakes the sleepers the game gave a
+     * speed or moved, or all of them when gravity changed.
+     */
+    private note_starts(): void {
+        const moving = this.moving;
+        if (this.start_x.length < moving.length) {
+            this.start_x = new Float64Array(moving.length * 2);
+            this.start_y = new Float64Array(moving.length * 2);
+        }
+        const gravity = this.gravity;
+        const is_new_gravity =
+            gravity.x !== this.last_gravity.x ||
+            gravity.y !== this.last_gravity.y;
+        this.last_gravity = { x: gravity.x, y: gravity.y };
+        let sleepers = 0;
+        for (let index = 0; index < moving.length; index++) {
+            const body = moving[index];
+            const position = body.position;
+            if (body.is_sleeping) {
+                const is_disturbed =
+                    is_new_gravity ||
+                    body.velocity.x !== 0 ||
+                    body.velocity.y !== 0 ||
+                    position.x !== body.rest.x ||
+                    position.y !== body.rest.y;
+                if (is_disturbed) {
+                    body.wake();
+                } else {
+                    sleepers += 1;
+                }
+            }
+            this.start_x[index] = position.x;
+            this.start_y[index] = position.y;
+        }
+        this.sleepers = sleepers;
+    }
+
+    /**
+     * After the step: how far each awake body went, and whether it has rested at one spot for
+     * `sleep_seconds`, which puts it to sleep.
+     */
+    private settle(): void {
+        const moving = this.moving;
+        const dt = this.step_seconds;
+        let sleeping = 0;
+        for (let index = 0; index < moving.length; index++) {
+            const body = moving[index];
+            if (body.is_sleeping) {
+                sleeping += 1;
+                continue;
+            }
+            const position = body.position;
+            body.step_distance = Math.hypot(
+                position.x - this.start_x[index],
+                position.y - this.start_y[index],
+            );
+            const rest = body.rest;
+            const strayed = Math.hypot(
+                position.x - rest.x,
+                position.y - rest.y,
+            );
+            if (strayed <= this.sleep_distance) {
+                rest.seconds += dt;
+            } else {
+                rest.x = position.x;
+                rest.y = position.y;
+                rest.seconds = 0;
+            }
+            if (rest.seconds >= this.sleep_seconds) {
+                body.is_sleeping = true;
+                body.velocity.x = 0;
+                body.velocity.y = 0;
+                body.step_distance = 0;
+                rest.x = position.x;
+                rest.y = position.y;
+                sleeping += 1;
+            }
+        }
+        this.stats.sleeping = sleeping;
     }
 
     /** Drops the removed bodies, keeping the order. */
@@ -372,20 +493,70 @@ export class PhysicsWorld<D = unknown> {
             grown.width = box.width + 2 * PAIR_MARGIN;
             grown.height = box.height + 2 * PAIR_MARGIN;
         }
+        // the boxes of removed bodies go last, so that what rested on them wakes
+        const wake_boxes = this.sleepers > 0 ? this.wake_boxes : [];
+        for (const box of wake_boxes) {
+            boxes.push(box);
+        }
+        this.wake_boxes.length = 0;
         const pairs = this.pairs;
         this.broad.pairs(boxes, pairs);
-        // the pairs whose layers and masks rule them out are never tested
+        boxes.length = moving.length;
+        if (this.sleepers > 0) {
+            this.wake_near(pairs);
+        }
+        // two sleepers are not tested, nor pairs whose layers and masks rule them out
         let kept = 0;
         for (let at = 0; at < pairs.length; at += 2) {
             const first = pairs[at];
             const second = pairs[at + 1];
-            if (moving[first].meets(moving[second])) {
-                pairs[kept] = first;
-                pairs[kept + 1] = second;
-                kept += 2;
+            if (second >= moving.length) {
+                continue;
             }
+            const a = moving[first];
+            const b = moving[second];
+            if ((a.is_sleeping && b.is_sleeping) || !a.meets(b)) {
+                continue;
+            }
+            pairs[kept] = first;
+            pairs[kept + 1] = second;
+            kept += 2;
         }
         pairs.length = kept;
+    }
+
+    /**
+     * Wakes the sleepers near the box of a removed body, and those near a body that moved more
+     * than a fifth of `sleep_distance` in its last step. A body that has only just woken hasn't
+     * moved yet, so waking spreads a step at a time, and only as far as things move.
+     */
+    private wake_near(pairs: readonly number[]): void {
+        const moving = this.moving;
+        const moved = this.sleep_distance * WAKE_SHARE;
+        for (let at = 0; at < pairs.length; at += 2) {
+            const first = pairs[at];
+            const second = pairs[at + 1];
+            if (first >= moving.length) {
+                // two removed bodies
+                continue;
+            }
+            const a = moving[first];
+            if (second >= moving.length) {
+                if (a.is_sleeping) {
+                    a.wake();
+                }
+                continue;
+            }
+            const b = moving[second];
+            if (a.is_sleeping === b.is_sleeping || !a.meets(b)) {
+                continue;
+            }
+            const sleeper = a.is_sleeping ? a : b;
+            const awake = a.is_sleeping ? b : a;
+            if (awake.step_distance > moved) {
+                sleeper.wake();
+            }
+        }
     }
 
     /** One pass: moving pairs apart, then whatever got pushed out of the walls again. */
@@ -410,7 +581,7 @@ export class PhysicsWorld<D = unknown> {
             pushed[pairs[index + 1]] = true;
         }
         for (let index = 0; index < moving.length; index++) {
-            if (pushed[index]) {
+            if (pushed[index] && !moving[index].is_sleeping) {
                 this.push_out_of_walls(index);
             }
         }
@@ -422,7 +593,7 @@ export class PhysicsWorld<D = unknown> {
      * takes the whole push and lands on it as on a wall. So a pile doesn't sink into itself,
      * doesn't pass its weight down as speed, and a landing column doesn't bounce each crate off
      * the bounce of the one below. Lowest pairs come first, so the support climbs a pile in one
-     * pass.
+     * pass. A sleeping body holds still like a wall, whichever side it is on.
      */
     private push_apart(first: number, second: number, contact: Contact): void {
         const a = this.moving[first];
@@ -431,6 +602,21 @@ export class PhysicsWorld<D = unknown> {
         const normal = contact.normal;
         const depth = contact.depth;
         const down = this.down;
+        if (b.is_sleeping) {
+            a.position.x += normal.x * depth;
+            a.position.y += normal.y * depth;
+            this.land(first, b, normal);
+            return;
+        }
+        if (a.is_sleeping) {
+            const up = this.up;
+            up.x = -normal.x;
+            up.y = -normal.y;
+            b.position.x += up.x * depth;
+            b.position.y += up.y * depth;
+            this.land(second, a, up);
+            return;
+        }
         if (down !== null) {
             // the normal points from b towards a: against gravity means a is on top
             const along = normal.x * down.x + normal.y * down.y;

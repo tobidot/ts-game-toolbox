@@ -675,3 +675,166 @@ describe("PhysicsWorld under load", () => {
         expect(run.speed).toBeCloseTo(1, 2);
     });
 });
+
+/** Whether something holds `body`: moved down by 1, it would overlap another body or a wall. */
+function is_held<D>(world: PhysicsWorld<D>, body: PhysicsBody<D>): boolean {
+    const lower = {
+        points: body.polygon.points.map((point) => ({
+            x: point.x,
+            y: point.y + 1,
+        })),
+    };
+    return world.bodies.some(
+        (other) => other !== body && sat_overlap(lower, other.polygon) !== null,
+    );
+}
+
+/** A seeded heap of crates and triangles, poured into `boxed_world`. */
+function heap(world: PhysicsWorld<number>, count: number, seed: number): void {
+    const random = new SeededRandom(seed);
+    for (let index = 0; index < count; index++) {
+        world.add({
+            shape: index % 3 === 0 ? triangle(9) : crate(14, 10),
+            position: {
+                x: random.float(200, 600),
+                y: 590 - Math.floor(index / 25) * 16 - random.float(0, 6),
+            },
+            data: index,
+        });
+    }
+}
+
+describe("PhysicsWorld sleeping", () => {
+    it("puts a settled pile to sleep: nothing moves it, and two sleepers aren't tested", () => {
+        const world = boxed_world<number>();
+        heap(world, 200, 3);
+        run(world, 6);
+        const moving = world.bodies.filter((body) => !body.is_static);
+        expect(world.stats.sleeping).toBe(200);
+        expect(moving.every((body) => body.is_sleeping)).toBe(true);
+        world.step();
+        expect(world.stats.pairs_tested).toBe(0);
+        const before = moving.map((body) => ({ ...body.position }));
+        run(world, 2);
+        moving.forEach((body, index) => {
+            expect(body.position).toEqual(before[index]);
+            expect(body.velocity).toEqual({ x: 0, y: 0 });
+        });
+        expect(deepest_overlap(world)).toBeLessThan(1);
+    });
+
+    it("never sleeps with sleep_seconds Infinity", () => {
+        const world = boxed_world<number>({ sleep_seconds: Infinity });
+        heap(world, 60, 3);
+        run(world, 6);
+        expect(world.stats.sleeping).toBe(0);
+        expect(world.bodies.some((body) => body.is_sleeping)).toBe(false);
+    });
+
+    it("wakes what a falling body comes near, and the pile takes it like an awake one", () => {
+        const world = boxed_world<number>();
+        heap(world, 200, 3);
+        run(world, 6);
+        expect(world.stats.sleeping).toBe(200);
+        const dropped = world.add({
+            shape: crate(14, 10),
+            position: { x: 400, y: 300 },
+            velocity: { x: 0, y: 200 },
+            data: 999,
+        });
+        let woken = 0;
+        for (let step = 0; step < 30; step++) {
+            world.step();
+            woken = Math.max(woken, 201 - world.stats.sleeping);
+        }
+        // the ones it landed on woke, not the whole pile
+        expect(woken).toBeGreaterThan(1);
+        expect(woken).toBeLessThan(150);
+        run(world, 4);
+        expect(is_held(world, dropped)).toBe(true);
+        expect(deepest_overlap(world)).toBeLessThan(1);
+        expect(world.stats.sleeping).toBe(201);
+    });
+
+    it("wakes the ones resting on a body that is removed: a column falls, and nothing hangs in the air", () => {
+        const world = boxed_world<number>();
+        const column = Array.from({ length: 10 }, (_, index) =>
+            world.add({
+                shape: crate(20),
+                position: { x: 400, y: 590 - index * 20 },
+                data: index,
+            }),
+        );
+        run(world, 3);
+        expect(column.every((body) => body.is_sleeping)).toBe(true);
+        world.remove(column[0]);
+        world.remove(column[4]);
+        run(world, 3);
+        // eight crates, each on the one below, the lowest on the floor
+        const left = column.filter((body) => body.is_in_world);
+        left.forEach((body, index) => {
+            expect(body.position.y).toBeCloseTo(590 - index * 20, 0);
+        });
+        expect(left.every((body) => is_held(world, body))).toBe(true);
+    });
+
+    it("wakes what rests on a wall that is removed", () => {
+        const world = boxed_world<number>();
+        const shelf = world.add({
+            shape: crate(100, 10),
+            position: { x: 400, y: 300 },
+            is_static: true,
+        });
+        const crates = [380, 420].map((x) =>
+            world.add({ shape: crate(20), position: { x, y: 280 } }),
+        );
+        run(world, 2);
+        expect(crates.every((body) => body.is_sleeping)).toBe(true);
+        world.remove(shelf);
+        run(world, 2);
+        for (const body of crates) {
+            expect(body.position.y).toBeCloseTo(590, 0);
+        }
+    });
+
+    it("wakes a body the game moves, speeds up or wakes", () => {
+        const world = boxed_world<number>();
+        const [pushed, lifted, woken] = [200, 400, 600].map((x) =>
+            world.add({ shape: crate(20), position: { x, y: 590 } }),
+        );
+        run(world, 2);
+        expect([pushed, lifted, woken].every((body) => body.is_sleeping)).toBe(
+            true,
+        );
+        pushed.velocity.x = 300;
+        lifted.position.y = 400;
+        woken.wake();
+        expect(woken.is_sleeping).toBe(false);
+        run(world, 1);
+        expect(pushed.position.x).toBeGreaterThan(260);
+        expect(lifted.position.y).toBeCloseTo(590, 0);
+    });
+
+    it("keeps a sleeping heap whole while its oldest are taken out one by one, as a fade does", () => {
+        const world = boxed_world<number>({ rule: SAT_SWEEP });
+        heap(world, 300, 8);
+        run(world, 8);
+        expect(world.stats.sleeping).toBeGreaterThan(280);
+        // the oldest are the lowest: take out 3 every step for 40 steps
+        const oldest = world.bodies
+            .filter((body) => !body.is_static)
+            .slice(0, 120);
+        for (let step = 0; step < 40; step++) {
+            for (const body of oldest.slice(step * 3, step * 3 + 3)) {
+                world.remove(body);
+            }
+            world.step();
+        }
+        run(world, 4);
+        const left = world.bodies.filter((body) => !body.is_static);
+        expect(left).toHaveLength(180);
+        const hanging = left.filter((body) => !is_held(world, body));
+        expect(hanging.map((body) => body.data)).toEqual([]);
+        expect(deepest_overlap(world)).toBeLessThan(1);
+    });
+});

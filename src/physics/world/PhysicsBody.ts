@@ -49,6 +49,17 @@ export class PhysicsBody<D = unknown> implements ShapeAt {
     public readonly axes: readonly Vector2I[];
     /** False once `PhysicsWorld.remove()` took it out. */
     public is_in_world = true;
+    /**
+     * Asleep: it rested long enough that the world neither moves it nor tests it against other
+     * sleepers, and it holds still whatever leans on it. It wakes when something moving comes
+     * near, when what it rests on is removed, when the game gives it a speed or moves it, or on
+     * `wake()`.
+     */
+    public is_sleeping = false;
+    /** The world's bookkeeping for sleep: the spot the body rests at, and since how long. */
+    public readonly rest = { x: NaN, y: NaN, seconds: 0 };
+    /** How far the last step took it, in world units; the world's, for waking its neighbours. */
+    public step_distance = Infinity;
     /** The shape's box around its own origin. */
     private readonly local_box: RectI;
     private readonly world_polygon: PolygonI;
@@ -106,6 +117,14 @@ export class PhysicsBody<D = unknown> implements ShapeAt {
     public get box(): RectI {
         this.place();
         return this.world_box;
+    }
+
+    /** Wakes it: the world moves it again from the next step. */
+    public wake(): void {
+        this.is_sleeping = false;
+        this.rest.seconds = 0;
+        this.rest.x = NaN;
+        this.rest.y = NaN;
     }
 
     /** Whether this body and `other` meet: each one's layer is in the other's mask. */
