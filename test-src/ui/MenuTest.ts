@@ -51,6 +51,7 @@ export class MenuTest extends TestClass {
             width: 200,
             height: 30,
         });
+        checkbox.label = "Enable";
         const slider = new Slider("Volume", 0, 100, 50, {
             left: 20,
             top: 130,

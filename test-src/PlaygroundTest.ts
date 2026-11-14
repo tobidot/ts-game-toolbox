@@ -134,6 +134,7 @@ export class PlaygroundTest extends TestClass {
             width: 100,
             height: 24,
         });
+        quadtree_checkbox.label = "QuadTree";
 
         const page = new UiPage(
             { x: canvas.width, y: canvas.height },

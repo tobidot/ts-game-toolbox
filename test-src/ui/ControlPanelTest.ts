@@ -141,10 +141,11 @@ export class ControlPanelTest extends TestClass {
         });
         const trails_checkbox = new CheckBox(true, {
             left: 360,
-            top: 25,
+            top: 33,
             width: 180,
-            height: 40,
+            height: 24,
         });
+        trails_checkbox.label = "Trails";
 
         const ui_height = 90;
         const page = new UiPage(

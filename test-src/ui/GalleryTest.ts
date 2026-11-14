@@ -67,19 +67,19 @@ export class GalleryTest extends TestClass {
 
         const gallery = new Gallery("Gallery Widget", images, {
             left: 60,
-            top: 20,
+            top: 36,
             width: 280,
-            height: 190,
+            height: 180,
         });
         const previous_button = new Button("< Prev", {
             left: 60,
-            top: 230,
+            top: 236,
             width: 80,
             height: 40,
         });
         const next_button = new Button("Next >", {
             left: 260,
-            top: 230,
+            top: 236,
             width: 80,
             height: 40,
         });
