@@ -26,11 +26,11 @@ export class Progress {
 
     /**
      * Get the current progress as a decimal between 0 and 1.
-     * Includes progress from all child tasks.
+     * Includes progress from all child tasks. A task with nothing to do is done.
      */
     public get_percent(): number {
         if (this.max <= 0) {
-            return 100;
+            return 1;
         }
         const children_progress = this.children.reduce(
             (acc, child) => acc + child.get_percent(),
@@ -49,6 +49,18 @@ export class Progress {
             this.notify_listeners();
         });
         this.children.push(child);
+        return child;
+    }
+
+    /**
+     * A child task for work that arrives while this one runs (files requested one by one): this
+     * task's total grows by one, the child's share. Start such a task with `new Progress(0)`.
+     * @param max The child's own maximum, as in `make_child_progress`
+     */
+    public append_child_progress(max: number = 1): Progress {
+        this.max += 1;
+        const child = this.make_child_progress(max);
+        this.notify_listeners();
         return child;
     }
 
