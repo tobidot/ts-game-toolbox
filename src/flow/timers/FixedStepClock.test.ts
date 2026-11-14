@@ -48,6 +48,32 @@ describe("FixedStepClock", () => {
         expect(steps).toBe(2);
     });
 
+    it("keeps up to keep_seconds of the rest when a step stops the run", () => {
+        const clock = new FixedStepClock(0.25);
+        let steps = 0;
+        const count = () => {
+            steps += 1;
+        };
+        // 1.1 s due, one step runs, 0.85 s left: half a step of it is kept
+        clock.advance(
+            1.1,
+            () => {
+                steps += 1;
+                return true;
+            },
+            0.125,
+        );
+        expect(steps).toBe(1);
+        expect(clock.unused_seconds).toBe(0.125);
+        // so the next frame of a step's length runs one step, not two and not none
+        clock.advance(0.25, count);
+        expect(steps).toBe(2);
+        clock.advance(0.1, count);
+        expect(steps).toBe(2);
+        clock.advance(0.05, count);
+        expect(steps).toBe(3);
+    });
+
     it("gives nothing back from steps that return nothing", () => {
         const clock = new FixedStepClock(0.25);
         expect(clock.advance(1, () => undefined)).toBeUndefined();

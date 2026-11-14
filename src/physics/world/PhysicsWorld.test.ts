@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PolygonI } from "../../geometries/Polygon";
 import { SeededRandom } from "../../random/SeededRandom";
 import { sat_overlap } from "../sweeping_sat/Sat";
@@ -511,5 +511,108 @@ describe("PhysicsWorld", () => {
         world.add({ shape: crate(20), position: { x: 400, y: 100 } });
         run(world, 1);
         expect(world.rule.name).toBe("mine");
+    });
+});
+
+/** What a run of frames over a world with costly steps came to. */
+interface FrameRun {
+    frames_per_second: number;
+    /** Seconds simulated per second of real time: 1 keeps up, 0.5 runs at half speed. */
+    speed: number;
+    /** How many steps each frame ran. */
+    steps: number[];
+}
+
+/**
+ * Ten seconds of a frame loop over a world whose every step costs `cost_ms` on a fake clock.
+ * A frame lasts as long as its steps and 2 ms of painting, never less than a 60 Hz frame. With
+ * `jitter_ms`, the 60 Hz frames come up to that much early or late, as browsers hand them out.
+ */
+function frame_loop(
+    options: PhysicsWorldOptions,
+    cost_ms: (frame: number) => number,
+    jitter_ms = 0,
+): FrameRun {
+    let clock_ms = 0;
+    let frame = 0;
+    const spy = vi.spyOn(performance, "now").mockImplementation(() => clock_ms);
+    class CostlyWorld extends PhysicsWorld {
+        public override step(): void {
+            super.step();
+            clock_ms += cost_ms(frame);
+        }
+    }
+    try {
+        const world = new CostlyWorld(options);
+        const random = new SeededRandom(3);
+        const steps: number[] = [];
+        let delta_ms = 1000 / 60;
+        let late_ms = 0;
+        while (clock_ms < 10000) {
+            const started = clock_ms;
+            world.update(delta_ms / 1000);
+            steps.push(world.stats.steps);
+            const work_ms = clock_ms - started + 2;
+            const next_late_ms = random.float(-jitter_ms, jitter_ms);
+            delta_ms = Math.max(1000 / 60 + next_late_ms - late_ms, work_ms);
+            late_ms = next_late_ms;
+            clock_ms = started + delta_ms;
+            frame += 1;
+        }
+        const simulated = steps.reduce((sum, count) => sum + count, 0) / 60;
+        return {
+            frames_per_second: steps.length / (clock_ms / 1000),
+            speed: simulated / (clock_ms / 1000),
+            steps,
+        };
+    } finally {
+        spy.mockRestore();
+    }
+}
+
+describe("PhysicsWorld under load", () => {
+    it("fell off a cliff when it caught up at any cost: a step a little too slow made every frame 4 steps", () => {
+        const old = { catch_up_ms: Infinity };
+        expect(frame_loop(old, () => 13).frames_per_second).toBeGreaterThan(58);
+        expect(frame_loop(old, () => 17).frames_per_second).toBeLessThan(20);
+    });
+
+    it("slides gently instead: no further step in an update once the steps took catch_up_ms", () => {
+        let previous = Infinity;
+        for (let cost = 1; cost <= 40; cost++) {
+            const run = frame_loop({}, () => cost);
+            // one step and painting a frame, never more than one step's cost a frame beyond that
+            const one_step = Math.min(60, 1000 / (cost + 2));
+            expect(run.frames_per_second).toBeGreaterThan(one_step * 0.97);
+            expect(run.frames_per_second).toBeLessThanOrEqual(previous + 0.5);
+            if (previous !== Infinity) {
+                expect(run.frames_per_second).toBeGreaterThan(previous * 0.9);
+            }
+            previous = run.frames_per_second;
+        }
+        // what it costs: the world runs slower than real time
+        const slow = frame_loop({}, () => 20);
+        expect(slow.frames_per_second).toBeCloseTo(1000 / 22, 0);
+        expect(slow.speed).toBeCloseTo(1000 / 22 / 60, 1);
+    });
+
+    it("still catches up while steps are cheap, and never past max_steps_per_update", () => {
+        // a 100 ms hitch every second, cheap steps: all the time is caught up
+        const cheap = frame_loop({}, (frame) => (frame % 60 === 0 ? 98 : 1));
+        expect(cheap.speed).toBeCloseTo(1, 1);
+        expect(Math.max(...cheap.steps)).toBe(4);
+        const patient = frame_loop({ max_steps_per_update: 2 }, (frame) =>
+            frame % 60 === 0 ? 98 : 1,
+        );
+        expect(Math.max(...patient.steps)).toBe(2);
+    });
+
+    it("runs exactly one step a frame when one step is all it affords, however the frames jitter", () => {
+        const run = frame_loop({}, () => 10, 1.5);
+        // once the first frame that couldn't catch up has set the phase: never none and never two
+        const first_short = run.steps.findIndex((count) => count === 0);
+        expect(first_short).toBeLessThan(5);
+        expect(new Set(run.steps.slice(first_short + 2))).toEqual(new Set([1]));
+        expect(run.speed).toBeCloseTo(1, 2);
     });
 });
