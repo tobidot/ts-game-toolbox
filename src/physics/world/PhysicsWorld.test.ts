@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PolygonI } from "../../geometries/Polygon";
 import { SeededRandom } from "../../random/SeededRandom";
-import { sat_overlap } from "../sweeping_sat/Sat";
+import { sat_axes, sat_overlap } from "../sweeping_sat/Sat";
 import { AABB, AABB_SWEEP, CollisionRule, SAT_SWEEP } from "./CollisionRule";
 import { ContactEvent } from "./ContactEvent";
 import { ALL_LAYERS, PhysicsBody } from "./PhysicsBody";
@@ -89,6 +89,19 @@ describe("PhysicsBody", () => {
         body.position.x = 200;
         expect(body.box.left).toBe(195);
         expect(body.polygon.points[2]).toEqual({ x: 205, y: 60 });
+    });
+
+    it("works out the axes of its shape once: it never turns, so they hold wherever it goes", () => {
+        const world = new PhysicsWorld();
+        const body = world.add({
+            shape: triangle(10),
+            position: { x: 100, y: 50 },
+        });
+        const axes = body.axes;
+        expect(axes).toEqual(sat_axes(triangle(10)));
+        body.position.x = 300;
+        expect(body.polygon.points[0].x).toBeCloseTo(300);
+        expect(body.axes).toBe(axes);
     });
 
     it("is still with an endless mass, or moving with mass 1 unless told", () => {

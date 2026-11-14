@@ -1,6 +1,7 @@
 import { PolygonI } from "../../geometries/Polygon";
 import { RectI } from "../../geometries/Rect";
 import { Vector2I } from "../../geometries/Vector2";
+import { sat_axes } from "../sweeping_sat/Sat";
 import { ShapeAt } from "./CollisionRule";
 
 /** What `PhysicsWorld.add()` takes. */
@@ -44,6 +45,8 @@ export class PhysicsBody<D = unknown> implements ShapeAt {
     /** The layers it meets, as bits. */
     public mask: number;
     public data: D;
+    /** The unit normals of the shape's edges, each direction once: worked out once, since a body never turns. */
+    public readonly axes: readonly Vector2I[];
     /** False once `PhysicsWorld.remove()` took it out. */
     public is_in_world = true;
     /** The shape's box around its own origin. */
@@ -90,6 +93,7 @@ export class PhysicsBody<D = unknown> implements ShapeAt {
             points: points.map(() => ({ x: 0, y: 0 })),
         };
         this.world_box = { ...this.local_box };
+        this.axes = sat_axes(this.shape);
     }
 
     /** The shape where the body is now, in world units. The same object every time: copy it to keep it. */

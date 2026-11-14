@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PolygonI } from "../../geometries/Polygon";
 import { RectI } from "../../geometries/Rect";
 import { aabb_move, aabb_resolve } from "../aabb/Aabb";
-import { sat_move, sat_overlap } from "../sweeping_sat/Sat";
+import { sat_axes, sat_move, sat_overlap } from "../sweeping_sat/Sat";
 import { AABB, AABB_SWEEP, SAT_SWEEP, ShapeAt } from "./CollisionRule";
 
 const rect = (
@@ -32,6 +32,7 @@ const box_of = (polygon: PolygonI): RectI => {
 const shape = (polygon: PolygonI): ShapeAt => ({
     polygon,
     box: box_of(polygon),
+    axes: sat_axes(polygon),
 });
 const boxed = (box: RectI): ShapeAt => shape(polygon_of(box));
 

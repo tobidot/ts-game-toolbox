@@ -3,12 +3,16 @@ import { RectI } from "../../geometries/Rect";
 import { Vector2I } from "../../geometries/Vector2";
 import { aabb_move, aabb_resolve, WallHit } from "../aabb/Aabb";
 import { Contact } from "../bounce/Bounce";
-import { sat_move, sat_overlap } from "../sweeping_sat/Sat";
+import { sat_move_shapes, sat_overlap_shapes } from "../sweeping_sat/Sat";
 
-/** A shape where it is now: its points in world space and the box around them. */
+/**
+ * A shape where it is now: its points in world space, the box around them, and the unit
+ * normals of its edges (`sat_axes`), which stay the same as long as it doesn't turn.
+ */
 export interface ShapeAt {
     readonly polygon: PolygonI;
     readonly box: RectI;
+    readonly axes: readonly Vector2I[];
 }
 
 /** Where a move ended: how far the mover went, and what it hit on the way, in order. */
@@ -111,20 +115,17 @@ export const AABB_SWEEP: CollisionRule = {
 /**
  * Convex polygons, swept: `sat_overlap` between bodies and `sat_move` against still ones, so a
  * slope is a slope and nothing tunnels. Bodies don't turn, so a crate that lands flat on a
- * corner stays balanced there; step 26 tips it off by hand, the world doesn't.
+ * corner stays balanced there; step 26 tips it off by hand, the world doesn't. The axes come
+ * with the shapes, worked out once per body.
  */
 export const SAT_SWEEP: CollisionRule = {
     name: "sat_sweep",
     is_swept: true,
     overlap(a, b) {
-        return sat_overlap(a.polygon, b.polygon);
+        return sat_overlap_shapes(a, b);
     },
     move(mover, delta, walls) {
-        return sat_move(
-            mover.polygon,
-            delta,
-            walls.map((wall) => wall.polygon),
-        );
+        return sat_move_shapes(mover, delta, walls);
     },
 };
 

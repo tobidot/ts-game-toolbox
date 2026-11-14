@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { PolygonI } from "../../geometries/Polygon";
 import { aabb_move, aabb_resolve, aabb_sweep } from "../aabb/Aabb";
-import { SAT_SKIN, sat_move, sat_overlap, sat_sweep } from "./Sat";
+import { SeededRandom } from "../../random/SeededRandom";
+import {
+    SAT_SKIN,
+    sat_axes,
+    sat_move,
+    sat_move_shapes,
+    sat_overlap,
+    sat_overlap_shapes,
+    sat_shape,
+    sat_sweep,
+    sat_sweep_shapes,
+} from "./Sat";
 
 /** A box as a polygon, clockwise on screen (y down). */
 const box = (
@@ -320,5 +331,108 @@ describe("sat_move", () => {
         expect(result.hits[0].normal.x).toBeCloseTo(-1 / Math.sqrt(5));
         expect(result.hits[0].normal.y).toBeCloseTo(-2 / Math.sqrt(5));
         expect(sat_overlap(moved(hexagon, result.offset), ramp)).toBeNull();
+    });
+});
+
+/** A convex polygon with `corners` corners around `center`, turned and stretched at random. */
+const random_convex = (
+    random: SeededRandom,
+    center: { x: number; y: number },
+): PolygonI => {
+    const corners = random.int(3, 8);
+    const radius = random.float(4, 30);
+    const stretch = random.float(0.5, 1.5);
+    const turn = random.float(0, Math.PI * 2);
+    return {
+        points: Array.from({ length: corners }, (_, index) => {
+            const angle = turn + (index * Math.PI * 2) / corners;
+            return {
+                x: center.x + Math.cos(angle) * radius * stretch,
+                y: center.y + Math.sin(angle) * radius,
+            };
+        }),
+    };
+};
+
+describe("prepared shapes", () => {
+    it("work out each edge direction once: a box has 2 axes, a hexagon 3, a triangle 3", () => {
+        expect(sat_axes(box(0, 0, 10, 20))).toEqual([
+            { x: 0, y: 1 },
+            { x: -1, y: 0 },
+        ]);
+        const hexagon: PolygonI = {
+            points: [0, 1, 2, 3, 4, 5].map((index) => ({
+                x: 10 * Math.cos((index * Math.PI) / 3),
+                y: 10 * Math.sin((index * Math.PI) / 3),
+            })),
+        };
+        expect(sat_axes(hexagon)).toHaveLength(3);
+        const triangle: PolygonI = {
+            points: [
+                { x: 0, y: 0 },
+                { x: 10, y: 0 },
+                { x: 0, y: 10 },
+            ],
+        };
+        expect(sat_axes(triangle)).toHaveLength(3);
+        for (const axis of sat_axes(hexagon)) {
+            expect(Math.hypot(axis.x, axis.y)).toBeCloseTo(1, 12);
+        }
+    });
+
+    it("give what sat_overlap, sat_sweep and sat_move give, on random convex shapes", () => {
+        const random = new SeededRandom(27);
+        let overlaps = 0;
+        let hits = 0;
+        for (let round = 0; round < 400; round++) {
+            const a = random_convex(random, {
+                x: random.float(-40, 40),
+                y: random.float(-40, 40),
+            });
+            const b = random_convex(random, { x: 0, y: 0 });
+            const delta = {
+                x: random.float(-80, 80),
+                y: random.float(-80, 80),
+            };
+            const walls = [b, random_convex(random, { x: 30, y: 30 })];
+            const contact = sat_overlap(a, b);
+            const prepared = sat_overlap_shapes(sat_shape(a), sat_shape(b));
+            if (contact === null) {
+                expect(prepared).toBeNull();
+            } else {
+                overlaps += 1;
+                expect(prepared).not.toBeNull();
+                expect(prepared!.depth).toBeCloseTo(contact.depth, 9);
+                expect(prepared!.normal.x).toBeCloseTo(contact.normal.x, 9);
+                expect(prepared!.normal.y).toBeCloseTo(contact.normal.y, 9);
+            }
+            const hit = sat_sweep(a, delta, b);
+            const swept = sat_sweep_shapes(sat_shape(a), delta, sat_shape(b));
+            if (hit === null) {
+                expect(swept).toBeNull();
+            } else {
+                hits += 1;
+                expect(swept).not.toBeNull();
+                expect(swept!.time).toBeCloseTo(hit.time, 9);
+                expect(swept!.normal.x).toBeCloseTo(hit.normal.x, 9);
+                expect(swept!.normal.y).toBeCloseTo(hit.normal.y, 9);
+                expect(swept!.overlap.x).toBeCloseTo(hit.overlap.x, 9);
+                expect(swept!.overlap.y).toBeCloseTo(hit.overlap.y, 9);
+            }
+            const move = sat_move(a, delta, walls);
+            const prepared_move = sat_move_shapes(
+                sat_shape(a),
+                delta,
+                walls.map(sat_shape),
+            );
+            expect(prepared_move.offset.x).toBeCloseTo(move.offset.x, 9);
+            expect(prepared_move.offset.y).toBeCloseTo(move.offset.y, 9);
+            expect(prepared_move.hits.map((one) => one.wall)).toEqual(
+                move.hits.map((one) => one.wall),
+            );
+        }
+        // the cases were not all misses
+        expect(overlaps).toBeGreaterThan(50);
+        expect(hits).toBeGreaterThan(50);
     });
 });

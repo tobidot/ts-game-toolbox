@@ -8,6 +8,7 @@
 - **`sat_overlap(a, b)`**: the smallest push that moves `a` out of `b`, as bounce's `Contact` (`normal` from `b` towards `a`, `depth`), or `null`. Touching edges don't count.
 - **`sat_sweep(mover, delta, wall)`**: when `mover`, moving by `delta`, first touches a still `wall`, as aabb's `Hit` (`time` 0..1, `normal` the wall face's unit normal). Exact for any speed, so nothing tunnels. Already overlapping is a hit at time 0 with the push in `overlap`.
 - **`sat_move(mover, delta, walls)`**: moves with sliding like `aabb_move`, at most 3 passes, and returns `{ offset, hits }`: how far the mover went. It stays `SAT_SKIN` (0.01) off what it hit.
+- **Prepared shapes.** Each call above works out the edge normals of both shapes. A shape that never turns keeps them: `sat_shape(polygon)` gives `{ polygon, axes }` (`sat_axes`, each edge direction once, so a box has 2), and `sat_overlap_shapes`, `sat_sweep_shapes` and `sat_move_shapes` take that form. `PhysicsBody` keeps its `axes`, and `SAT_SWEEP` uses them.
 
 ```ts
 const shape = new Polygon(crate_points).translated(parcel.position);
@@ -36,7 +37,7 @@ world.events.attach(ContactEvent, (event) => { /* event.a, event.b, event.normal
 world.remove(body);
 ```
 
-- **Rules.** `AABB` counts every shape as its box and moves first, pushing out after (`aabb_resolve`): a fast body jumps a thin wall. `AABB_SWEEP` uses `aabb_move`, `SAT_SWEEP` uses `sat_overlap` and `sat_move`: nothing tunnels through a still body. A rule answers `overlap(a, b)` and `move(mover, delta, walls)` on a `ShapeAt` (`polygon` and `box` in world space).
+- **Rules.** `AABB` counts every shape as its box and moves first, pushing out after (`aabb_resolve`): a fast body jumps a thin wall. `AABB_SWEEP` uses `aabb_move`, `SAT_SWEEP` uses `sat_overlap` and `sat_move`: nothing tunnels through a still body. A rule answers `overlap(a, b)` and `move(mover, delta, walls)` on a `ShapeAt` (`polygon` and `box` in world space, and the edge normals in `axes`).
 - **Bodies.** `shape` is a convex polygon around the body's own origin, `position` puts it. Still bodies (`is_static`) never move. `position` and `velocity` may be written between steps; `polygon` and `box` follow. `data` is the game's.
 - **`update(delta_seconds)`** runs the even steps that are due (`FixedStepClock`), at most `max_steps_per_update` (default 4), and a further one only while the steps so far in this update took less than `catch_up_ms` (default 8, half a frame at 60 FPS). The time still due is dropped but for half a step: a device that can't keep up runs the world slower, and its frame rate slides with the cost of one step instead of falling to a quarter once a step costs a frame. `step()` runs one by hand.
 - **A step.** Gravity; every moving body moves against the still ones with the rule's `move()`; then `passes` times (default 2), overlapping moving bodies are pushed apart by mass and lose their closing speed (`elastic_impact`), and what got pushed into a wall is pushed back out. Moving bodies don't sweep against each other.
