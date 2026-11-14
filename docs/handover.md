@@ -7,7 +7,7 @@ agent.
 
 ## Copy-Paste Prompt for the Other Agent
 
-"I want you to implement a feature using the `ts-game-toolbox` library.
+"I want you to implement a feature using the `@game.object/ts-game-toolbox` library.
 
 ### 1. Library Documentation
 
@@ -21,8 +21,8 @@ The library is located at: `[PATH_TO_THIS_PROJECT]`
 To use it in this project, you should:
 
 1. Ensure the library is linked (I have already run `npm link` in the library folder).
-2. Run `npm link ts-game-toolbox` in this project.
-3. Import what you need from `'ts-game-toolbox'`.
+2. Run `npm link @game.object/ts-game-toolbox` in this project.
+3. Import what you need from `'@game.object/ts-game-toolbox'`.
 
 ### 3. Your Task
 
@@ -38,4 +38,4 @@ To use it in this project, you should:
 3. **Use `npm link`**: For local development across folders, `npm link` is the cleanest way to share the library without
    publishing it to a registry.
     - In this library folder: `npm install && npm run build && npm link`
-    - In the other project folder: `npm link ts-game-toolbox`
+    - In the other project folder: `npm link @game.object/ts-game-toolbox`

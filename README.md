@@ -10,16 +10,20 @@ A collection of reusable functions and classes for Games or Programs developed i
 
 For detailed information and usage examples, please refer to the documentation in the `docs` folder:
 
-- [AI-Optimized Documentation](docs/ai.md) - **Recommended for AI Agents (LLMs)**.
+- [AI-Optimized Documentation](docs/ai.md) - **Recommended for AI Agents (LLMs)**: all of the docs below in one file.
 - [Handover Guide](docs/handover.md) - How to share this library with other agents.
-- [Assets](docs/assets.md) - Loading and managing images and audio.
+- [Changelog](CHANGELOG.md) - What changed, and how to migrate to 6.0.0.
+- [Game Shell](docs/game-shell.md) - The canvas game shell (`CanvasGameElement` and its five parts), the stage, `AudioPlayer`.
+- [Assets](docs/assets.md) - `AssetManager`: loading sets at once, or a queue of requests by priority.
 - [Geometries](docs/geometries.md) - Vector2, Rect, Polygon, Line, and Ray.
 - [Trees](docs/trees.md) - QuadTree and Collection.
 - [Signals](docs/signals.md) - Event and Signal sockets, Observable properties.
-- [Flow](docs/flow.md) - Progress tracking, Sleep, Throttling, and Asserts.
-- [UI](docs/ui.md) - Canvas-based UI system with widgets.
-- [Physics](docs/physics.md) - Collision detection (Work in Progress).
-- [Miscellaneous](docs/misc.md) - Colors, RgbColor, Math helpers, and Testing tools.
+- [Flow](docs/flow.md) - Progress, FixedStepClock, Tween, timers, Sleep, Throttler, and Asserts.
+- [UI](docs/ui.md) - Canvas-based UI: widgets, states, themes and movement, menus, scrolling.
+- [Physics](docs/physics.md) - AABB, sweeping SAT, bounce, kinematics, steering, and `PhysicsWorld`.
+- [Miscellaneous](docs/misc.md) - Colors, math helpers, SpriteBatch and PixelCanvas, input, random, camera, tile maps, testing.
+
+The playground in `test-src/` shows most modules at work: `npm run dev`.
 
 ## Recommendation
 
@@ -38,6 +42,8 @@ The angle of a vector is expected in radians (from 0 to 2π). Angle 0 points to 
 
 ## Quick Version Log
 
+- 6.0.0
+    - The Spielwerk modules (steps 15 to 29) and the canvas game shell; `PhysicsWorld` replaces `SweepingSatWorld`. See [CHANGELOG.md](CHANGELOG.md)
 - 5.0.0
     - Removed MVC and "Abstract" module to concentrate on general helpers
 - 4.0.0
