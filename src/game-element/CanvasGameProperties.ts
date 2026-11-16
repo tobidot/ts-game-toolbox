@@ -1,5 +1,8 @@
 import { AudioPlayer } from "../audio/AudioPlayer";
 import { RectI, Vector2I } from "../geometries";
+import { InputDevice, touch_buttons_of } from "../input/actions/ActionBindings";
+import { ActionMap } from "../input/actions/ActionMap";
+import { TouchControls } from "../input/actions/TouchControls";
 import { KeyboardState } from "../input/KeyboardState";
 import { MenuInput } from "../input/MenuInput";
 import { IntroGate } from "../stage/IntroGate";
@@ -23,6 +26,7 @@ import {
 } from "./CanvasGameSettings";
 import { MuteButton } from "./MuteButton";
 import { SessionBest } from "./SessionBest";
+import { TimedNotice } from "./TimedNotice";
 
 /** The rect a widget is built with when `CanvasGameProperties.place()` positions it anyway. */
 export const UNPLACED: Readonly<RectI> = {
@@ -48,6 +52,14 @@ interface ThemeFade {
 
 /** The curve of a whole theme fading into another. `blended()` goes along with it. */
 const THEME_FADE_EASING: ThemeEasing = "ease_in_out";
+
+/** Before any input: a touch screen whose main pointer is a finger, else a keyboard and a mouse. */
+function first_device_guess(): InputDevice {
+    if (typeof matchMedia !== "function") {
+        return "keyboard";
+    }
+    return matchMedia("(pointer: coarse)").matches ? "touch" : "keyboard";
+}
 
 /** `#rrggbb` as the toolbox UI's color. */
 export function hex_color(hex: string): RgbColor {
@@ -437,6 +449,18 @@ export class CanvasGameProperties<
      */
     public readonly menu_inputs = new Set<AnyMenuInput>();
     /**
+     * The touch stick and buttons of `settings.touch_stick` and `touch_buttons`, in layout
+     * coordinates. The shell feeds it the touches no widget took and paints it after the first.
+     */
+    public readonly touch_controls: TouchControls;
+    /**
+     * `settings.actions` by name, fed by the keyboard, the first standard gamepad and the touch
+     * controls. The shell updates it before every `update()`: read it there.
+     */
+    public readonly actions: ActionMap;
+    /** What the shell says over the game for a moment: a gamepad it doesn't support. */
+    public readonly pad_notice = new TimedNotice();
+    /**
      * Plays `settings.sounds` by name. The shell builds it over the loaded assets and stops it on
      * a disconnect; its volumes and mutes stay, like all properties.
      */
@@ -481,6 +505,23 @@ export class CanvasGameProperties<
             this.all_theme_rules(),
         );
         this.ui.active_menu = this.page;
+        const has_touch_stick = Object.values(settings.actions).some(
+            (binding) => binding.kind === "vector" && binding.touch === "stick",
+        );
+        this.touch_controls = new TouchControls({
+            stick: settings.touch_stick && has_touch_stick,
+            buttons: settings.touch_buttons
+                ? touch_buttons_of(settings.actions)
+                : [],
+        });
+        this.touch_controls.layout(layout.width, layout.height);
+        this.actions = new ActionMap({
+            bindings: settings.actions,
+            keyboard: this.keyboard,
+            touch: this.touch_controls,
+            dead_zone: settings.stick_dead_zone,
+            device: first_device_guess(),
+        });
         const has_sounds = [
             ...Object.keys(settings.sounds),
             ...Object.keys(settings.catalogue_sounds),
@@ -629,6 +670,7 @@ export class CanvasGameProperties<
     public place_widgets(layout: LayoutOf<S> = this.layout): void {
         const is_other_theme = layout.theme_rules !== this.layout.theme_rules;
         this.layout = layout;
+        this.touch_controls.layout(layout.width, layout.height);
         if (is_other_theme) {
             this.theme_fade = null;
             this.set_theme(this.game_theme_rules);

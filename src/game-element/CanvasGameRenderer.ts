@@ -1,4 +1,5 @@
 import { Rect, RectI, Vector2I } from "../geometries";
+import { TouchControls } from "../input/actions/TouchControls";
 import { LayoutRect, StageLayout } from "../stage/StageLayout";
 import { draw_start_screen, start_screen_block } from "../stage/StartScreen";
 import { wrap_text } from "../ui/text";
@@ -14,6 +15,15 @@ import {
 export interface GameFrame<G> {
     readonly game: G;
     readonly ui: UiManager;
+    /** What the shell paints over every game; the shell fills it in. */
+    readonly overlay?: ShellOverlay;
+}
+
+/** What the shell paints over the scene and under the UI: the touch controls and a notice. */
+export interface ShellOverlay {
+    readonly touch: TouchControls;
+    /** A line for a moment, such as a gamepad the shell doesn't support; null for none. */
+    readonly notice: string | null;
 }
 
 /** What a game's frame has beyond `game` and `ui`: the return type of `CanvasGameLogic.frame()`. */
@@ -147,10 +157,106 @@ export abstract class CanvasGameRenderer<
         const stage = this.references.stage;
         const context = stage.begin(this.settings.background);
         this.paint(context, stage.layout, frame);
+        const overlay = frame.overlay;
+        if (overlay !== undefined) {
+            context.save();
+            if (overlay.touch.is_enabled && overlay.touch.is_shown) {
+                this.paint_touch_controls(context, overlay.touch);
+            }
+            if (overlay.notice !== null) {
+                this.paint_notice(context, stage.layout, overlay.notice);
+            }
+            context.restore();
+        }
         frame.ui.draw(stage.end());
     }
 
-    public render_start(game: G | null): void {
+    /**
+     * The touch stick and buttons, over the scene, from the first touch on: the stick under the
+     * thumb while one is on it, else a faint one where a thumb usually rests. A game with a look of
+     * its own overrides it.
+     */
+    protected paint_touch_controls(
+        context: CanvasRenderingContext2D,
+        touch: TouchControls,
+    ): void {
+        const colors = this.settings.colors;
+        const radius = touch.stick_radius;
+        if (touch.has_stick) {
+            const stick = touch.stick;
+            const layout = this.references.stage.layout;
+            const origin = stick?.origin ?? {
+                x: radius + 40,
+                y: layout.height - radius - 40,
+            };
+            const knob = stick?.knob ?? origin;
+            context.globalAlpha = stick === null ? 0.35 : 0.85;
+            context.fillStyle = "rgba(255, 255, 255, 0.10)";
+            context.strokeStyle = colors.white;
+            context.lineWidth = 3;
+            context.beginPath();
+            context.arc(origin.x, origin.y, radius, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+            this.disc(knob.x, knob.y, radius * 0.42, colors.turquoise);
+            context.globalAlpha = 1;
+        }
+        for (const button of touch.buttons) {
+            context.globalAlpha = button.is_down ? 0.95 : 0.6;
+            context.fillStyle = button.is_down
+                ? colors.turquoise
+                : "rgba(255, 255, 255, 0.12)";
+            context.strokeStyle = colors.white;
+            context.lineWidth = 3;
+            context.beginPath();
+            context.arc(
+                button.center.x,
+                button.center.y,
+                button.radius,
+                0,
+                Math.PI * 2,
+            );
+            context.fill();
+            context.stroke();
+            this.text(button.label, button.center.x, button.center.y + 1, {
+                size: 18,
+                is_bold: true,
+                color: button.is_down ? colors.black : colors.white,
+                align: "center",
+                baseline: "middle",
+                max_width: button.radius * 1.8,
+            });
+            context.globalAlpha = 1;
+        }
+    }
+
+    /** The shell's notice, a pill at the bottom of the layout. */
+    protected paint_notice(
+        context: CanvasRenderingContext2D,
+        layout: LayoutOf<S>,
+        notice: string,
+    ): void {
+        context.font = this.font(16, true);
+        const width = Math.min(
+            layout.width - 32,
+            context.measureText(notice).width + 48,
+        );
+        this.pill(
+            {
+                left: (layout.width - width) / 2,
+                top: layout.height - 64,
+                width,
+                height: 40,
+            },
+            notice,
+            this.settings.colors.orange,
+            this.settings.colors.black,
+            16,
+        );
+    }
+
+    /** The start screen; `hint` replaces `settings.start_hint`, for the device in use. */
+    public render_start(game: G | null, hint?: string): void {
         const stage = this.references.stage;
         const layout = stage.layout;
         const colors = this.settings.colors;
@@ -168,7 +274,7 @@ export abstract class CanvasGameRenderer<
             title: this.settings.title,
             subtitle: this.start_subtitle(game),
             button: this.settings.start_button,
-            hint: this.settings.start_hint,
+            hint: hint ?? this.settings.start_hint,
             font_family: this.settings.font_family,
             colors: {
                 title: colors.white,

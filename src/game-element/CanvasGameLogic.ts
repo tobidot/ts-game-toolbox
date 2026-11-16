@@ -1,6 +1,7 @@
 import { AudioPlayer } from "../audio/AudioPlayer";
 import { Progress } from "../flow";
 import { Vector2I } from "../geometries";
+import { InputDevice } from "../input/actions/ActionBindings";
 import { IntroState } from "../stage/IntroGate";
 import { bind_stage_input } from "../stage/StageInput";
 import { StageLayout } from "../stage/StageLayout";
@@ -119,6 +120,10 @@ export abstract class CanvasGameLogic<
 > {
     /** `settings.music` is due but comes from the catalogue and has not arrived yet. */
     private is_music_waiting = false;
+    /** The unsupported pad the notice was shown for, so it shows once per pad. */
+    private noticed_pad: string | null = null;
+    /** The device the screen's hints were last painted for. */
+    private painted_device: InputDevice | null = null;
 
     public constructor(
         protected readonly host: HTMLElement,
@@ -182,18 +187,55 @@ export abstract class CanvasGameLogic<
             {
                 on_press: (point, event) => {
                     properties.pointer = point;
-                    if (!this.next_round_if_finished()) {
-                        this.on_press(point, event);
+                    if (this.next_round_if_finished()) {
+                        return;
                     }
+                    if (
+                        is_touch(event) &&
+                        properties.touch_controls.handle_down(
+                            event.pointerId,
+                            point,
+                        )
+                    ) {
+                        mark_dirty();
+                        return;
+                    }
+                    this.on_press(point, event);
                 },
                 on_move: (point, event) => {
+                    if (
+                        is_touch(event) &&
+                        properties.touch_controls.handle_move(
+                            event.pointerId,
+                            point,
+                        )
+                    ) {
+                        mark_dirty();
+                        return;
+                    }
                     // A hover painted from `properties.pointer` follows without a hook.
                     properties.pointer = point;
                     mark_dirty();
                     this.on_move(point, event);
                 },
-                on_release: (point, event) => this.on_release(point, event),
+                on_release: (point, event) => {
+                    if (
+                        is_touch(event) &&
+                        properties.touch_controls.handle_up(event.pointerId)
+                    ) {
+                        mark_dirty();
+                        return;
+                    }
+                    this.on_release(point, event);
+                },
                 on_leave: (event) => {
+                    if (
+                        is_touch(event) &&
+                        properties.touch_controls.handle_up(event.pointerId)
+                    ) {
+                        mark_dirty();
+                        return;
+                    }
                     properties.pointer = null;
                     mark_dirty();
                     this.on_leave(event);
@@ -229,6 +271,15 @@ export abstract class CanvasGameLogic<
             },
         );
         properties.keyboard.attach(host, signal);
+        // A click is the keyboard player's mouse; a finger is a touch, before any control took it.
+        stage.$canvas.addEventListener(
+            "pointerdown",
+            (event) =>
+                properties.actions.note_device(
+                    is_touch(event) ? "touch" : "keyboard",
+                ),
+            { signal },
+        );
         this.bind_music_resume(signal);
         this.bind_music_hold(signal);
         this.bind_mute_buttons();
@@ -271,6 +322,8 @@ export abstract class CanvasGameLogic<
     /** Called on every disconnection; the state stays for a reconnect. */
     public stop(): void {
         this.is_music_waiting = false;
+        this.properties.touch_controls.release_all();
+        this.properties.actions.clear();
         this.properties.abort_controller?.abort();
         this.properties.abort_controller = null;
         this.properties.audio.destroy();
@@ -421,10 +474,31 @@ export abstract class CanvasGameLogic<
         return this.live_status(game) ?? `${this.settings.title}. Bereit.`;
     }
 
+    /**
+     * The hint under the start button for the device in use (`properties.actions.last_device`).
+     * Default: `settings.start_hint`, `start_hint_gamepad` or `start_hint_touch`.
+     */
+    protected start_hint(device: InputDevice): string {
+        const settings = this.settings;
+        if (device === "gamepad") {
+            return settings.start_hint_gamepad;
+        }
+        return device === "touch"
+            ? settings.start_hint_touch
+            : settings.start_hint;
+    }
+
     /** The status line while the start screen waits and the intro plays. */
     protected intro_status(state: IntroState): string {
         if (state === "waiting") {
-            return `${this.settings.title}. Klicken oder eine Taste drücken zum Starten.`;
+            const device = this.properties.actions.last_device;
+            const how =
+                device === "gamepad"
+                    ? "A am Gamepad drücken oder klicken"
+                    : device === "touch"
+                      ? "Tippen"
+                      : "Klicken oder eine Taste drücken";
+            return `${this.settings.title}. ${how} zum Starten.`;
         }
         return state === "playing" ? "Intro" : `${this.settings.title}.`;
     }
@@ -692,6 +766,20 @@ export abstract class CanvasGameLogic<
         }
     }
 
+    /** Shows the notice once for each pad the map ignores, and runs it down. */
+    private watch_pads(delta_seconds: number): void {
+        const properties = this.properties;
+        const unsupported = properties.actions.unsupported_pad;
+        if (unsupported !== null && unsupported !== this.noticed_pad) {
+            properties.pad_notice.show(this.settings.unsupported_pad_notice, 6);
+        }
+        this.noticed_pad = unsupported;
+        if (properties.pad_notice.text !== null) {
+            properties.pad_notice.update(delta_seconds);
+            properties.is_dirty = true;
+        }
+    }
+
     private tick(time_ms: number): void {
         const properties = this.properties;
         const game = properties.game;
@@ -703,14 +791,33 @@ export abstract class CanvasGameLogic<
         const delta_seconds = Math.min(0.1, properties.frame_seconds);
         properties.last_tick_ms = time_ms;
         const keyboard = properties.keyboard;
+        const actions = properties.actions;
         if (!this.is_playing) {
             // The key that left the start screen, or one pressed during the logo, is no move.
             keyboard.clear();
+            actions.update();
+            // A pad's A leaves the start screen as a click does (the browser may keep the sound off).
+            if (
+                properties.intro.is_waiting &&
+                actions.has("confirm") &&
+                actions.just_pressed("confirm", "gamepad") &&
+                properties.intro.leave()
+            ) {
+                properties.is_dirty = true;
+            }
         } else {
+            actions.update();
+            this.watch_pads(delta_seconds);
             for (const input of properties.menu_inputs) {
+                input.handle_actions(actions);
                 input.update(delta_seconds);
             }
-            if (this.update(game, delta_seconds)) {
+            // A pad's A on a finished round is what Space is: the next round, and no move in it.
+            const is_next_round =
+                actions.has("confirm") &&
+                actions.just_pressed("confirm", "gamepad") &&
+                this.next_round_if_finished();
+            if (!is_next_round && this.update(game, delta_seconds)) {
                 properties.is_dirty = true;
             }
             this.report_finished_round();
@@ -730,6 +837,11 @@ export abstract class CanvasGameLogic<
                 properties.is_dirty = true;
             }
         }
+        if (actions.last_device !== this.painted_device) {
+            // Hints follow the device: the start screen's, and whatever a game paints from it.
+            this.painted_device = actions.last_device;
+            properties.is_dirty = true;
+        }
         if (!properties.is_dirty) {
             return;
         }
@@ -737,7 +849,10 @@ export abstract class CanvasGameLogic<
         // `update()` may have started the next game: paint that one, not the old.
         const current = properties.game ?? game;
         if (properties.intro.is_waiting) {
-            this.renderer.render_start(current);
+            this.renderer.render_start(
+                current,
+                this.start_hint(actions.last_device),
+            );
             return;
         }
         this.sync_mute_buttons();
@@ -746,6 +861,10 @@ export abstract class CanvasGameLogic<
             ...this.frame(current),
             game: current,
             ui: properties.ui,
+            overlay: {
+                touch: properties.touch_controls,
+                notice: properties.pad_notice.text,
+            },
         } as F);
         if (this.is_playing) {
             const status = this.live_status(current);
@@ -754,6 +873,10 @@ export abstract class CanvasGameLogic<
             }
         }
     }
+}
+
+function is_touch(event: PointerEvent): boolean {
+    return event.pointerType === "touch";
 }
 
 function parse_seed(raw: string): number {

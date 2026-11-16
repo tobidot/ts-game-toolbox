@@ -1,4 +1,8 @@
 import type { ThemeRule } from "../ui/theme/Theme";
+import {
+    ActionBindings,
+    DEFAULT_ACTIONS,
+} from "../input/actions/ActionBindings";
 import { LayoutFor, LayoutRect, StageLayout } from "../stage/StageLayout";
 
 /** The house palette; a game may reference it but rarely needs to change it. */
@@ -147,8 +151,32 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     public readonly music_mute_key: string | null = "m";
     /** The sound a mute button answers with; none when `sounds` doesn't list it. */
     public readonly mute_answer_sound: string = "select";
+    /**
+     * The game's actions by name, for `properties.actions`: keys, pad buttons, sticks and touch
+     * controls as plain data. Default: `DEFAULT_ACTIONS` (move, confirm, back, pause).
+     */
+    public readonly actions: ActionBindings = DEFAULT_ACTIONS;
+    /**
+     * The shell's floating touch stick, for the vector actions bound to `touch: "stick"`: it
+     * appears where a thumb lands on the left half, from the first touch on. Off by default, as a
+     * game that reads taps on its scene would lose half of them to it.
+     */
+    public readonly touch_stick: boolean = false;
+    /** Round touch buttons on the right for the button actions bound to `touch: "button"`. */
+    public readonly touch_buttons: boolean = false;
+    /** The still part of a gamepad stick's reach, 0 to 1. */
+    public readonly stick_dead_zone: number = 0.2;
+    /** Shown for a moment when a gamepad without the browser's standard mapping is plugged in. */
+    public readonly unsupported_pad_notice: string =
+        "Dieses Gamepad hat keine Standardbelegung und wird nicht unterstützt.";
     /** The start screen's texts. */
     public readonly start_button: string = "▶ Starten";
+    /** The hint under the start button, for a keyboard and a mouse. */
     public readonly start_hint: string =
         "Klicken oder eine Taste drücken (mit Ton)";
+    /** The hint once a gamepad was used: its A leaves the start screen too. */
+    public readonly start_hint_gamepad: string =
+        "A am Gamepad drücken oder klicken";
+    /** The hint on a touch screen. */
+    public readonly start_hint_touch: string = "Tippen zum Starten (mit Ton)";
 }
