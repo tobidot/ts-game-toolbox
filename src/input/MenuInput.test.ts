@@ -1,5 +1,9 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { Menu, MenuEntry } from "../ui/menu/Menu";
+import { PAD_BUTTONS } from "./actions/ActionBindings";
+import { ActionMap } from "./actions/ActionMap";
+import { KeyboardState } from "./KeyboardState";
 import { MenuInput, MenuInputOptions } from "./MenuInput";
 
 /** Anträge > Steuern > Hund, Katze; Vorgang; Ende. */
@@ -501,6 +505,81 @@ describe("MenuInput", () => {
             input.is_held = false;
             input.update(0.1);
             expect(input.menu.cursor).toBe(1);
+        });
+    });
+
+    describe("actions", () => {
+        /** A standard pad whose buttons and left stick the test sets between frames. */
+        function pad_rig() {
+            const pad = {
+                id: "Fake Pad",
+                index: 0,
+                connected: true,
+                mapping: "standard",
+                buttons: Array.from({ length: 17 }, () => ({
+                    pressed: false,
+                    value: 0,
+                })),
+                axes: [0, 0, 0, 0],
+            };
+            const actions = new ActionMap({ gamepads: () => [pad] });
+            const { menu, input } = setup();
+            const frame = (): void => {
+                actions.update();
+                input.handle_actions(actions);
+            };
+            const press = (button: number): void => {
+                pad.buttons[button] = { pressed: true, value: 1 };
+                frame();
+                pad.buttons[button] = { pressed: false, value: 0 };
+                frame();
+            };
+            const tilt = (y: number): void => {
+                pad.axes = [0, y, 0, 0];
+                frame();
+                pad.axes = [0, 0, 0, 0];
+                frame();
+            };
+            return { menu, input, press, tilt, pad, frame };
+        }
+
+        it("moves with the stick and the cross, opens with A and goes back with B", () => {
+            const { menu, input, press, tilt } = pad_rig();
+            tilt(1);
+            expect(menu.cursor).toBe(1);
+            press(PAD_BUTTONS.up);
+            expect(menu.cursor).toBe(0);
+            press(PAD_BUTTONS.a);
+            expect(menu.path).toEqual(["Anträge"]);
+            press(PAD_BUTTONS.down);
+            press(PAD_BUTTONS.a);
+            expect(input.choices()).toEqual(["baum"]);
+            input.end_frame();
+            press(PAD_BUTTONS.b);
+            expect(menu.path).toEqual([]);
+        });
+
+        it("steps once per push of the stick, not once per frame", () => {
+            const { menu, pad, frame } = pad_rig();
+            pad.axes = [0, 1, 0, 0];
+            frame();
+            frame();
+            frame();
+            expect(menu.cursor).toBe(1);
+        });
+
+        it("leaves the keys to their events: a key bound to confirm does nothing here", () => {
+            const element = document.createElement("div");
+            const keyboard = new KeyboardState();
+            keyboard.attach(element);
+            const actions = new ActionMap({ keyboard, gamepads: () => [] });
+            const { menu, input } = setup();
+            element.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "Enter", code: "Enter" }),
+            );
+            actions.update();
+            input.handle_actions(actions);
+            expect(menu.path).toEqual([]);
         });
     });
 });

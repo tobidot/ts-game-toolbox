@@ -1,4 +1,6 @@
 import { Menu, MenuEntry } from "../ui/menu/Menu";
+import type { InputDevice } from "./actions/ActionBindings";
+import type { ActionMap } from "./actions/ActionMap";
 
 export interface MenuInputOptions {
     /** How long a press waits while the input is held; 0 drops it. Default 1. */
@@ -40,6 +42,10 @@ const OPEN_KEY = "ArrowRight";
  *
  * Keys: Up and Down move, Enter and Space confirm, Escape and Left go back, Right opens a submenu,
  * and a letter picks the entry with that `key`. Only Up and Down repeat while held.
+ *
+ * Actions: `handle_actions()` reads an `ActionMap`'s `move`, `confirm` and `back` from one device,
+ * a gamepad by default, as the keys they stand for. The game shell does it every frame, so every
+ * menu on its page works with a pad.
  */
 export class MenuInput<T> {
     public readonly menu: Menu<T>;
@@ -189,6 +195,34 @@ export class MenuInput<T> {
     public handle_key(key: string, is_repeat: boolean = false): void {
         if (this.understands(key, is_repeat)) {
             this.press({ key });
+        }
+    }
+
+    /**
+     * Reads `move` (a push up or down moves, right opens, left goes back), `confirm` and `back` of
+     * `actions`, as far as `device` gave them, as the keys they stand for. Call it once a frame
+     * after `actions.update()`. The device defaults to the gamepad: keys come in as events, and a
+     * finger taps the rows. An action the map doesn't have is skipped.
+     */
+    public handle_actions(
+        actions: ActionMap,
+        device: InputDevice = "gamepad",
+    ): void {
+        if (actions.has("move")) {
+            const step = actions.nudge("move", device);
+            if (step.y !== 0) {
+                this.handle_key(step.y < 0 ? "ArrowUp" : "ArrowDown");
+            } else if (step.x > 0) {
+                this.handle_key(OPEN_KEY);
+            } else if (step.x < 0) {
+                this.handle_key("Escape");
+            }
+        }
+        if (actions.has("confirm") && actions.just_pressed("confirm", device)) {
+            this.handle_key("Enter");
+        }
+        if (actions.has("back") && actions.just_pressed("back", device)) {
+            this.handle_key("Escape");
         }
     }
 
