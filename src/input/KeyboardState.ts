@@ -8,7 +8,10 @@
  *
  * Keys are identified by `KeyboardEvent.key` ("ArrowLeft", "a", "A", "Ä", " ", "Enter").
  * `is_down` holds while the key is held; `was_pressed` / `was_released` and `typed` are edges
- * and characters collected since the last `end_frame()`. Only `EventTarget` and the event
+ * and characters collected since the last `end_frame()`. The same questions by
+ * `KeyboardEvent.code` ("KeyW", "Space", "ArrowLeft"), the key's place on the keyboard whatever
+ * its layout types, are `is_code_down`, `was_code_pressed` and `was_code_released`: that is
+ * what an `ActionMap` binds. Only `EventTarget` and the event
  * types are used, never `document` or `window`, so the class also works in jsdom and in tests
  * that dispatch synthetic events.
  */
@@ -16,6 +19,9 @@ export class KeyboardState {
     private readonly down_keys = new Set<string>();
     private readonly pressed_keys = new Set<string>();
     private readonly released_keys = new Set<string>();
+    private readonly down_codes = new Set<string>();
+    private readonly pressed_codes_of_frame = new Set<string>();
+    private readonly released_codes = new Set<string>();
     private typed_characters: string[] = [];
     private controller: AbortController | null = null;
 
@@ -28,6 +34,13 @@ export class KeyboardState {
             this.pressed_keys.add(key);
         }
         this.down_keys.add(key);
+        const code = event.code;
+        if (code) {
+            if (!event.repeat && !this.down_codes.has(code)) {
+                this.pressed_codes_of_frame.add(code);
+            }
+            this.down_codes.add(code);
+        }
         if (is_printable(event)) {
             this.typed_characters.push(key);
         }
@@ -40,6 +53,9 @@ export class KeyboardState {
         const key = event.key;
         if (this.down_keys.delete(key)) {
             this.released_keys.add(key);
+        }
+        if (event.code && this.down_codes.delete(event.code)) {
+            this.released_codes.add(event.code);
         }
     };
 
@@ -88,6 +104,26 @@ export class KeyboardState {
         return this.released_keys.has(key);
     }
 
+    /** `true` while the key at `code` (`KeyboardEvent.code`, e.g. "KeyW") is held down. */
+    public is_code_down(code: string): boolean {
+        return this.down_codes.has(code);
+    }
+
+    /** `true` when the key at `code` went down since the last `end_frame()`, auto-repeat aside. */
+    public was_code_pressed(code: string): boolean {
+        return this.pressed_codes_of_frame.has(code);
+    }
+
+    /** `true` when the key at `code` was released since the last `end_frame()`. */
+    public was_code_released(code: string): boolean {
+        return this.released_codes.has(code);
+    }
+
+    /** The codes that went down since the last `end_frame()`, in order. */
+    public pressed_codes(): string[] {
+        return [...this.pressed_codes_of_frame];
+    }
+
     /**
      * The printable characters typed since the last `end_frame()`, in order, auto-repeat
      * included: a single-character `key` without Ctrl or Meta (AltGr still types).
@@ -100,12 +136,15 @@ export class KeyboardState {
     public end_frame(): void {
         this.pressed_keys.clear();
         this.released_keys.clear();
+        this.pressed_codes_of_frame.clear();
+        this.released_codes.clear();
         this.typed_characters = [];
     }
 
     /** Forgets everything, held keys included. */
     public clear(): void {
         this.down_keys.clear();
+        this.down_codes.clear();
         this.end_frame();
     }
 }

@@ -106,4 +106,43 @@ describe("KeyboardState", () => {
         expect(keyboard.is_down("a")).toBe(false);
         expect(keyboard.is_down("b")).toBe(true);
     });
+
+    it("follows the physical key by its code, whatever the layout types", () => {
+        const { keyboard, element } = setup();
+        // A German keyboard: the key left of U types "z" and has the code "KeyY".
+        key_down(element, "z", { code: "KeyY" });
+        expect(keyboard.is_code_down("KeyY")).toBe(true);
+        expect(keyboard.was_code_pressed("KeyY")).toBe(true);
+        expect(keyboard.is_code_down("KeyZ")).toBe(false);
+        expect(keyboard.pressed_codes()).toEqual(["KeyY"]);
+        keyboard.end_frame();
+        expect(keyboard.is_code_down("KeyY")).toBe(true);
+        expect(keyboard.was_code_pressed("KeyY")).toBe(false);
+        expect(keyboard.pressed_codes()).toEqual([]);
+        element.dispatchEvent(
+            new KeyboardEvent("keyup", { key: "Z", code: "KeyY" }),
+        );
+        expect(keyboard.is_code_down("KeyY")).toBe(false);
+        expect(keyboard.was_code_released("KeyY")).toBe(true);
+    });
+
+    it("forgets held codes on blur and on clear", () => {
+        const { keyboard, element } = setup();
+        key_down(element, "a", { code: "KeyA" });
+        element.dispatchEvent(new FocusEvent("blur"));
+        expect(keyboard.is_code_down("KeyA")).toBe(false);
+        key_down(element, "a", { code: "KeyA" });
+        keyboard.clear();
+        expect(keyboard.is_code_down("KeyA")).toBe(false);
+        expect(keyboard.was_code_pressed("KeyA")).toBe(false);
+    });
+
+    it("does not count an auto-repeat as a new press of the code", () => {
+        const { keyboard, element } = setup();
+        key_down(element, "d", { code: "KeyD" });
+        keyboard.end_frame();
+        key_down(element, "d", { code: "KeyD", repeat: true });
+        expect(keyboard.was_code_pressed("KeyD")).toBe(false);
+        expect(keyboard.is_code_down("KeyD")).toBe(true);
+    });
 });
