@@ -20,7 +20,8 @@ npm install @game.object/ts-game-toolbox
 | UI | Canvas widgets, states, themes and movement, menus, scrolling | [ui.md](docs/ui.md) |
 | Signals | Event and signal sockets, observable values | [signals.md](docs/signals.md) |
 | Flow | `Progress`, `FixedStepClock`, `Tween`, timers, `Throttler`, asserts | [flow.md](docs/flow.md) |
-| Everything else | Colors, math helpers, `SpriteBatch`, `PixelCanvas`, input, seeded random, camera, tile maps, testing | [misc.md](docs/misc.md) |
+| Input | `ActionMap`: actions by name from the keyboard, a gamepad and touch controls, owned by the game shell; `KeyboardState`, `PointerInput`, `MenuInput` | [misc.md](docs/misc.md#input), [game-shell.md](docs/game-shell.md#actions) |
+| Everything else | Colors, math helpers, `SpriteBatch`, `PixelCanvas`, seeded random, camera, tile maps, testing | [misc.md](docs/misc.md) |
 
 The playground in `test-src/` shows most modules at work: `npm run dev`.
 

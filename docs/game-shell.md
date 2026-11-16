@@ -120,13 +120,14 @@ Override what differs; everything has a default.
 - **Rounds.** `round_end_hold_seconds` (default 0): an end card stays this long before a press can start the next round, so a press meant for the game doesn't skip it.
 - **Themes.** `themes` maps names to theme rules, and `theme_fade_seconds` fades between them. See "Themes" below.
 - **Files.** `images` and `sounds` map names to imported files; the shell loads them when the element starts. `music` names the track from `sounds` that loops while the game can be played. `sound_mute_key` (`s`) and `music_mute_key` (`m`) do what the mute buttons do; `mute_answer_sound` (`select`) is what a mute button answers with.
-- **Intro and start screen.** `intro_timeout_ms` (6000), `intro_hold_ms` (1500), `start_button`, `start_hint`.
+- **Actions.** `actions`, the game's `ActionBindings` (default `DEFAULT_ACTIONS`: `move`, `confirm`, `back`, `pause`); see "Actions" below. `touch_stick` and `touch_buttons` (both off) turn on the shell's touch controls, `stick_dead_zone` (0.2) is a gamepad stick's still part, `unsupported_pad_notice` what shows for a pad without the standard mapping.
+- **Intro and start screen.** `intro_timeout_ms` (6000), `intro_hold_ms` (1500), `start_button`, `start_hint`, and `start_hint_gamepad` and `start_hint_touch` for the device in use.
 
 ## Properties
 
 - **State.** `game`, `seed`, `restarts`, `best` (a `SessionBest`), `pointer` (the last pointer position in layout coordinates, null when it left), `layout` (the stage's choice), `is_dirty` (set it when something changed outside `update()`).
 - **`frame_seconds`**: how long the last frame really took. `update()` gets the same time capped at 0.1 s, so a slow frame can't throw the game; this one is for a frame rate meter or a `FrameBudget`.
-- **Input.** `ui` and `page`, the toolbox UI on the canvas; `keyboard`, a `KeyboardState` to read in `update()`; `menu_inputs`, the `MenuInput`s the shell hands the keys (every placed `MenuView` brings its own).
+- **Input.** `ui` and `page`, the toolbox UI on the canvas; `actions`, the `ActionMap` of `settings.actions`, updated before every `update()`; `keyboard`, a `KeyboardState` to read in `update()`; `menu_inputs`, the `MenuInput`s the shell hands the keys and the gamepad (every placed `MenuView` brings its own); `touch_controls`, the stick and buttons of `settings.touch_stick` and `touch_buttons`; `pad_notice`, the shell's `TimedNotice` for a pad it doesn't support.
 - **Sound.** `audio`, an `AudioPlayer` over the loaded sounds; `sound_button` and `music_button`, see below.
 - **`place(widget, rect_of, parent = page)`** adds a widget and keeps it at `rect_of(layout)` in every layout the stage picks. Build the widget with `UNPLACED`; the rect comes from the layout. `place_widgets()` moves them all again, for a rule that depends on game state.
 - **Themes.** `set_theme(rules, fade_seconds = 0)` swaps the game's theme rules; the house rules stay underneath and the layout's `theme_rules` on top. `show_theme(name)` shows one of `settings.themes`, and `blended(table)` gives a game's own table per theme name (the colors it paints) as it stands right now, in step with the widgets during a fade. Usually the logic's `theme_name(game)` decides and the shell calls `show_theme()`.
@@ -143,6 +144,7 @@ The house look (`default_theme(settings)`) gives every widget a finished look wi
 - **`result_panel(result)`**: the end of a round: title, the big value, the session best, the round's numbers, and a pill with what to press next (grey while `is_action_ready` is false; pass the logic's `is_round_end_ready` through the frame).
 - **Shapes.** `disc()`, `ellipse()`, `polygon(points, fill, outline?)`. `trace_polygon(points)` only adds the outline to the current path: many shapes traced into one path cost one `fill()`, which is what a scene of thousands needs.
 - **`paint_image(name, rect, style?)`** paints a loaded image by name, `is_contained` to keep its proportions, `is_smooth` for photos (default off: pixel art stays sharp). Until the image has arrived it paints nothing and returns false; the shell repaints when it arrives.
+- **Overlay.** The shell paints `frame.overlay` over the scene and under the UI: `paint_touch_controls(context, touch)` from the first touch on, and `paint_notice(context, layout, text)` for the pad notice. Override either for a look of the game's own.
 - **`visible`**: all the canvas shows in layout coordinates, the layout and the margins around it. A sky that runs to the screen's edge paints this, not the layout.
 - **Start screen.** It comes for free: the title, `settings.rule` (or `start_subtitle(game)`), the start button. `paint_start_backdrop()` paints a scene behind it, `start_picture_height` and `paint_start_picture()` a picture above the title, `start_card` a card behind both. Layouts that are `HeaderLayout`s get the title and rule in the game screen too, with `paint_header()`.
 
@@ -169,12 +171,42 @@ class BushRenderer extends CanvasGameRenderer<Game> {
 - **The game.** `create_game(seed)` is the one hook a game must write. `on_new_game(game)` follows every new game.
 - **The frame.** `update(game, delta_seconds)` moves the game and returns true when the screen changed; it runs only after the intro. `sync(game)` runs before every repaint, for what follows from the state outside the picture: which widgets show, their labels and classes. `frame(game)` adds the renderer's extras.
 - **Input.** `on_press`, `on_move`, `on_release` and `on_leave` get what the UI didn't take, in layout coordinates. `on_wheel(point, pixels, event)` returns true when the game used the wheel; the page then doesn't scroll. `on_key_down` repeats while a key is held, `on_key_press` comes once per press, `on_key_up`, and `on_shortcut` for keys with Ctrl, Alt or Meta. No input reaches the game before the intro is over.
+- **Actions.** Read `this.properties.actions` in `update()`: `vector("move")`, `is_down("fire")`, `just_pressed("pause")`. The keyboard, the first standard gamepad and the touch controls all feed it; see "Actions" below.
 - **Widgets.** `on_click(widget, handler)`, `on_change(widget, handler)` and `on_refused(widget, handler)` (a press on a disabled widget: where a game says why). Each replaces the handler instead of adding a second one, so calling them in `on_start()` on every connection is safe.
 - **Lifecycle.** `on_start(signal)` runs on every connection, `on_stop()` on every disconnection; the state stays. `on_layout(layout)` follows a layout switch, after the placed widgets moved.
 - **Rounds.** A game whose `is_round_finished(game)` says so gets `on_round_finished(game)` once (offer the result to `properties.best` there), and a press or a `next_round_keys` key then calls `start_next_round()` (default: `restart()`) instead of reaching the input hooks. While `settings.round_end_hold_seconds` hasn't passed, `is_round_end_ready` is false and such a press does nothing.
 - **Status line.** `set_status(text)` says something to assistive technology. `live_status(game)` keeps it in step with the game after every repaint, `ready_status(game)` and `intro_status(state)` cover the start.
 - **Themes.** `theme_name(game)` names the entry of `settings.themes` that shows; the shell swaps when the answer changes.
 - **Files that come later.** A file asked for with `references.assets.request()` repaints as it arrives, like an image of `settings.images`; `paint_image()` finds a requested image by its name. See [assets.md](assets.md).
+
+## Actions
+
+A game asks for actions by name, never for a key, a pad or a finger. `settings.actions` declares them as plain data, and the shell builds `properties.actions`, an `ActionMap` over the keyboard, the first gamepad in the browser's standard mapping and the touch controls, and updates it before every `update()`.
+
+```ts
+const ROVER_ACTIONS = {
+    move: DEFAULT_ACTIONS.move,
+    fire: { kind: "button", keys: ["Space"], pad: ["a", "rt"], touch: "button", label: "Boost" },
+    confirm: { kind: "button", keys: ["Enter"], pad: ["a"] },
+    back: DEFAULT_ACTIONS.back,
+    pause: DEFAULT_ACTIONS.pause,
+} as const satisfies ActionBindings;
+
+class RoverSettings extends CanvasGameSettings {
+    public override readonly actions = ROVER_ACTIONS;
+    public override readonly touch_stick = true;    // a floating stick on the left half
+    public override readonly touch_buttons = true;  // a round "Boost" button on the right
+}
+
+// in the logic's update(game, delta_seconds):
+const actions = this.properties.actions;
+game.drive(actions.vector("move"), actions.is_down("fire"));
+```
+
+- **Touch** is opt-in, because a stick on the left half takes the taps a puzzle game wants. When on, the shell gives the touch controls the touches no widget took, before `on_press()`, several fingers at once, and paints them from the first touch on; the rest of the touches reach the game as before.
+- **Menus.** Every placed `MenuView`'s input reads `move`, `confirm` and `back` from the gamepad (`MenuInput.handle_actions()`), so every shell menu works with a pad.
+- **The shell's own use.** A pad's `confirm` (A) leaves the start screen and starts the next round on a finished one, as Space does. `actions.last_device` picks the start screen's hint (`start_hint`, `start_hint_gamepad`, `start_hint_touch`) and the intro status; before any input it is `touch` on a device whose main pointer is coarse. A pad without the standard mapping is ignored, and `pad_notice` says so over the game for six seconds.
+- A game that never reads `properties.actions` loses nothing: the map is read every frame anyway, and its keys and taps reach the hooks as before.
 
 ## Sound
 
