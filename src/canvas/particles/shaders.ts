@@ -73,6 +73,7 @@ uniform vec2 u_pixels;
 uniform float u_pixels_per_unit;
 uniform float u_max_point;
 out vec4 v_color;
+out float v_solid;
 
 // 0xrrggbb as a float, taken apart with float steps: exact below 2^24, where int(packed + 0.5)
 // is not (0xffffff + 0.5 rounds up to 2^24), and some drivers get the bit shifts wrong.
@@ -91,6 +92,7 @@ void main() {
     vec4 d = texelFetch(u_d, coord, 0);
     float age = u_time - b.x;
     v_color = vec4(0.0);
+    v_solid = 0.0;
     if (age < 0.0 || age >= b.y || abs(d.z - u_blend) > 0.5) {
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         gl_PointSize = 1.0;
@@ -102,10 +104,13 @@ void main() {
     vec3 color = mix(unpack_color(c.x), unpack_color(c.y), life);
     float alpha = clamp(mix(d.x, d.y, life), 0.0, 1.0);
     float size = mix(c.z, c.w, life) * u_pixels_per_unit;
-    // Smaller than a pixel: one pixel, fainter by the area it lacks.
-    if (size < 1.0) {
-        alpha *= max(size, 0.0) * max(size, 0.0);
+    // Under SOLID_BELOW pixels: one solid pixel, fainter by the light it lacks (ParticleRaster).
+    v_solid = 0.0;
+    if (size < SOLID_BELOW) {
+        float share = max(size, 0.0) / SOLID_BELOW;
+        alpha *= share * share;
         size = 1.0;
+        v_solid = 1.0;
     }
     vec3 pixel = u_world_to_pixel * vec3(a.xy, 1.0);
     gl_Position = vec4(pixel.x / u_pixels.x * 2.0 - 1.0, 1.0 - pixel.y / u_pixels.y * 2.0, 0.0, 1.0);
@@ -115,21 +120,22 @@ void main() {
 `;
 
 /**
- * A soft round dot, (1 - r²)² towards its rim, premultiplied. A glowing one keeps its alpha at
+ * A soft round dot, (1 - r²)² towards its rim, premultiplied; a solid pixel for a tiny one. A glowing one keeps its alpha at
  * its brightest channel, so what adds up stays a valid premultiplied colour (Last Energy's
  * lesson: a browser that un-premultiplies the canvas keeps it).
  */
 export const DRAW_FRAGMENT = `
 uniform float u_blend;
 in vec4 v_color;
+in float v_solid;
 out vec4 o_color;
 void main() {
     vec2 from_middle = gl_PointCoord - 0.5;
     float r2 = dot(from_middle, from_middle) * 4.0;
-    if (r2 >= 1.0) {
+    if (r2 >= 1.0 && v_solid < 0.5) {
         discard;
     }
-    float fall = (1.0 - r2) * (1.0 - r2);
+    float fall = v_solid > 0.5 ? 1.0 : (1.0 - r2) * (1.0 - r2);
     vec4 color = v_color * fall;
     if (u_blend > 0.5) {
         color.a = max(color.r, max(color.g, color.b));

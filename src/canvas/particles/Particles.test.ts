@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SeededRandom } from "../../random";
 import { ParticleEffect, PARTICLE_EFFECTS } from "./ParticleEffect";
 import { Particles, ParticlesOptions } from "./Particles";
+import { ParticleRaster } from "./ParticleRaster";
 import { drift } from "./ParticleStore";
 
 /** One square the CPU path painted: where, how big, in which colour and how opaque. */
@@ -371,5 +372,116 @@ describe("Particles choosing a backend", () => {
     it("on the CPU by choice, nothing to report", () => {
         const particles = cpu_particles();
         expect(particles.fallback_reason).toBeNull();
+    });
+});
+
+describe("ParticleRaster, the CPU's picture", () => {
+    it("splats a dot as the GPU rasterises a point: the pixels whose middles lie in its square, soft to the rim", () => {
+        const raster = new ParticleRaster();
+        raster.resize(10, 10);
+        raster.splat(5, 5, 4, 1, 0.5, 0, 1, false);
+        // Pixel 4's middle is 4.5: 1.5 into the square from 3, -0.125 from its middle, r² = 0.125.
+        const fall = (1 - 0.125) * (1 - 0.125);
+        const [red, green, blue, alpha] = raster.pixel(4, 4);
+        expect(red).toBeCloseTo(fall, 6);
+        expect(green).toBeCloseTo(fall / 2, 6);
+        expect(blue).toBe(0);
+        expect(alpha).toBeCloseTo(fall, 6);
+        // The corner pixel's middle lies outside the round dot.
+        expect(raster.pixel(3, 3)).toEqual([0, 0, 0, 0]);
+        expect([raster.left, raster.top, raster.right, raster.bottom]).toEqual([
+            3, 3, 7, 7,
+        ]);
+    });
+
+    it("adds glowing light, alpha by the brightest channel, and paints normal ones over", () => {
+        const raster = new ParticleRaster();
+        raster.resize(4, 4);
+        raster.splat(1.9, 1.2, 1, 0.5, 0.25, 0, 1, true);
+        raster.splat(1.1, 1.7, 1, 0.5, 0.25, 0, 1, true);
+        // Narrower than 2 pixels: the pixel under the middle, solid, at (1 / 2)² of the opacity.
+        expect(raster.pixel(1, 1)[0]).toBeCloseTo(0.25, 6);
+        expect(raster.pixel(1, 1)[1]).toBeCloseTo(0.125, 6);
+        expect(raster.pixel(1, 1)[3]).toBeCloseTo(0.25, 6);
+        raster.clear();
+        expect(raster.is_empty).toBe(true);
+        expect(raster.pixel(1, 1)).toEqual([0, 0, 0, 0]);
+        raster.splat(1.5, 1.5, 1.999, 1, 1, 1, 0.5 / 0.999, false);
+        raster.splat(1.5, 1.5, 1.999, 0, 0, 0, 0.5 / 0.999, false);
+        // Black at half over white at half: 0.25 white left, alpha 0.75.
+        expect(raster.pixel(1, 1)[0]).toBeCloseTo(0.25, 6);
+        expect(raster.pixel(1, 1)[3]).toBeCloseTo(0.75, 6);
+        const data = new Uint8ClampedArray(4 * 4 * 4);
+        raster.write_into(data);
+        const at = (1 * 4 + 1) * 4;
+        expect(Array.from(data.slice(at, at + 4))).toEqual([85, 85, 85, 191]);
+    });
+
+    it("is what the CPU draws: one put and one copy per blend, under the context's transform", () => {
+        const puts: Array<{ data: Uint8ClampedArray; rect: number[] }> = [];
+        const copies: Array<{ composite: string; rect: number[] }> = [];
+        const raster_canvas = {
+            width: 1,
+            height: 1,
+            getContext: () => ({
+                createImageData: (width: number, height: number) => ({
+                    width,
+                    height,
+                    data: new Uint8ClampedArray(width * height * 4),
+                }),
+                putImageData: (
+                    image: { data: Uint8ClampedArray },
+                    _x: number,
+                    _y: number,
+                    ...rect: number[]
+                ) => {
+                    puts.push({ data: image.data.slice(), rect });
+                },
+            }),
+        };
+        let composite = "source-over";
+        const context = {
+            canvas: { width: 100, height: 80 },
+            getTransform: () => ({ a: 2, b: 0, c: 0, d: 2, e: 10, f: 0 }),
+            save: () => undefined,
+            restore: () => {
+                composite = "source-over";
+            },
+            setTransform: () => undefined,
+            set globalAlpha(_value: number) {},
+            set globalCompositeOperation(value: string) {
+                composite = value;
+            },
+            drawImage: (_image: unknown, ...rect: number[]) => {
+                copies.push({ composite, rect });
+            },
+        } as unknown as CanvasRenderingContext2D;
+        const random = new SeededRandom(1);
+        const particles = new Particles({
+            backend: "cpu",
+            random: () => random.next(),
+            make_canvas: (_width, _height, purpose) =>
+                purpose === "raster"
+                    ? (raster_canvas as unknown as OffscreenCanvas)
+                    : null,
+        });
+        particles.emit({ ...ONE, speed: [0, 0], size: [3, 3] }, 20, 10);
+        particles.emit(
+            { ...ONE, speed: [0, 0], size: [3, 3], blend: "glow" },
+            30,
+            10,
+        );
+        particles.update(0.1);
+        particles.draw(context);
+        expect(copies.map((copy) => copy.composite)).toEqual([
+            "source-over",
+            "lighter",
+        ]);
+        // At 2x and 10 to the right: the normal one round pixel (50, 20), 6 pixels across.
+        expect(copies[0].rect).toEqual([47, 17, 6, 6, 47, 17, 6, 6]);
+        expect(copies[1].rect).toEqual([67, 17, 6, 6, 67, 17, 6, 6]);
+        const middle = (20 * 100 + 50) * 4;
+        expect(puts[0].data[middle]).toBe(255);
+        expect(puts[0].data[middle + 3]).toBeGreaterThan(200);
     });
 });

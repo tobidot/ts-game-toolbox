@@ -1,4 +1,5 @@
 import {
+    CanvasPurpose,
     CpuParticles,
     MakeCanvas,
     ParticleBackend,
@@ -16,16 +17,17 @@ export interface ParticlesOptions {
     readonly backend?: ParticleBackendChoice;
     /**
      * The most particles alive at once, rounded up to whole rows of 1 024 (at most 2 097 152);
-     * default 131 072. When all are taken, the oldest particle makes room. The GPU keeps five
-     * float textures of this size (80 bytes a particle), the CPU 96 bytes a particle.
+     * default 131 072. When all are taken, the oldest particle makes room. The births take 64
+     * bytes a particle in memory either way; the CPU adds 20 for the motion, the GPU five float
+     * textures, 80 bytes a particle of graphics memory.
      */
     readonly capacity?: number;
     /** Where the spread, speeds and lifetimes come from; default `Math.random`. A seeded one replays a show. */
     readonly random?: () => number;
     /**
-     * Makes the canvas the GPU draws into and the CPU's dot pictures; default: a `<canvas>` where
-     * there is a document, else an `OffscreenCanvas`, else none. A test passes `() => null`: the
-     * CPU then paints squares and the GPU isn't there.
+     * Makes the canvas the GPU draws into and the one the CPU's raster is put onto; default: a
+     * `<canvas>` for the GPU and an `OffscreenCanvas` for the raster, whichever there is, none in
+     * jsdom. A test passes `() => null`: the CPU then paints squares and the GPU isn't there.
      */
     readonly make_canvas?: MakeCanvas;
 }
@@ -33,18 +35,29 @@ export interface ParticlesOptions {
 /** Default `capacity`. */
 export const PARTICLE_CAPACITY = 131072;
 
-/** A `<canvas>` or an `OffscreenCanvas`, whichever this place has. */
+/**
+ * The GPU draws into a `<canvas>` (every browser with WebGL 2 copies one onto a 2D canvas); the
+ * CPU's raster goes onto an `OffscreenCanvas` where there is one.
+ */
 function default_canvas(
     width: number,
     height: number,
+    purpose: CanvasPurpose,
 ): HTMLCanvasElement | OffscreenCanvas | null {
-    if (typeof document !== "undefined" && !is_jsdom()) {
+    if (is_jsdom()) {
+        return null;
+    }
+    const has_offscreen = typeof OffscreenCanvas !== "undefined";
+    if (purpose === "raster" && has_offscreen) {
+        return new OffscreenCanvas(width, height);
+    }
+    if (typeof document !== "undefined") {
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
         return canvas;
     }
-    if (typeof OffscreenCanvas !== "undefined") {
+    if (has_offscreen) {
         return new OffscreenCanvas(width, height);
     }
     return null;
@@ -81,6 +94,11 @@ export class Particles {
     private readonly make_canvas: MakeCanvas;
     private current: ParticleBackend;
     private reason: string | null = null;
+    /**
+     * The GPU backend kept while the CPU runs, so changing back needs no new WebGL context:
+     * browsers keep only a few alive, and losing one on purpose is a console warning.
+     */
+    private spare: ParticleBackend | null = null;
 
     public constructor(options: ParticlesOptions = {}) {
         this.store = new ParticleStore(options.capacity ?? PARTICLE_CAPACITY);
@@ -116,8 +134,24 @@ export class Particles {
 
     /** Changes the backend; the living particles go on where they are. Answers the backend in use. */
     public use_backend(choice: ParticleBackendChoice): ParticleBackendName {
+        const current = this.current;
+        if (choice === "cpu" && current.name === "cpu") {
+            this.reason = null;
+            return "cpu";
+        }
+        if (choice !== "cpu" && current.name === "gpu") {
+            return "gpu";
+        }
         const next = this.create(choice);
-        this.current.destroy();
+        if (next === current) {
+            return current.name;
+        }
+        if (current.name === "gpu" && !current.is_lost) {
+            this.spare?.destroy();
+            this.spare = current;
+        } else {
+            current.destroy();
+        }
         this.current = next;
         next.adopt(this.store);
         return next.name;
@@ -162,12 +196,22 @@ export class Particles {
     /** Frees the graphics card's memory; the particles are gone. */
     public destroy(): void {
         this.current.destroy();
+        this.spare?.destroy();
+        this.spare = null;
         this.store.clear();
     }
 
     private create(choice: ParticleBackendChoice): ParticleBackend {
         this.reason = null;
         if (choice !== "cpu") {
+            const spare = this.spare;
+            if (spare !== null) {
+                this.spare = null;
+                if (!spare.is_lost) {
+                    return spare;
+                }
+                spare.destroy();
+            }
             const gpu = GpuParticles.create(
                 this.store.capacity,
                 this.make_canvas,

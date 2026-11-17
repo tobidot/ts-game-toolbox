@@ -1,4 +1,5 @@
 import { MakeCanvas, ParticleBackend } from "./CpuParticles";
+import { SOLID_BELOW } from "./ParticleRaster";
 import { PARTICLE_ROW, ParticleStore } from "./ParticleStore";
 import {
     DRAW_FRAGMENT,
@@ -18,6 +19,7 @@ precision highp float;
 precision highp int;
 precision highp sampler2D;
 #define ROW ${PARTICLE_ROW}
+#define SOLID_BELOW ${SOLID_BELOW.toFixed(1)}
 `;
 
 /** A shader program and its uniform locations by name. */
@@ -131,7 +133,7 @@ export class GpuParticles implements ParticleBackend {
         capacity: number,
         make_canvas: MakeCanvas,
     ): GpuParticlesOrReason {
-        const canvas = make_canvas(1, 1);
+        const canvas = make_canvas(1, 1, "gpu");
         if (canvas === null) {
             return "no canvas to draw on here";
         }
