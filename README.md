@@ -22,6 +22,7 @@ npm install @game.object/ts-game-toolbox
 | Flow | `Progress`, `FixedStepClock`, `Tween`, timers, `Throttler`, asserts | [flow.md](docs/flow.md) |
 | Input | `ActionMap`: actions by name from the keyboard, a gamepad and touch controls, owned by the game shell; `KeyboardState`, `PointerInput`, `MenuInput` | [misc.md](docs/misc.md#input), [game-shell.md](docs/game-shell.md#actions) |
 | World | `TileMap`, and pathfinding on any grid: `find_path` (A*), `flow_field` for many walkers to one place, `smooth_path` | [world.md](docs/world.md) |
+| Animation | Sprite sheets cut by grid or from a catalogue entry's data, clips as plain data, `AnimationPlayer` with play, queue, `then`, speed and frame events | [animation.md](docs/animation.md) |
 | Everything else | Colors, math helpers, `SpriteBatch`, `PixelCanvas`, seeded random, camera, testing | [misc.md](docs/misc.md) |
 
 The playground in `test-src/` shows most modules at work: `npm run dev`.

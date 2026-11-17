@@ -35,6 +35,7 @@ The `helpers` folder also has **ID** (unique ids), **MathHelper** (`float_equals
 ## Canvas
 
 - **`PixelCanvas`**: a buffer of palette indices with the tools of a small pixel editor: `set`, `line`, `rect`, `flood_fill`, `snapshot` / `restore` for undo, and `to_image_data(palette)` for painting it. Step 14 (Pixel Paint) is built on it.
+- **Sprite animation** (`canvas/animation`): `SpriteSheet`, `AnimationClip`, `AnimationPlayer`; see [animation.md](animation.md).
 - **`SpriteBatch`**: many sprites drawn quickly. `add(image, x, y, angle, width, height)` for each (the middle of the sprite, radians clockwise, 0 faces right), then `draw(context)` once a frame. It draws image by image, with one `setTransform` per sprite on top of the context's transform and no `save()` / `restore()`, and leaves the transform as it was. All sprites of the first image added lie under those of the next: draw what must be on top in a batch of its own. The batch keeps its storage between frames. Step 29 (Horde) draws its crowd with it.
 
 ```ts
