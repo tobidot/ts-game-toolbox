@@ -1,4 +1,5 @@
 import { AudioPlayer } from "../audio/AudioPlayer";
+import { AnimationPlayer } from "../canvas/animation/AnimationPlayer";
 import { Progress } from "../flow";
 import { Vector2I } from "../geometries";
 import { InputDevice } from "../input/actions/ActionBindings";
@@ -137,6 +138,7 @@ export abstract class CanvasGameLogic<
         // `settings.images` does: a still game repaints only when something changed.
         references.assets.progress.listen(() => {
             properties.is_dirty = true;
+            references.update_sheet_images();
             const music = settings.music;
             if (
                 this.is_music_waiting &&
@@ -146,6 +148,16 @@ export abstract class CanvasGameLogic<
                 this.start_music();
             }
         });
+    }
+
+    /**
+     * A sprite that moves, in one line: a player of the sheet `references.sheet(name)`, playing
+     * `clip` (default: the sheet's default clip). With `settings.catalogue_images = { cob:
+     * "rendered/character/cabbage-cob" }`, `this.load_animation("cob")` plays the catalogue's
+     * clips; the player waits while the data is on its way and draws once the picture is there.
+     */
+    public load_animation(name: string, clip?: string): AnimationPlayer {
+        return this.references.sheet(name).player(clip);
     }
 
     // ---- lifecycle ----
@@ -641,6 +653,7 @@ export abstract class CanvasGameLogic<
         const progress = new Progress();
         progress.listen(() => {
             this.properties.is_dirty = true;
+            this.references.update_sheet_images();
         });
         this.references.assets.load_images(images, progress).catch(() => {
             // Already warned about; the game runs on without that picture.

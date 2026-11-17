@@ -1,4 +1,5 @@
 import { AssetManager } from "../assets/manager/AssetManager";
+import { SpriteSheet } from "../canvas/animation/SpriteSheet";
 import { CanvasStage } from "../stage/CanvasStage";
 import { StageLayout } from "../stage/StageLayout";
 import { CanvasGameSettings } from "./CanvasGameSettings";
@@ -84,6 +85,11 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
     public readonly $status: HTMLDivElement;
     /** Holds `settings.images` and `settings.sounds` as they load; `paint_image()` and `properties.audio` read them. */
     public readonly assets = new AssetManager();
+    /**
+     * Sprite sheets by the game's name: a picture of `settings.catalogue_images` whose catalogue
+     * entry has `sheet` data gets its frames and clips here. `sheet(name)` makes one.
+     */
+    public readonly sheets = new Map<string, SpriteSheet>();
 
     public constructor(
         host: HTMLElement,
@@ -111,5 +117,37 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
 
         this.$root.append(this.$stage, this.$status);
         this.shadow.append(this.$root);
+    }
+
+    /**
+     * The sprite sheet named `name`, empty until its data comes (from the catalogue, or a game's
+     * own `set_data()`). It takes the picture `assets.images` has under the same name, now or
+     * when it arrives, so a player made from it at once starts moving as soon as it can.
+     */
+    public sheet(name: string): SpriteSheet {
+        let sheet = this.sheets.get(name);
+        if (sheet === undefined) {
+            sheet = new SpriteSheet();
+            this.sheets.set(name, sheet);
+        }
+        this.take_picture(name, sheet);
+        return sheet;
+    }
+
+    /** Gives every sheet still without a picture the one that came under its name. */
+    public update_sheet_images(): void {
+        for (const [name, sheet] of this.sheets) {
+            this.take_picture(name, sheet);
+        }
+    }
+
+    private take_picture(name: string, sheet: SpriteSheet): void {
+        if (sheet.image !== null) {
+            return;
+        }
+        const asset = this.assets.images.get(name);
+        if (asset !== undefined && asset.ready) {
+            sheet.image = asset.element;
+        }
     }
 }

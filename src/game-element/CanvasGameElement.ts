@@ -1,3 +1,4 @@
+import { SheetData } from "../canvas/animation/SheetData";
 import { IntroGate } from "../stage/IntroGate";
 import { StageLayout } from "../stage/StageLayout";
 import { CanvasGameProperties } from "./CanvasGameProperties";
@@ -36,6 +37,11 @@ export interface CatalogueFile {
     readonly url: string;
     /** Its server sends CORS headers (see `AssetRequest.cors`). */
     readonly cors?: boolean;
+    /**
+     * An image that is an animated sprite sheet: its frames and clips, as plain data. The shell
+     * puts them into `references.sheet(name)`; `logic.load_animation(name)` plays them.
+     */
+    readonly sheet?: SheetData;
 }
 
 /** `HTMLElement` where there is a DOM; a stand-in where the module is only imported (tests of a game). */
@@ -83,7 +89,9 @@ export abstract class CanvasGameElement<
             ? new parts.properties(settings, intro)
             : (new CanvasGameProperties(settings, intro) as P);
         const renderer = new parts.renderer(references, settings);
-        const assets = (references as unknown as CanvasGameReferences).assets;
+        const references_of_game =
+            references as unknown as CanvasGameReferences;
+        const assets = references_of_game.assets;
         this.request_catalogue = () => {
             const wanted = [
                 ...Object.entries(settings.catalogue_images).map(
@@ -96,6 +104,18 @@ export abstract class CanvasGameElement<
             for (const { name, id, kind } of wanted) {
                 this.load_catalogue_url(id, kind).then(
                     (file) => {
+                        if (kind === "image" && file.sheet !== undefined) {
+                            try {
+                                references_of_game
+                                    .sheet(name)
+                                    .set_data(file.sheet);
+                            } catch (error) {
+                                console.warn(
+                                    `<${this.localName}>: the sheet of "${id}" is not usable:`,
+                                    error,
+                                );
+                            }
+                        }
                         assets.request({
                             name,
                             url: file.url,
