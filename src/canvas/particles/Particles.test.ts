@@ -258,6 +258,18 @@ describe("Particles on the CPU", () => {
         expect(show(3)).not.toEqual(show(4));
     });
 
+    it("takes a new random source for a new round", () => {
+        const particles = cpu_particles();
+        const replay = (seed: number) => {
+            const random = new SeededRandom(seed);
+            particles.random = () => random.next();
+            particles.clear();
+            particles.emit(PARTICLE_EFFECTS.sparks, 0, 0);
+            return particles.snapshot();
+        };
+        expect(replay(5)).toEqual(replay(5));
+    });
+
     it("replaces the oldest when it is full", () => {
         const particles = cpu_particles({ capacity: 1024 });
         expect(particles.capacity).toBe(1024);

@@ -90,7 +90,8 @@ function is_jsdom(): boolean {
  */
 export class Particles {
     private readonly store: ParticleStore;
-    private readonly random: () => number;
+    /** Where the spread, speeds and lifetimes come from; a game swaps it for a new seeded round. */
+    public random: () => number;
     private readonly make_canvas: MakeCanvas;
     private current: ParticleBackend;
     private reason: string | null = null;
