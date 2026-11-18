@@ -2,7 +2,7 @@
 
 One document per major version: what it added, changed and removed, and how to move code from the major before.
 
-- [6.2.0 (unreleased)](v6.md#620-unreleased): seeded noise and noise recipes as plain data, filled into a `Grid2D` (Spielwerk step 34).
+- [6.2.0 (unreleased)](v6.md#620-unreleased): seeded noise and noise recipes as plain data, filled into a `Grid2D` (Spielwerk step 34); versioned save slots with migrations and autosave, a store hook in the game shell and a slot page (step 35).
 - [6.1.0](v6.md#610): input by name (`ActionMap`), grid pathfinding, sprite-sheet animation, GPU/CPU particles, catalogue media and sheets in the game shell, and a scroll bar for `ScrollGroup` (Spielwerk steps 30 to 33).
 - [6.0.0](v6.md): the Spielwerk modules of steps 15 to 29 and the canvas game shell; `PhysicsWorld` replaces `SweepingSatWorld`.
 - [5.x](v5.md): general helpers only (the MVC part is gone); from 5.4 on, the Spielwerk modules of steps 2 to 14.

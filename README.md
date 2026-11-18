@@ -25,6 +25,7 @@ npm install @game.object/ts-game-toolbox
 | Animation | Sprite sheets cut by grid or from a catalogue entry's data, clips as plain data, `AnimationPlayer` with play, queue, `then`, speed and frame events | [animation.md](docs/animation.md) |
 | Particles | `Particles`: effects as plain data (`PARTICLE_EFFECTS`), on the GPU (WebGL 2) or the CPU behind one API, picked by itself, exact motion, a lost context goes on on the CPU | [particles.md](docs/particles.md) |
 | Noise | Seeded simplex and value noise as functions, recipes as plain data with sizes in world units (`make_noise`, `NOISE_RECIPES`: hills, mountains, islands, clouds, marble), `fill_grid` into any `Grid2D`, `normalize_grid` | [noise.md](docs/noise.md) |
+| Saves | Versioned save slots (`SaveSlots`): migrations one version at a time, `validate`, a load that always plays (broken or newer files kept aside, never overwritten), saves in order with the last one winning, autosave on a timer and when the page hides, export and import as readable JSON; stores of text (`memory_store`, `local_storage_store`, or a host's own); the shell's `open_save_store()` hook and `SaveSlotsPage` | [saves.md](docs/saves.md) |
 | Everything else | Colors, math helpers, `SpriteBatch`, `PixelCanvas`, seeded random, camera, testing | [misc.md](docs/misc.md) |
 
 The playground in `test-src/` shows most modules at work: `npm run dev`.
