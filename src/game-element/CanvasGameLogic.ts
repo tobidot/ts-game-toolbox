@@ -327,6 +327,7 @@ export abstract class CanvasGameLogic<
                 mark_dirty();
             },
         });
+        properties.saves?.resume_autosave();
         this.on_start(signal);
         mark_dirty();
     }
@@ -339,6 +340,7 @@ export abstract class CanvasGameLogic<
         this.properties.abort_controller?.abort();
         this.properties.abort_controller = null;
         this.properties.audio.destroy();
+        this.properties.saves?.pause_autosave();
         this.on_stop();
     }
 

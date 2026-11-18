@@ -169,6 +169,24 @@ export class CanvasGameSettings<L extends StageLayout = StageLayout> {
     /** Shown for a moment when a gamepad without the browser's standard mapping is plugged in. */
     public readonly unsupported_pad_notice: string =
         "Dieses Gamepad hat keine Standardbelegung und wird nicht unterstützt.";
+    /**
+     * The version of the data the game saves, for `properties.save_slots()`: raise it when the
+     * saved data changes shape, and give that properties call a migration from the old one.
+     */
+    public readonly save_version: number = 1;
+    /**
+     * The name of the game's save folder (on a TCE desktop `/saves/<tag>/`, in local storage the
+     * prefix `<tag>/`). Null: the element's tag name, e.g. `tce-garden`.
+     */
+    public readonly save_tag: string | null = null;
+    /** The slots a `SaveSlotsPage` offers. */
+    public readonly save_slots: readonly string[] = [
+        "slot-1",
+        "slot-2",
+        "slot-3",
+    ];
+    /** How often a game's autosave writes, for `saves.autosave(slot, data, settings.autosave_seconds)`. */
+    public readonly autosave_seconds: number = 10;
     /** The start screen's texts. */
     public readonly start_button: string = "▶ Starten";
     /** The hint under the start button, for a keyboard and a mouse. */

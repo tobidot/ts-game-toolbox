@@ -1,6 +1,7 @@
 import { SheetData } from "../canvas/animation/SheetData";
 import { IntroGate } from "../stage/IntroGate";
 import { StageLayout } from "../stage/StageLayout";
+import { default_save_store, SaveStore } from "../storage/saves/SaveStore";
 import { CanvasGameProperties } from "./CanvasGameProperties";
 import { CanvasGameReferences } from "./CanvasGameReferences";
 import { CanvasGameSettings } from "./CanvasGameSettings";
@@ -64,6 +65,8 @@ export abstract class CanvasGameElement<
     private title_of_game = "";
     /** Asks for `settings.catalogue_images` and `catalogue_sounds`; null once asked. */
     private request_catalogue: (() => void) | null = null;
+    /** Hands `properties.saves` the host's store; null once done. */
+    private open_saves: (() => void) | null = null;
 
     protected assemble<
         S extends CanvasGameSettings<StageLayout>,
@@ -132,6 +135,16 @@ export abstract class CanvasGameElement<
                 );
             }
         };
+        const properties_of_game =
+            properties as unknown as CanvasGameProperties<unknown>;
+        this.open_saves = () => {
+            const saves = properties_of_game.saves;
+            if (saves !== null) {
+                saves.use_store(
+                    this.open_save_store(settings.save_tag ?? this.localName),
+                );
+            }
+        };
         return new parts.logic(
             this,
             references,
@@ -159,6 +172,17 @@ export abstract class CanvasGameElement<
         return Promise.reject(new Error(`no catalogue for "${id}"`));
     }
 
+    /**
+     * Where the game's saves go (`properties.saves`): a store named `tag` (`settings.save_tag`, else
+     * the element's tag name). Asked once, at the first connection, before the logic starts. The
+     * default is the browser's local storage under `<tag>/`; a hosting framework answers with its
+     * own (game-boot: the desktop's file system, `/saves/<tag>/`). A store that never opens leaves
+     * the game saving in memory.
+     */
+    protected open_save_store(tag: string): Promise<SaveStore> {
+        return Promise.resolve(default_save_store(`${tag}/`));
+    }
+
     /** After every connection, with the game's title. */
     protected on_connected(title: string): void {
         void title;
@@ -166,6 +190,11 @@ export abstract class CanvasGameElement<
 
     // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
     public connectedCallback(): void {
+        if (this.open_saves !== null) {
+            const open = this.open_saves;
+            this.open_saves = null;
+            open();
+        }
         this.logic.start();
         if (this.request_catalogue !== null) {
             const request = this.request_catalogue;

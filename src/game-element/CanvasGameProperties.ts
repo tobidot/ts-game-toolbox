@@ -18,6 +18,7 @@ import { Element } from "../ui/Element";
 import { Group } from "../ui/Group";
 import { UiPage } from "../ui/UiPage";
 import { MenuView } from "../ui/widgets/MenuView";
+import { SaveSlots, SaveSlotsOptions } from "../storage/saves/SaveSlots";
 import {
     CanvasGameSettings,
     HouseColors,
@@ -472,6 +473,14 @@ export class CanvasGameProperties<
     public readonly sound_button: MuteButton | null;
     /** Mutes the music. Null unless the game has `settings.music` and a layout places it. */
     public readonly music_button: MuteButton | null;
+    /**
+     * The game's saves; null for a game that saves nothing. A game that saves sets it in its
+     * properties with `save_slots()`: `public override readonly saves = this.save_slots<Garden>({
+     * fresh: new_garden, migrations })`. The element hands it the store of its host
+     * (`CanvasGameElement.open_save_store()`) at the first connection, and the shell holds its
+     * autosave, with one last save, while the element is off the page.
+     */
+    public readonly saves: SaveSlots<any> | null = null;
     /** The last pointer position over the canvas in layout coordinates; null when it left. */
     public pointer: Vector2I | null = null;
     /** The layout widgets are placed in; the stage's choice. */
@@ -533,6 +542,20 @@ export class CanvasGameProperties<
             settings.music !== null
                 ? this.place_mute_button((rects) => rects.music_button)
                 : null;
+    }
+
+    /**
+     * The game's `SaveSlots` in `settings.save_version`, for `saves`. The store comes from the
+     * element when it connects; until then (and in a test without an element) it is local storage.
+     */
+    protected save_slots<T>(
+        options: Omit<SaveSlotsOptions<T>, "version"> & { version?: number },
+    ): SaveSlots<T> {
+        return new SaveSlots<T>({
+            name: this.settings.save_tag ?? this.settings.title,
+            ...options,
+            version: options.version ?? this.settings.save_version,
+        });
     }
 
     /**
