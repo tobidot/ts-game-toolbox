@@ -10,6 +10,7 @@ export * from "./flow";
 export * from "./dom";
 export * from "./ui";
 export * from "./random";
+export * from "./storage";
 export * from "./input";
 export * from "./camera";
 export * from "./world";
