@@ -72,7 +72,7 @@ A game asks for "move" and "fire", not for keys; the keyboard, a gamepad and tou
 
 ## Random, camera, tile maps
 
-- **`SeededRandom`**: a seeded generator (mulberry32): `next()`, `int(min, max)`, `float(min, max)`, `chance(p)`, `fork()`. The same seed gives the same game.
+- **`SeededRandom`**: a seeded generator (mulberry32): `next()`, `int(min, max)`, `float(min, max)`, `chance(p)`, `fork()`. The same seed gives the same game. Seeded noise and recipes for maps are in [noise.md](noise.md).
 - **`Camera2D`**: a view that follows a target inside the world's bounds, with a dead zone, look-ahead and smoothing; `apply(context)` puts its transform on the canvas, `world_to_screen` / `screen_to_world` map points, `is_visible(rect)` culls, `parallax(factor)` for background layers.
 - **`TileMap`** and **`TileLayer`**: named layers of tiles on a grid; the ways across them (`find_path`, `flow_field`, `smooth_path`) are in [world.md](world.md).
 
