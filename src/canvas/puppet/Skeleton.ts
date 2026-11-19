@@ -38,6 +38,7 @@ export class Skeleton {
     public readonly world: Float64Array;
     private readonly world_angles: Float64Array;
     private readonly by_name: ReadonlyMap<string, number>;
+    private readonly tip: PuppetPoint = { x: 0, y: 0 };
 
     private constructor(
         names: readonly string[],
@@ -202,6 +203,20 @@ export class Skeleton {
         return out;
     }
 
+    /** How far a point of the puppet's space is from a bone's line (joint to tip). */
+    public distance_to_bone(index: number, x: number, y: number): number {
+        const tip = this.tip;
+        this.world_point(index, this.lengths[index], 0, tip);
+        return distance_to_segment(
+            x,
+            y,
+            this.world_x(index),
+            this.world_y(index),
+            tip.x,
+            tip.y,
+        );
+    }
+
     /**
      * The bone whose line (joint to tip) passes nearest to a point of the puppet's space, if it
      * is within `within`; -1 otherwise. For picking bones with a pointer (`Puppet.to_local()`).
@@ -209,19 +224,8 @@ export class Skeleton {
     public nearest_bone(x: number, y: number, within: number): number {
         let best = -1;
         let best_distance = within;
-        const tip: PuppetPoint = { x: 0, y: 0 };
         for (let index = 0; index < this.names.length; index++) {
-            const from_x = this.world_x(index);
-            const from_y = this.world_y(index);
-            this.world_point(index, this.lengths[index], 0, tip);
-            const distance = distance_to_segment(
-                x,
-                y,
-                from_x,
-                from_y,
-                tip.x,
-                tip.y,
-            );
+            const distance = this.distance_to_bone(index, x, y);
             if (distance <= best_distance) {
                 best = index;
                 best_distance = distance;

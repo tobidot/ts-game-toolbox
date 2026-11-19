@@ -656,6 +656,44 @@ describe("Puppet", () => {
         expect(drawn.lines()).toBeGreaterThanOrEqual(4);
     });
 
+    it("finds the part drawn on top at a point, where bone lines lie on each other", () => {
+        const rig = PuppetRig.from_data(rig_data(), image);
+        const puppet = rig.puppet();
+        puppet.update(0);
+        // The arm hangs over the torso: both bone lines run down x = 0.
+        const upper = rig.slot_index("upper");
+        const torso = rig.slot_index("torso");
+        expect(puppet.slot_at(1, -135)).toBe(upper);
+        expect(puppet.slot_at(1, -100)).toBe(rig.slot_index("lower"));
+        // Beside the arm the torso shows.
+        expect(puppet.slot_at(8, -135)).toBe(torso);
+        expect(puppet.slot_at(30, -135)).toBe(-1);
+        // The arm turned forward leaves the torso bare where it hung.
+        puppet.skeleton.rotation[puppet.skeleton.index_of("upper")] = -90;
+        puppet.skeleton.update();
+        expect(puppet.slot_at(1, -135)).toBe(torso);
+        expect(puppet.slot_at(20, -150)).toBe(upper);
+        // Nothing to hit without a skin.
+        expect(new PuppetRig().puppet().slot_at(0, 0)).toBe(-1);
+    });
+
+    it("picks the bone a pointer means: the part on top on one line, else the nearest line of the parts there", () => {
+        const rig = PuppetRig.from_data(rig_data(), image);
+        const puppet = rig.puppet();
+        puppet.update(0);
+        const skeleton = puppet.skeleton;
+        // On the arm hanging over the torso: the arm, drawn on top.
+        expect(puppet.pick_bone(0.5, -135, 5)).toBe(skeleton.index_of("upper"));
+        // Where the forearm's part reaches over the elbow's joint, the upper arm's line is nearer.
+        expect(puppet.slot_at(0, -122)).toBe(rig.slot_index("lower"));
+        expect(puppet.pick_bone(0, -122, 5)).toBe(skeleton.index_of("upper"));
+        // Off every part: the nearest line within reach, or none.
+        expect(puppet.slot_at(0, -86)).toBe(-1);
+        expect(puppet.pick_bone(0, -86, 6)).toBe(skeleton.index_of("lower"));
+        expect(puppet.pick_bone(0, -60, 6)).toBe(-1);
+        near(skeleton.distance_to_bone(skeleton.index_of("torso"), 7, -120), 7);
+    });
+
     it("wears a second skin on the same bones with other parts, and refuses another skeleton's", () => {
         const rig = PuppetRig.from_data(rig_data(), image);
         const puppet = rig.puppet();

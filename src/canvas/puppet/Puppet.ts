@@ -197,6 +197,82 @@ export class Puppet {
         return { x: (point_x - x) / scale_x, y: (point_y - y) / scale };
     }
 
+    /**
+     * The slot whose part is drawn on top at a point of the puppet's own space (`to_local()`), or
+     * -1: what a pointer touches, also where bone lines lie on each other (an arm hanging over the
+     * torso). The parts' rectangles count, not their pixels. `rig.slots[slot].bone` is its bone.
+     */
+    public slot_at(x: number, y: number): number {
+        return this.slot_from(this.rig.slots.length, x, y);
+    }
+
+    /**
+     * The bone a pointer at a point of the puppet's own space means, for an editor: of the parts
+     * covering the point, the one whose bone line passes nearest (the one drawn on top when lines
+     * lie on each other, an arm over the torso; the upper arm, not the forearm's rounded end over
+     * the elbow); off the parts the bone line nearest within `within`; -1 for none.
+     */
+    public pick_bone(x: number, y: number, within: number): number {
+        const skeleton = this.skeleton;
+        let best = -1;
+        let best_distance = Infinity;
+        for (
+            let slot = this.slot_from(this.rig.slots.length, x, y);
+            slot >= 0;
+            slot = this.slot_from(slot, x, y)
+        ) {
+            const bone = this.rig.slots[slot].bone;
+            const distance = skeleton.distance_to_bone(bone, x, y);
+            // Lower slots only win by more than a unit: on a tie the part on top stays.
+            if (distance < best_distance - 1) {
+                best = bone;
+                best_distance = distance;
+            }
+        }
+        if (best >= 0) {
+            return best;
+        }
+        return skeleton.nearest_bone(x, y, within);
+    }
+
+    /** The topmost slot below `below` whose part covers the point; -1 for none. */
+    private slot_from(below: number, x: number, y: number): number {
+        this.refresh();
+        const skin = this.worn;
+        if (skin === null) {
+            return -1;
+        }
+        const parts = this.parts_for(skin);
+        const world = this.skeleton.world;
+        const slots = this.rig.slots;
+        for (let index = below - 1; index >= 0; index--) {
+            const part = parts[index];
+            if (part === null) {
+                continue;
+            }
+            const at = slots[index].bone * 6;
+            const m = part.transform;
+            // The part's pixels in the puppet's space: the bone's frame times the part's.
+            const a = world[at] * m[0] + world[at + 2] * m[1];
+            const b = world[at + 1] * m[0] + world[at + 3] * m[1];
+            const c = world[at] * m[2] + world[at + 2] * m[3];
+            const d = world[at + 1] * m[2] + world[at + 3] * m[3];
+            const e = world[at] * m[4] + world[at + 2] * m[5] + world[at + 4];
+            const f =
+                world[at + 1] * m[4] + world[at + 3] * m[5] + world[at + 5];
+            const determinant = a * d - b * c;
+            if (determinant === 0) {
+                continue;
+            }
+            const u = (d * (x - e) - c * (y - f)) / determinant;
+            const v = (a * (y - f) - b * (x - e)) / determinant;
+            if (u >= 0 && u <= part.width && v >= 0 && v <= part.height) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
     /** The bones as lines from joint to tip, joints as rings; on top of whatever is drawn. */
     private draw_bones(
         context: CanvasRenderingContext2D,
