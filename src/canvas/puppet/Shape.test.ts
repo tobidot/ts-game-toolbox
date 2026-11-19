@@ -506,6 +506,25 @@ function drawn_from(
     );
 }
 
+/** The look a drawImage call drew: its source rectangle of the puppet's packed canvas, as a canvas of its own. */
+function look_drawn(
+    call: ReturnType<typeof recording_context>["calls"][number],
+): SoftCanvas {
+    const image = call.image as SoftCanvas;
+    const [sx, sy, width, height] = call.numbers;
+    const look = new SoftCanvas(width, height);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const from = ((sy + y) * image.width + sx + x) * 4;
+            const to = (y * width + x) * 4;
+            for (let channel = 0; channel < 4; channel++) {
+                look.data[to + channel] = image.data[from + channel];
+            }
+        }
+    }
+    return look;
+}
+
 // ---- legs that get longer ----
 
 /** A leg: hip 100 above the root, thigh 50 down, shin 50, a foot of 15 forward; heel and toe on the ground at rest. */
@@ -874,7 +893,7 @@ describe("Marks and tints", () => {
         puppet.draw(context, 0, 0);
         const baked = drawn_from(calls, atlas);
         expect(baked.length).toBe(1);
-        const canvas = baked[0].image as SoftCanvas;
+        const canvas = look_drawn(baked[0]);
         expect([canvas.width, canvas.height]).toEqual([10, 36]);
         // The part's pixels: u across the arm (2 to 7 opaque), v along it (the mark at v 10 to 26).
         expect(canvas.pixel(0, 18)[3]).toBe(0);
@@ -899,7 +918,7 @@ describe("Marks and tints", () => {
         ).toBe(0);
         const { context, calls } = recording_context();
         puppet.draw(context, 0, 0);
-        const canvas = drawn_from(calls, atlas)[0].image as SoftCanvas;
+        const canvas = look_drawn(drawn_from(calls, atlas)[0]);
         // Red times the layer's grey 0.8.
         const tinted = canvas.pixel(3, 4);
         near(tinted[0], 0.8);
@@ -913,6 +932,40 @@ describe("Marks and tints", () => {
         const plain = recording_context();
         puppet.draw(plain.context, 0, 0);
         expect(drawn_from(plain.calls, atlas).length).toBe(0);
+    });
+
+    it("draws all its baked looks from one canvas, each from its own place", () => {
+        const { puppet, atlas } = puppet_of();
+        puppet.use_marks(marks());
+        puppet.add_mark("dot", "lower", { x: 15, y: 0 });
+        puppet.add_mark("dot", "upper", { x: 15, y: 0 });
+        puppet.add_mark("dot", "torso", { x: 25, y: 0 });
+        const { context, calls } = recording_context();
+        puppet.draw(context, 0, 0);
+        const baked = drawn_from(calls, atlas);
+        expect(baked.length).toBe(3);
+        expect(new Set(baked.map((call) => call.image)).size).toBe(1);
+        // Side by side, never on each other.
+        const places = baked.map((call) => call.numbers.slice(0, 4));
+        for (const [index, [x, y, width, height]] of places.entries()) {
+            for (const [other, [ox, oy, ow, oh]] of places.entries()) {
+                if (other !== index) {
+                    expect(
+                        x + width <= ox ||
+                            ox + ow <= x ||
+                            y + height <= oy ||
+                            oy + oh <= y,
+                    ).toBe(true);
+                }
+            }
+        }
+        // A change lays them again into the same canvas.
+        puppet.remove_mark(2);
+        const again = recording_context();
+        puppet.draw(again.context, 0, 0);
+        const after = drawn_from(again.calls, atlas);
+        expect(after.length).toBe(2);
+        expect(after[0].image).toBe(baked[0].image);
     });
 
     it("keeps a mark at the same spot of its part at every key, moving with it", () => {
@@ -952,7 +1005,8 @@ describe("Marks and tints", () => {
             near(back.x, 15);
             near(back.y, 1);
         }
-        expect(bakes).toBeLessThanOrEqual(3);
+        // The look, two scratch canvases and the canvas the looks are packed into: made once.
+        expect(bakes).toBeLessThanOrEqual(4);
     });
 
     it("refuses a mark for a slot or a picture it doesn't have; one of a sheet on its way waits", () => {
@@ -1061,7 +1115,7 @@ describe("A character as data", () => {
         );
         const pictures = (calls: typeof a.calls) =>
             drawn_from(calls, first.atlas).map((call) => [
-                ...(call.image as SoftCanvas).data,
+                ...look_drawn(call).data,
             ]);
         expect(
             pictures(

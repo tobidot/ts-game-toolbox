@@ -2,29 +2,47 @@ import { MarkPicture } from "./MarkSheet";
 import { PartMesh } from "./PartMesh";
 import { MarkBlend } from "./RigData";
 
+/**
+ * What a canvas a puppet asks for is used for: `"work"` for laying one part's look (drawn from
+ * once per change, never per frame), `"looks"` for the one canvas all its looks are packed into
+ * and drawn from every frame.
+ */
+export type PuppetCanvasUse = "work" | "looks";
+
 /** Makes the canvas a puppet lays a part's look into; null when there is none to make (no DOM). */
 export type MakePuppetCanvas = (
     width: number,
     height: number,
+    use?: PuppetCanvasUse,
 ) => HTMLCanvasElement | OffscreenCanvas | null;
 
 type Context2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
-/** A canvas from the page's document, else an `OffscreenCanvas`, else none. */
+/**
+ * A canvas from the page's document, else an `OffscreenCanvas`, else none. A `"work"` canvas is
+ * kept in memory (`willReadFrequently`), not on the graphics card: a browser keeps only so many
+ * canvases on the card, and the one a puppet's looks are packed into should be one of them
+ * (measured in step 40 on a GPU: 50 baked characters at 60 FPS with every canvas on the card, 85
+ * with the work canvases in memory; 400 plain ones).
+ */
 export function default_puppet_canvas(
     width: number,
     height: number,
+    use: PuppetCanvasUse = "looks",
 ): HTMLCanvasElement | OffscreenCanvas | null {
+    let canvas: HTMLCanvasElement | OffscreenCanvas | null = null;
     if (typeof document !== "undefined") {
-        const canvas = document.createElement("canvas");
+        canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
-        return canvas;
+    } else if (typeof OffscreenCanvas !== "undefined") {
+        canvas = new OffscreenCanvas(width, height);
     }
-    if (typeof OffscreenCanvas !== "undefined") {
-        return new OffscreenCanvas(width, height);
+    if (canvas !== null && use === "work") {
+        // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
+        canvas.getContext("2d", { willReadFrequently: true });
     }
-    return null;
+    return canvas;
 }
 
 /** A tint layer of a part: where its grey shading lies in the part's atlas, and the colour. */
@@ -128,7 +146,7 @@ export class PuppetBaker {
         }
         let canvas = previous?.canvas ?? null;
         if (canvas === null) {
-            canvas = this.make_canvas(out_width, out_height);
+            canvas = this.make_canvas(out_width, out_height, "work");
             if (canvas === null) {
                 return null;
             }
@@ -307,7 +325,11 @@ export class PuppetBaker {
     ): HTMLCanvasElement | OffscreenCanvas | null {
         let canvas = this.scratch[index];
         if (canvas === null) {
-            canvas = this.make_canvas(Math.max(1, width), Math.max(1, height));
+            canvas = this.make_canvas(
+                Math.max(1, width),
+                Math.max(1, height),
+                "work",
+            );
             this.scratch[index] = canvas;
         }
         if (canvas === null) {
@@ -319,6 +341,76 @@ export class PuppetBaker {
         }
         return canvas;
     }
+}
+
+/** A puppet's baked looks laid side by side into one canvas: where each one lies (null: none). */
+export interface PackedLooks {
+    readonly canvas: HTMLCanvasElement | OffscreenCanvas;
+    readonly places: readonly (readonly [number, number] | null)[];
+}
+
+/** Clear pixels round each look in the packed canvas, so smoothing never reaches a neighbour. */
+const PACK_GAP = 2;
+
+/**
+ * Lays a puppet's baked looks into one canvas (`previous`'s, or a new one), row by row, tallest
+ * first: drawing the puppet then takes its looks from one picture, as its parts come from one
+ * atlas. A browser keeps a canvas drawn from as a texture of its own, so many small canvases per
+ * puppet cost far more per frame than one (measured in step 40). Null when no canvas can be made
+ * or there is nothing baked.
+ */
+export function pack_looks(
+    looks: readonly (BakedLook | null)[],
+    make_canvas: MakePuppetCanvas,
+    previous: HTMLCanvasElement | OffscreenCanvas | null,
+): PackedLooks | null {
+    const order = looks
+        .map((look, index) => ({ look, index }))
+        .filter(
+            (each): each is { look: BakedLook; index: number } =>
+                each.look !== null,
+        )
+        .sort((a, b) => b.look.height - a.look.height);
+    if (order.length === 0) {
+        return null;
+    }
+    const widest = Math.max(...order.map((each) => each.look.width));
+    const row_width = Math.max(512, widest + PACK_GAP * 2);
+    const places: ([number, number] | null)[] = looks.map(() => null);
+    let x = PACK_GAP;
+    let y = PACK_GAP;
+    let row_height = 0;
+    let width = 0;
+    for (const { look, index } of order) {
+        if (x + look.width + PACK_GAP > row_width) {
+            x = PACK_GAP;
+            y += row_height + PACK_GAP;
+            row_height = 0;
+        }
+        places[index] = [x, y];
+        x += look.width + PACK_GAP;
+        width = Math.max(width, x);
+        row_height = Math.max(row_height, look.height);
+    }
+    const height = y + row_height + PACK_GAP;
+    const canvas = previous ?? make_canvas(width, height, "looks");
+    if (canvas === null) {
+        return null;
+    }
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d") as Context2D | null;
+    if (context === null) {
+        return null;
+    }
+    reset(context, width, height);
+    for (const { look, index } of order) {
+        const place = places[index];
+        if (place !== null) {
+            context.drawImage(look.canvas, place[0], place[1]);
+        }
+    }
+    return { canvas, places };
 }
 
 /** Plain drawing again, nothing on it. */

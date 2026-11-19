@@ -7,6 +7,8 @@ import {
     LookLayer,
     LookMark,
     MakePuppetCanvas,
+    pack_looks,
+    PackedLooks,
     PuppetBaker,
 } from "./PuppetLook";
 import { PuppetPlayer, PuppetPlayOptions } from "./PuppetPlayer";
@@ -163,6 +165,8 @@ export class Puppet {
     >();
     private baker: PuppetBaker | null = null;
     private baker_canvas: MakePuppetCanvas | null = null;
+    /** The baked looks laid into one canvas, so the puppet draws them from one picture. */
+    private packed: PackedLooks | null = null;
     private readonly matrix = new Float64Array(6);
     /**
      * Makes the canvases a part's look (shape, tints, marks) is laid into: a page's canvas or an
@@ -1072,8 +1076,10 @@ export class Puppet {
             const bf = pb * we + pd * wf + pf;
             const look = looks[index];
             if (look !== null && look.baked !== null && !is_direct) {
-                // Its look, laid into a canvas of its own once per change.
+                // Its look, laid into a canvas once per change (with the others into one).
                 const baked = look.baked;
+                const packed = this.packed;
+                const place = packed?.places[index] ?? null;
                 m = shifted_in_part(m, baked.shift_x, baked.shift_y);
                 context.setTransform(
                     ba * m[0] + bc * m[1],
@@ -1084,9 +1090,11 @@ export class Puppet {
                     bb * m[4] + bd * m[5] + bf,
                 );
                 context.drawImage(
-                    baked.canvas,
-                    0,
-                    0,
+                    packed === null || place === null
+                        ? baked.canvas
+                        : packed.canvas,
+                    place === null ? 0 : place[0],
+                    place === null ? 0 : place[1],
                     baked.width,
                     baked.height,
                     0,
@@ -1566,6 +1574,11 @@ export class Puppet {
         const baker = this.baker;
         this.looks = order.map((entry) =>
             has_look ? this.look_of(entry, baker) : null,
+        );
+        this.packed = pack_looks(
+            this.looks.map((look) => look?.baked ?? null),
+            this.make_canvas,
+            this.packed?.canvas ?? null,
         );
         this.looks_key = [
             order,
