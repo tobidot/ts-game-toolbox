@@ -24,7 +24,10 @@ export interface RigData {
     readonly skins: Readonly<Record<string, SkinData>>;
     /** The skin a new puppet wears. Default: the first. */
     readonly default_skin?: string;
-    /** Named points on bones (the soles' heel and toe; step 39 adds hands, head and belt). */
+    /**
+     * Named points on bones, each with an angle: where a hat (`head_top`), a sword (`hand_r`) or a
+     * bag (`back`) goes, and the soles' heel and toe.
+     */
     readonly anchors?: Readonly<Record<string, AnchorData>>;
     readonly clips?: Readonly<Record<string, PuppetClipData>>;
     /** The clip a new puppet plays. Default: the first clip. */
@@ -68,7 +71,7 @@ export interface AttachmentData {
     readonly rotation?: number;
 }
 
-/** A point on a bone, in the bone's frame. */
+/** A point on a bone, in the bone's frame, with an angle (a hand's grip, the top of the head). */
 export interface AnchorData {
     readonly bone: string;
     readonly x: number;
@@ -109,4 +112,82 @@ export interface PuppetClipData {
      */
     readonly travel?: number;
     readonly tracks: Readonly<Record<string, readonly PuppetKeyData[]>>;
+}
+
+/**
+ * A wardrobe as plain data: clothes and accessories for every puppet of one skeleton, in one atlas
+ * of their own (a clothes atlas). The shape of a catalogue entry's `rig` for such a picture: it
+ * names the skeleton and holds pieces instead of bones (`is_wardrobe_data()` tells them apart).
+ */
+export interface WardrobeData {
+    /** The skeleton the pieces are made for: they fit every rig of that name. */
+    readonly skeleton: string;
+    /** The way the pictures face, as the rig's. */
+    readonly facing?: "right" | "left";
+    /**
+     * The places a puppet wears one piece each in (`hat`, `top`, `shoes`), with their layer: of
+     * two parts at the same spot in the drawing order, the lower layer lies nearer the body (a
+     * shirt under a coat). Wardrobes that share places give them the same numbers.
+     */
+    readonly places: Readonly<Record<string, number>>;
+    /** The pieces by id (`"straw-hat"`). */
+    readonly pieces: Readonly<Record<string, PieceData>>;
+    /** Atlas pixels per unit, as a skin's. Default 1. */
+    readonly resolution?: number;
+}
+
+/** One piece of clothing or an accessory: the place it is worn in and its parts. */
+export interface PieceData {
+    /** One of the wardrobe's `places`. */
+    readonly place: string;
+    /** What a game shows ("Strohhut"). Default: the id. */
+    readonly title?: string;
+    /** A coat is a torso part, a sleeve per arm segment and its tails: each on its bone. */
+    readonly parts: readonly PiecePartData[];
+}
+
+/**
+ * A part of a piece: a picture part like a skin's (`rect`, `pivot`, `rotation`), on a bone or an
+ * anchor, with its place in the drawing order.
+ *
+ * - **`bone`**: the part covers that bone (a sleeve on `upper_arm_r`); its pivot sits on the bone's
+ *   joint, as a skin's part does.
+ * - **`anchor`**: the part hangs on that anchor (a hat on `head_top`); its pivot sits on the anchor's
+ *   point and it turns with the anchor's angle.
+ *
+ * The order is data: `in_front_of` a slot (just after it), `behind` a slot (just before it), or
+ * `slot`: in that slot instead of the skin's part (a glove for a hand). Without any of them the part
+ * is drawn just in front of the first slot on its bone.
+ */
+export interface PiecePartData {
+    /** For people and for the drawing order's names (`"blue-coat:sleeve_upper_r"`). Default its number. */
+    readonly name?: string;
+    readonly bone?: string;
+    readonly anchor?: string;
+    /** `[x, y, width, height]` in the wardrobe atlas's pixels. */
+    readonly rect: readonly [number, number, number, number];
+    /** The point of the part, from the rectangle's top left, that sits on the joint or the anchor. */
+    readonly pivot: readonly [number, number];
+    /** Degrees on the bone (or on the anchor's angle). */
+    readonly rotation?: number;
+    readonly in_front_of?: string;
+    readonly behind?: string;
+    readonly slot?: string;
+    /** Its layer instead of its place's. */
+    readonly layer?: number;
+}
+
+/** What a puppet wears, as plain data: a piece id per place (`{ hat: "straw-hat" }`); a place may be left out. */
+export type OutfitData = Readonly<Record<string, string>>;
+
+/** A catalogue `rig` that is a wardrobe (pieces), not a puppet (bones). */
+export function is_wardrobe_data(
+    data: RigData | WardrobeData,
+): data is WardrobeData {
+    return (
+        typeof data === "object" &&
+        data !== null &&
+        "pieces" in data &&
+        !("bones" in data)
+    );
 }

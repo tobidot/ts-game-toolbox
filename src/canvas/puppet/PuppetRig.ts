@@ -187,6 +187,16 @@ export class PuppetRig {
         return this.template?.count ?? 0;
     }
 
+    /** The bones' names, parents first (empty until the data comes). */
+    public get bone_names(): readonly string[] {
+        return this.template?.names ?? [];
+    }
+
+    /** The bone's number; -1 when there is none of that name (or no data yet). */
+    public bone_index(name: string): number {
+        return this.template?.index_of(name) ?? -1;
+    }
+
     public get slots(): readonly PuppetSlot[] {
         return this.slot_list;
     }

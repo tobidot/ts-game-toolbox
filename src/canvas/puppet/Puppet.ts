@@ -1,7 +1,58 @@
+import { EventBase, EventSocket } from "../../signals/EventSocket";
 import { PuppetPlayer, PuppetPlayOptions } from "./PuppetPlayer";
 import { PuppetRig } from "./PuppetRig";
 import { PuppetPart, PuppetSkin } from "./PuppetSkin";
+import { OutfitData } from "./RigData";
 import { PuppetPoint, Skeleton } from "./Skeleton";
+import {
+    first_slot_on,
+    part_bone,
+    PiecePart,
+    piece_problems,
+    Wardrobe,
+    WardrobePiece,
+} from "./Wardrobe";
+
+const DEGREES = Math.PI / 180;
+
+/** What a puppet wears changed: pieces put on, taken off, or both. */
+export class OutfitEvent extends EventBase {
+    public static readonly EVENT_NAME = "puppet.outfit";
+
+    public constructor(
+        /** The outfit now, a piece id per place. */
+        public readonly outfit: OutfitData,
+        /** The ids put on. */
+        public readonly put_on: readonly string[],
+        /** The ids taken off (also those dropped for not fitting). */
+        public readonly taken_off: readonly string[],
+    ) {
+        super(OutfitEvent.EVENT_NAME);
+    }
+}
+
+/** A point of the puppet with an angle: where an anchor is now. */
+export interface PuppetAnchorPoint {
+    x: number;
+    y: number;
+    /** Degrees, turning clockwise on the screen; 0 points the way the puppet faces at rest. */
+    rotation: number;
+}
+
+/** One picture part in the drawing order: a part of the skin or of a worn piece. */
+interface DrawEntry {
+    /** The slot's name, or `piece:part` for clothes. */
+    readonly name: string;
+    readonly bone: number;
+    readonly source_x: number;
+    readonly source_y: number;
+    readonly width: number;
+    readonly height: number;
+    /** From the part's pixels to its bone's frame (an anchor's offset and angle included). */
+    readonly transform: Float64Array;
+    /** Whose picture it is: the skin's or a wardrobe's, read when drawing (it may come later). */
+    readonly picture: { readonly image: CanvasImageSource | null };
+}
 
 /** How `Puppet.draw()` draws. */
 export interface PuppetDrawOptions {
@@ -41,6 +92,15 @@ export class Puppet {
     private parts_of: PuppetSkin | null = null;
     private parts_version = -1;
     private readonly tip: PuppetPoint = { x: 0, y: 0 };
+    /** Outfit changes: `OutfitEvent`. */
+    public readonly events = new EventSocket<OutfitEvent>();
+    private readonly wardrobe_list: Wardrobe[] = [];
+    /** A piece id per place; one whose wardrobe is still loading waits here. */
+    private readonly outfit_map = new Map<string, string>();
+    private outfit_version = 0;
+    private order: DrawEntry[] = [];
+    private order_names: readonly string[] = [];
+    private order_key: readonly unknown[] = [];
 
     public constructor(
         public readonly rig: PuppetRig,
@@ -100,10 +160,209 @@ export class Puppet {
         return true;
     }
 
+    // ---- clothes ----
+
+    /** The wardrobes this puppet takes pieces from, in the order `use_wardrobe()` gave them. */
+    public get wardrobes(): readonly Wardrobe[] {
+        return this.wardrobe_list;
+    }
+
     /**
-     * Draws the parts in slot order, each on its bone, with the puppet's feet (the root) at `x`,
-     * `y`. False while the data or the picture isn't there yet. The context's transform is the
-     * same afterwards.
+     * Takes pieces from a wardrobe (a clothes atlas) from now on: `wear(id)` finds them by id. A
+     * wardrobe still loading is fine; an outfit naming its pieces waits for it.
+     */
+    public use_wardrobe(wardrobe: Wardrobe): void {
+        if (!this.wardrobe_list.includes(wardrobe)) {
+            this.wardrobe_list.push(wardrobe);
+            this.outfit_version += 1;
+        }
+    }
+
+    /** A piece of the puppet's wardrobes by id (the first wardrobe that has it); null for none. */
+    public find_piece(id: string): WardrobePiece | null {
+        for (const wardrobe of this.wardrobe_list) {
+            const piece = wardrobe.piece(id);
+            if (piece !== null) {
+                return piece;
+            }
+        }
+        return null;
+    }
+
+    /** Why a piece can't be worn, in words; empty when it can (or the rig is still on its way). */
+    public fit_problems(id: string): string[] {
+        const piece = this.find_piece(id);
+        if (piece === null) {
+            return [`no piece "${id}" in the puppet's wardrobes`];
+        }
+        return piece_problems(piece, this.rig);
+    }
+
+    /**
+     * Puts a piece on, in its place: what was there comes off. False, and nothing changes, for a
+     * piece none of its wardrobes has (yet) or one that doesn't fit the rig (a missing anchor,
+     * another skeleton; `fit_problems(id)` says what).
+     */
+    public wear(id: string): boolean {
+        const piece = this.find_piece(id);
+        if (piece === null || piece_problems(piece, this.rig).length > 0) {
+            return false;
+        }
+        const before = this.outfit_map.get(piece.place);
+        if (before === id) {
+            return true;
+        }
+        this.outfit_map.set(piece.place, id);
+        this.outfit_changed([id], before === undefined ? [] : [before]);
+        return true;
+    }
+
+    /** Takes off what is worn in a place (`"hat"`), or the piece of that id. False when nothing came off. */
+    public take_off(place_or_id: string): boolean {
+        let place: string | null = null;
+        if (this.outfit_map.has(place_or_id)) {
+            place = place_or_id;
+        } else {
+            for (const [worn_place, id] of this.outfit_map) {
+                if (id === place_or_id) {
+                    place = worn_place;
+                }
+            }
+        }
+        if (place === null) {
+            return false;
+        }
+        const id = this.outfit_map.get(place) as string;
+        this.outfit_map.delete(place);
+        this.outfit_changed([], [id]);
+        return true;
+    }
+
+    /** Takes everything off. */
+    public undress(): void {
+        this.set_outfit({});
+    }
+
+    /** What it wears, as plain data: a piece id per place (`{ hat: "straw-hat" }`). Save it as it is. */
+    public get outfit(): OutfitData {
+        return Object.fromEntries(this.outfit_map);
+    }
+
+    /**
+     * Wears an outfit (`{ hat: "straw-hat", top: "blue-coat" }`) in place of the one before, as
+     * one change (one `OutfitEvent`). A piece in the wrong place or one that doesn't fit is left
+     * out and the answer is false; a piece of a wardrobe still loading waits for it.
+     */
+    public set_outfit(outfit: OutfitData): boolean {
+        let is_whole = true;
+        const next = new Map<string, string>();
+        const is_loading = this.wardrobe_list.some(
+            (wardrobe) => !wardrobe.has_data,
+        );
+        for (const [place, id] of Object.entries(outfit)) {
+            if (typeof id !== "string") {
+                is_whole = false;
+                continue;
+            }
+            const piece = this.find_piece(id);
+            if (piece === null) {
+                if (is_loading) {
+                    next.set(place, id);
+                } else {
+                    is_whole = false;
+                }
+                continue;
+            }
+            if (
+                piece.place !== place ||
+                piece_problems(piece, this.rig).length > 0
+            ) {
+                is_whole = false;
+                continue;
+            }
+            next.set(place, id);
+        }
+        const put_on = [...next]
+            .filter(([place, id]) => this.outfit_map.get(place) !== id)
+            .map(([, id]) => id);
+        const taken_off = [...this.outfit_map]
+            .filter(([place, id]) => next.get(place) !== id)
+            .map(([, id]) => id);
+        if (put_on.length > 0 || taken_off.length > 0) {
+            this.outfit_map.clear();
+            for (const [place, id] of next) {
+                this.outfit_map.set(place, id);
+            }
+            this.outfit_changed(put_on, taken_off);
+        }
+        return is_whole;
+    }
+
+    /** The pieces worn, as found in the wardrobes (a piece still loading is not among them). */
+    public get worn_pieces(): WardrobePiece[] {
+        const pieces: WardrobePiece[] = [];
+        for (const id of this.outfit_map.values()) {
+            const piece = this.find_piece(id);
+            if (piece !== null) {
+                pieces.push(piece);
+            }
+        }
+        return pieces;
+    }
+
+    /**
+     * The drawing order by name, back to front: the skin's slots and the clothes' parts
+     * (`"blue-coat:sleeve_upper_r"`). Sorted once when the outfit (or the skin, the rig or a
+     * wardrobe's data) changes, never per frame: the same array until then.
+     */
+    public get drawing_order(): readonly string[] {
+        this.refresh();
+        const skin = this.worn;
+        if (skin !== null) {
+            this.order_for(skin);
+        }
+        return this.order_names;
+    }
+
+    /**
+     * Where an anchor (`"hand_r"`, `"head_top"`) is now, with its angle: in the puppet's own space,
+     * or, given where and how `draw()` draws the puppet, in the context's (mirrored with `flip_x`:
+     * the angle too). Null for an anchor the rig doesn't have. For a game that spawns something at
+     * a hand. After `update()`.
+     */
+    public anchor_world(
+        name: string,
+        x = 0,
+        y = 0,
+        options: PuppetDrawOptions = {},
+        out: PuppetAnchorPoint = { x: 0, y: 0, rotation: 0 },
+    ): PuppetAnchorPoint | null {
+        this.refresh();
+        const anchor = this.rig.anchors.get(name);
+        if (anchor === undefined || anchor.bone >= this.skeleton.count) {
+            return null;
+        }
+        const point = this.skeleton.world_point(
+            anchor.bone,
+            anchor.x,
+            anchor.y,
+            this.tip,
+        );
+        const scale = options.scale ?? 1;
+        const is_flipped = options.flip_x === true;
+        const rotation =
+            this.skeleton.world_rotation(anchor.bone) + anchor.rotation;
+        out.x = x + point.x * (is_flipped ? -scale : scale);
+        out.y = y + point.y * scale;
+        out.rotation = is_flipped ? 180 - rotation : rotation;
+        return out;
+    }
+
+    /**
+     * Draws the parts in their drawing order (the skin's slots, the clothes in front of or behind
+     * them), each on its bone, with the puppet's feet (the root) at `x`, `y`. False while the data
+     * or the skin's picture isn't there yet; a wardrobe's picture still on its way leaves its
+     * clothes out. The context's transform is the same afterwards.
      */
     public draw(
         context: CanvasRenderingContext2D,
@@ -120,7 +379,7 @@ export class Puppet {
             }
             return false;
         }
-        const parts = this.parts_for(skin);
+        const order = this.order_for(skin);
         const base = context.getTransform();
         const scale = options.scale ?? 1;
         const scale_x = options.flip_x === true ? -scale : scale;
@@ -132,13 +391,13 @@ export class Puppet {
         const pe = base.a * x + base.c * y + base.e;
         const pf = base.b * x + base.d * y + base.f;
         const world = this.skeleton.world;
-        const slots = this.rig.slots;
-        for (let index = 0; index < slots.length; index++) {
-            const part = parts[index];
-            if (part === null) {
+        for (let index = 0; index < order.length; index++) {
+            const part = order[index];
+            const picture = part.picture.image;
+            if (picture === null) {
                 continue;
             }
-            const at = slots[index].bone * 6;
+            const at = part.bone * 6;
             // The bone in the context's frame.
             const wa = world[at];
             const wb = world[at + 1];
@@ -163,7 +422,7 @@ export class Puppet {
                 bb * m[4] + bd * m[5] + bf,
             );
             context.drawImage(
-                image,
+                picture,
                 part.source_x,
                 part.source_y,
                 part.width,
@@ -331,6 +590,186 @@ export class Puppet {
             skin = this.rig.skin(source);
         }
         this.worn = skin ?? this.rig.skin();
+    }
+
+    private outfit_changed(
+        put_on: readonly string[],
+        taken_off: readonly string[],
+    ): void {
+        this.outfit_version += 1;
+        this.events.dispatch(new OutfitEvent(this.outfit, put_on, taken_off));
+    }
+
+    /**
+     * The drawing order for a skin: rebuilt only when the rig, the skin, the outfit or a
+     * wardrobe's data changed. Pieces that turn out not to fit (their wardrobe came after the
+     * outfit) come off here, with an `OutfitEvent`.
+     */
+    private order_for(skin: PuppetSkin): DrawEntry[] {
+        const key = [
+            this.rig.version,
+            skin,
+            this.outfit_version,
+            ...this.wardrobe_list.map((wardrobe) => wardrobe.version),
+        ];
+        const order_key = this.order_key;
+        if (
+            key.length === order_key.length &&
+            key.every((value, index) => value === order_key[index])
+        ) {
+            return this.order;
+        }
+        const dropped: string[] = [];
+        const worn: WardrobePiece[] = [];
+        for (const [place, id] of [...this.outfit_map]) {
+            const piece = this.find_piece(id);
+            if (piece === null) {
+                const is_loading = this.wardrobe_list.some(
+                    (wardrobe) => !wardrobe.has_data,
+                );
+                if (!is_loading) {
+                    this.outfit_map.delete(place);
+                    dropped.push(id);
+                }
+                continue;
+            }
+            if (
+                piece.place !== place ||
+                piece_problems(piece, this.rig).length > 0
+            ) {
+                this.outfit_map.delete(place);
+                dropped.push(id);
+                continue;
+            }
+            worn.push(piece);
+        }
+        if (dropped.length > 0) {
+            this.outfit_changed([], dropped);
+        }
+        this.order = this.sort_parts(skin, worn);
+        this.order_names = this.order.map((entry) => entry.name);
+        this.order_key = [
+            this.rig.version,
+            skin,
+            this.outfit_version,
+            ...this.wardrobe_list.map((wardrobe) => wardrobe.version),
+        ];
+        return this.order;
+    }
+
+    /**
+     * The skin's parts in slot order with the clothes' parts put in: behind a slot (the outer
+     * layer furthest back), in front of it (the inner layer first) or in it, instead of the skin's
+     * part.
+     */
+    private sort_parts(
+        skin: PuppetSkin,
+        worn: readonly WardrobePiece[],
+    ): DrawEntry[] {
+        const slots = this.rig.slots;
+        const behind: { part: PiecePart; entry: DrawEntry }[][] = slots.map(
+            () => [],
+        );
+        const in_front: { part: PiecePart; entry: DrawEntry }[][] = slots.map(
+            () => [],
+        );
+        const instead: { part: PiecePart; entry: DrawEntry }[][] = slots.map(
+            () => [],
+        );
+        for (const piece of worn) {
+            for (const part of piece.parts) {
+                const bone = part_bone(part, this.rig);
+                const slot =
+                    part.order_slot === null
+                        ? first_slot_on(this.rig, bone)
+                        : this.rig.slot_index(part.order_slot);
+                const entry = this.piece_entry(piece, part, bone);
+                if (part.order === "behind") {
+                    behind[slot].push({ part, entry });
+                } else if (part.order === "slot") {
+                    instead[slot].push({ part, entry });
+                } else {
+                    in_front[slot].push({ part, entry });
+                }
+            }
+        }
+        const inner_first = (a: { part: PiecePart }, b: { part: PiecePart }) =>
+            a.part.layer - b.part.layer ||
+            (a.part.piece < b.part.piece
+                ? -1
+                : a.part.piece > b.part.piece
+                  ? 1
+                  : 0) ||
+            a.part.index - b.part.index;
+        const order: DrawEntry[] = [];
+        const parts = this.parts_for(skin);
+        for (let index = 0; index < slots.length; index++) {
+            const back = behind[index].sort(inner_first).reverse();
+            for (const { entry } of back) {
+                order.push(entry);
+            }
+            const own = instead[index].sort(inner_first);
+            if (own.length > 0) {
+                for (const { entry } of own) {
+                    order.push(entry);
+                }
+            } else {
+                const part = parts[index];
+                if (part !== null) {
+                    order.push({
+                        name: slots[index].name,
+                        bone: slots[index].bone,
+                        source_x: part.source_x,
+                        source_y: part.source_y,
+                        width: part.width,
+                        height: part.height,
+                        transform: part.transform,
+                        picture: skin,
+                    });
+                }
+            }
+            for (const { entry } of in_front[index].sort(inner_first)) {
+                order.push(entry);
+            }
+        }
+        return order;
+    }
+
+    /** A piece's part as a drawing entry: on its bone, or on its anchor's place and angle. */
+    private piece_entry(
+        piece: WardrobePiece,
+        part: PiecePart,
+        bone: number,
+    ): DrawEntry {
+        let transform = part.transform;
+        const anchor =
+            part.anchor === null
+                ? undefined
+                : this.rig.anchors.get(part.anchor);
+        if (anchor !== undefined) {
+            const radians = anchor.rotation * DEGREES;
+            const cos = Math.cos(radians);
+            const sin = Math.sin(radians);
+            const m = part.transform;
+            transform = Float64Array.of(
+                cos * m[0] - sin * m[1],
+                sin * m[0] + cos * m[1],
+                cos * m[2] - sin * m[3],
+                sin * m[2] + cos * m[3],
+                cos * m[4] - sin * m[5] + anchor.x,
+                sin * m[4] + cos * m[5] + anchor.y,
+            );
+        }
+        return {
+            name: `${piece.id}:${part.name}`,
+            bone,
+            source_x: part.source_x,
+            source_y: part.source_y,
+            width: part.width,
+            height: part.height,
+            transform,
+            picture: piece.wardrobe,
+        };
     }
 
     /** The skin's part for each slot of the rig, in slot order; kept until either changes. */

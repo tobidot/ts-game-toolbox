@@ -67,25 +67,41 @@ export class PuppetSkin {
                     `skin "${name}", slot "${slot}": rect [x, y, width, height] and pivot [x, y] must be numbers`,
                 );
             }
-            const radians = (part.rotation ?? 0) * DEGREES;
-            const cos = Math.cos(radians) / resolution;
-            const sin = Math.sin(radians) / resolution;
             parts.set(slot, {
                 slot,
                 source_x: rect[0],
                 source_y: rect[1],
                 width: rect[2],
                 height: rect[3],
-                transform: Float64Array.of(
-                    cos,
-                    sin,
-                    -sin,
-                    cos,
-                    -(cos * pivot[0] - sin * pivot[1]),
-                    -(sin * pivot[0] + cos * pivot[1]),
+                transform: part_transform(
+                    pivot,
+                    part.rotation ?? 0,
+                    resolution,
                 ),
             });
         }
         return new PuppetSkin(name, skeleton, parts, image);
     }
+}
+
+/**
+ * The six numbers (`a, b, c, d, e, f`) from a part's pixels to the frame it hangs in: turned by
+ * `rotation` degrees, `pivot` on the frame's origin, `1 / resolution` in size.
+ */
+export function part_transform(
+    pivot: readonly [number, number],
+    rotation: number,
+    resolution: number,
+): Float64Array {
+    const radians = rotation * DEGREES;
+    const cos = Math.cos(radians) / resolution;
+    const sin = Math.sin(radians) / resolution;
+    return Float64Array.of(
+        cos,
+        sin,
+        -sin,
+        cos,
+        -(cos * pivot[0] - sin * pivot[1]),
+        -(sin * pivot[0] + cos * pivot[1]),
+    );
 }
