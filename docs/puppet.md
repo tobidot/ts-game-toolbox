@@ -9,6 +9,7 @@ A puppet is a skeleton of bones with picture parts on them: a thigh, a shin and 
 - **`PuppetClip`**: one clip: keys per bone, sampled at any time.
 - **`Wardrobe`**: clothes and accessories for every puppet of one skeleton, in one atlas: pieces (a hat, a coat with its sleeves and tails) on bones and anchors, worn by place (since step 39, Kleiderschrank; [below](#clothes-on-anchors)).
 - **Body shape and skin**: shape values that scale bones and bend parts as meshes (`PartMesh`), tints that keep the shading, marks from a `MarkSheet` laid onto the skin, and the whole `character` as data (since step 40, Maskenbildner; [below](#body-shape-and-skin)).
+- **Soft skins**: one whole picture under a fine grid whose points follow up to four bones (`SoftSkin`, `SoftMesh`), weights from a bone map; drawn by a `SoftLayer` with WebGL 2 or on the CPU; scale keys for stretch and squash, and bones that jiggle after the motion (`PuppetJiggle`) (since step 41, Gummihaut; [below](#soft-skins)).
 
 The format is our own, close to Spine's and DragonBones' ideas (bones, slots, skins, keyed tracks) but much smaller; no Spine runtime or file is involved.
 
@@ -91,6 +92,7 @@ A rig is a JSON object, the shape a catalogue entry's `rig` has (dll-tce-assets 
 ```
 
 - **Keys are offsets on the rest pose**: `rotation` in degrees added to the bone's rest angle, `x` and `y` added to its rest position in the parent's frame (the hip's bob in a walk, a jump's height). A key may leave a channel out; it is then taken from the keys around it that have it. A bone without a track stays at rest.
+- **`scale_x`** and **`scale_y`** (since step 41) stretch the bone along and across, above 0; one alone keeps the area. See [Soft skins](#soft-skins).
 - **`ease`** goes from this key to the next: `linear` (default), `smooth` (in and out) or `step` (hold until the next key).
 - **`loop`** wraps from the last key to the first; without it the clip stops at its end and holds its last pose, or goes on with **`then`**.
 - **`events`** name moments by time, in seconds as written (`{ "0.5": "step" }`).
@@ -250,6 +252,61 @@ other.set_character(loaded);                         // the same character on an
 
 **Drawing.** A part whose shape, tints or marks are not plain gets its **look** laid into a canvas once per change: the part, its tint layers, its marks clipped to it, the whole moved through its mesh. The looks of a puppet are packed side by side into one canvas, so drawing it stays one `setTransform` and one `drawImage` per part, from one picture, as at shape 0, and nothing is laid again until something changes. `puppet.make_canvas` makes the canvases (a page's canvas or an `OffscreenCanvas`; the ones a look is laid in are kept in memory, `willReadFrequently`, and only the packed one goes to the graphics card). Without a canvas (Node) meshes are drawn triangle by triangle, each through its own clip and transform, and tints and marks stay off; `draw(..., { direct_meshes: true })` forces that, for measuring.
 
+## Soft skins
+
+A cut-out puppet shows its joints: a bent knee is two pictures turning on one point, their round ends lying over each other. A **soft skin** is one whole picture of the creature in its rest pose instead, with a fine grid over it: each grid point follows up to four bones, weighted, so a knee bends the picture smoothly and a stretched bone stretches it. No joints, nothing overlapping (since step 41, Gummihaut).
+
+```ts
+const beast = this.load_puppet("beast");              // a rig whose skin is soft: nothing else changes
+const layer = new SoftLayer();                         // WebGL 2 where there is one, else the CPU
+
+// every frame, in drawing order:
+beast.update(delta_seconds);                           // its clips, its stretch and its jiggle
+beast.draw(context, x, floor_y, { layer, scale: 0.6 });
+layer.draw(context);                                   // every soft puppet added since the last draw
+```
+
+A skin is soft when it has `soft` (and may then have no parts at all):
+
+```json
+"skins": { "beast": { "attachments": {}, "soft": {
+    "pictures": [
+        { "name": "far", "rect": [4, 4, 232, 240], "map": [240, 4, 232, 240], "origin": [112, 234.5] },
+        { "name": "body", "rect": [4, 248, 548, 191], "map": [4, 443, 548, 191], "origin": [321, 324.5] }
+    ],
+    "colors": { "body": "#ff0000", "chest": "#0080ff", "upper_hl": "#ff8000" },
+    "cell_size": 12, "cpu_cell_size": 32, "blur": 20
+} } }
+```
+
+- **`pictures`**, drawn back to front: a creature whose limbs pass each other comes in a few layers (the far legs, the body, the near legs), each a whole picture at rest. `rect` is the picture in the atlas, `origin` the pixel where the root (the feet) sits at rest, `bones` optionally the only bones its points may follow.
+- **`map`**: the picture's **bone map**, as large, beside it in the atlas: every pixel in the flat colour of the bone it belongs to (`colors`, bone to `#rrggbb`; colours closer than 60 apart are told apart badly). A map pixel names one bone; the weights are the map **blurred** (`blur`, in pixels, default 8: a Gaussian of half that width; step 41's art uses 20), sampled at each grid point, the four strongest kept and summed to 1. So a point of the left leg never follows the right leg lying next to it, and a joint gets a soft crossover as wide as the blur. A wider blur bends rounder (rubber); a narrow one keeps parts stiff and stretches only the cells at the joint. Paint the top of a limb in its parent's colour and the limb's root stretches with the body instead of turning. Without a map, a point follows the bones whose lines are nearest (by distance; `SoftMesh.from_picture` falls back to it).
+- **The grid** has cells of `cell_size` pixels (default 12) where the picture has pixels (a cell is kept when any pixel lies in it or 1 pixel around it), two triangles a cell. The CPU draws a coarser one, `cpu_cell_size` (default 32). `rig.soft_skin` (the rig's first soft skin) is the `SoftSkin`: change `cell_size`, `cpu_cell_size` or `blur` at run time and the grid is made again for every puppet wearing it.
+- **Two parts of one picture closer than a cell** (a hanging ear just over a leg) get joined by the grid's triangles, which then stretch between them when they move apart. Put such parts into pictures of their own.
+- `set_skin` switches between soft and cut-out skins of one skeleton; the bones, clips, player, events and anchors stay as they are. `puppet.is_soft`, `puppet.soft_points(cell_size?)` (the grid points now, in the puppet's own space) and `bounds()` work on both.
+
+**Stretch and squash.** A key may hold `scale_x` (along the bone) and `scale_y` (across), above 0: `{ "t": 0.3, "scale_x": 1.2 }` makes the body a fifth longer at the take-off. A key with only one of them keeps the area: the other is its inverse (longer is thinner). Children's joints move with the stretch, and a soft skin's picture stretches with it; cut-out parts stretch too. The player blends scales linearly like positions; `puppet.stretch = false` keeps every bone its length (the clip's turns stay).
+
+**Jiggle.** The rig names bones that swing after the motion:
+
+```json
+"jiggle": {
+    "ear_l": { "half_life": 0.3, "strength": 1, "max": 40 },
+    "tail_4": { "half_life": 0.35, "strength": 0.9, "max": 30 }
+}
+```
+
+Each is a damped spring on the bone's tip: when the bone's parent moves, the tip lags behind and swings back, `half_life` the seconds in which a swing halves, `strength` how much of the lag turns the bone, `max` the most degrees. The spring is stepped in fixed steps of 1/240 s, so it moves the same at 30 and at 144 frames a second. `puppet.jiggle` is the `PuppetJiggle`: `enabled`, `strength` (all of them), `offset(bone)` (degrees now), `reset()`, and `carry(dx, dy)` for a puppet the game moves across the stage (the spring feels it).
+
+**`SoftLayer`** draws soft puppets on the graphics card with WebGL 2, or on the CPU, behind one API:
+
+- **GPU**: every mesh and atlas goes up once (the bone maps cleared out of the picture); each frame only the bone matrices go up, one row per puppet in a float texture. The vertex shader does the skinning (four bones per point); a run of puppets sharing a skin is one instanced draw call. The layer draws into a WebGL canvas of its own and lays the part it drew onto the game's 2D canvas with one `drawImage`, as the particles do ([particles.md](particles.md)). Nothing is read back.
+- **CPU**: the same points worked out in TypeScript (`skin_points`), the coarser grid drawn triangle by triangle on canvas 2D, each clipped (grown half a pixel, so no seams show) and mapped with one affine transform.
+- `new SoftLayer({ prefer })`: `"gpu"` (default) or `"cpu"`; set `layer.prefer` at any time. `layer.mode` says which path draws, `fallback_reason` why not the GPU (no WebGL 2, a picture from another origin, a lost context). A lost context draws on the CPU until the browser gives it back. `stats` (`puppets`, `triangles`, `calls`, `mode`) says what the last `draw()` drew.
+- `draw(context, x, y, { layer, grid, weights, alpha })`: `grid` draws the grid over the puppet, `weights` each point's bones in their colours (from the map), `alpha` fades it. Without `layer` a soft puppet draws at once through its context's own layer (`SoftLayer.for_context(context)`). Puppets in a layer are drawn in the order added, all of them over whatever the context had before `layer.draw()`: draw cut-out puppets before or after it.
+- Both paths put every point in the same place: `skin_point_as_shader()` is the shader's skinning line by line in TypeScript, and the tests hold it against `skin_points()`. Step 41's browser check draws the beast both ways and finds about 1.3 % of its pixels differing by more than 48 of 255 (edges, where the two paths smooth differently).
+- The atlas must be readable (the same origin, or CORS) for the grid and the weights: `SoftSkin` reads its pixels once. In Node, set `rig.soft_skin.pixels` yourself (`{ width, height, data }`).
+
 ## In the game shell
 
 A picture of `settings.catalogue_images` whose catalogue entry has a `rig` brings its puppet along: the host's `load_catalogue_url()` answers with `rig` in the `CatalogueFile`, and the shell puts it into `references.puppet(name)`. `logic.load_puppet(name, clip?)` is then a puppet in one line:
@@ -286,7 +343,7 @@ hero.use_marks(this.load_marks("marks"));
 hero.set_character(saved_character);                  // its marks are laid on when the sheet has come
 ```
 
-The puppet exists at once and waits while the data is on its way: it draws nothing and plays nothing; it starts the clip it was told (or the rig's default clip) as soon as the rig has it, and draws once the picture has come. `references.puppet(name).set_data(data)` also takes a game's own rig for a picture of `settings.images`. `@tce-v3/game-boot` fills the hook from `dll-tce-assets` (0.5.0 and later: `rendered/puppet/wanderer` and `rendered/puppet/gardener`; 0.6.0 and later also the wardrobes `rendered/puppet/clothes` and `rendered/puppet/accessories`; 0.7.0 and later the model `rendered/puppet/model` with shapes and tint layers and the mark sheet `rendered/puppet/marks`).
+The puppet exists at once and waits while the data is on its way: it draws nothing and plays nothing; it starts the clip it was told (or the rig's default clip) as soon as the rig has it, and draws once the picture has come. `references.puppet(name).set_data(data)` also takes a game's own rig for a picture of `settings.images`. `@tce-v3/game-boot` fills the hook from `dll-tce-assets` (0.5.0 and later: `rendered/puppet/wanderer` and `rendered/puppet/gardener`; 0.6.0 and later also the wardrobes `rendered/puppet/clothes` and `rendered/puppet/accessories`; 0.7.0 and later the model `rendered/puppet/model` with shapes and tint layers and the mark sheet `rendered/puppet/marks`; 0.8.0 and later the soft skins `rendered/puppet/wanderer-soft`, step 38's wanderer whole on the same skeleton, and `rendered/puppet/beast`, a dog-like beast with jiggling ears and tail).
 
 ## Picking a bone
 
@@ -332,3 +389,15 @@ Shaped (step 40, the same machine; the model, 16 bones and 15 parts, running, dr
 So a mesh drawn triangle by triangle every frame is affordable for one character and nothing more; laid into a canvas once per change it costs one `drawImage` per part again. Before the looks were packed into one canvas per puppet (and with the work canvases on the graphics card too), the GPU managed 50 shaped puppets and spent 24 ms of script on 100.
 
 Updating is never the limit: a thousand puppets pose in about a millisecond. Drawing is the bill, one `setTransform` and one `drawImage` per part (about 1 µs of script per part, and the pixels after it): a few dozen puppets on any machine, a few hundred on a graphics card. For crowds of thousands, a sprite sheet rendered from the puppet ([animation.md](animation.md#crowds)) is the cheaper way.
+
+Soft (step 41, the same machine; the beast, 24 bones, 5 pictures, 1 142 points and 1 830 triangles on the 12 px grid, 263 points and 342 triangles on the CPU's 32 px grid, running, on 960 × 640):
+
+| | Node 22 | Chromium headless (SwiftShader, software canvas) | Chrome on an RTX 4070 |
+| --- | --- | --- | --- |
+| Most at 57 FPS or more, drawn at 0.2 / 0.5: GPU | | 40 to 45 / 15 to 25 (each frame copies the WebGL canvas into the software canvas, about 3.6 ms) | 2 560 / 2 400 |
+| The same on the CPU | | under 5 / under 5 | 10 / 10 |
+| Update (clip and jiggle) per beast | 3.5 µs | | 4 to 5 µs |
+| The script's share of drawing 100 on the GPU | 0.7 µs per beast for its matrices | | 0.29 ms |
+| The CPU's points per beast (12 / 32 px grid) | 15 / 3.9 µs | | |
+
+On the graphics card the bill is the script: at 2 500 beasts updating them takes about 12 ms of the frame, drawing them all is one call. On the CPU every triangle is a clip, a transform and a `drawImage`, about 6 µs each, so ten beasts are the most: the CPU path is a fallback for a few creatures, not for a herd.
