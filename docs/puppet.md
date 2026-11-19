@@ -8,6 +8,7 @@ A puppet is a skeleton of bones with picture parts on them: a thigh, a shin and 
 - **`Skeleton`**: the bones in flat arrays: the pose (`rotation`, `x`, `y` per bone, on the rest pose) and the world matrices `update()` makes from it.
 - **`PuppetClip`**: one clip: keys per bone, sampled at any time.
 - **`Wardrobe`**: clothes and accessories for every puppet of one skeleton, in one atlas: pieces (a hat, a coat with its sleeves and tails) on bones and anchors, worn by place (since step 39, Kleiderschrank; [below](#clothes-on-anchors)).
+- **Body shape and skin**: shape values that scale bones and bend parts as meshes (`PartMesh`), tints that keep the shading, marks from a `MarkSheet` laid onto the skin, and the whole `character` as data (since step 40, Maskenbildner; [below](#body-shape-and-skin)).
 
 The format is our own, close to Spine's and DragonBones' ideas (bones, slots, skins, keyed tracks) but much smaller; no Spine runtime or file is involved.
 
@@ -190,6 +191,65 @@ The data, the shape a catalogue entry's `rig` has for a wardrobe (dll-tce-assets
 
 The skin changes under the clothes: `set_skin(other_rig)` keeps the outfit, and the same parts sit on the same bones. A rig made for a later step may give its bones other shapes; clothes made for the skeleton still follow the bones.
 
+## Body shape and skin
+
+A puppet can be made taller, broader, rounder or thinner, its skin and hair coloured, and marks laid onto its skin: tattoos, scars, freckles, paint. All of it is plain data on the puppet (a **character**), and all of it moves with the bones through every clip, the clothes included (since step 40, Maskenbildner).
+
+```ts
+const hero = this.load_puppet("model");             // a rig with shapes and tint layers
+hero.use_marks(this.load_marks("marks"));           // a mark sheet from the catalogue
+hero.set_shape({ belly: 0.6, height: 0.3 });         // each kept within its min and max
+hero.set_tint("skin", "#c29062");                    // the colour times the skin's shading
+hero.add_mark("anchor", "upper_arm_r", { x: 26, y: -1, size: 1.2 });
+save(hero.character);                                // { skin, shape, tints, marks, outfit }
+other.set_character(loaded);                         // the same character on another puppet
+```
+
+**Shape values** are named in the rig (`shapes`), each a number from `min` (default -1) to `max` (default 1), 0 being the rig as drawn:
+
+```json
+"shapes": {
+    "height": { "title": "Größe", "bones": { "torso": [0.12, 0], "thigh_r": [0.12, 0], "head": [0.05, 0.05] } },
+    "shoulders": { "title": "Schultern", "bones": { "torso": [0, 0.2], "hip": [0, 0.12] } },
+    "belly": {
+        "title": "Bauch", "min": -0.4,
+        "pushes": [{ "bone": "torso", "along": [-35, 5, 45, 75], "across": [4, 26], "push": [0, 22] }]
+    },
+    "arms": { "title": "Arme", "min": -0.7, "pushes": [{ "bone": "upper_arm_r", "along": [-30, 5, 42.5, 77.5], "swell": 0.42 }] }
+},
+"soles": ["heel_l", "toe_l", "heel_r", "toe_r"]
+```
+
+- **`bones`**: per bone `[length, width]`, the scale added per unit of the value: at `height: 1` the torso is 1.12 times as long. A longer bone carries its children further out, and its parts stretch with it; clothes on it stretch alike. Pieces on an **anchor** (a hat, a sword) move with the scale but keep their size. Values add up, and a scale never goes below 0.05.
+- **`soles`**: the anchors that stand on the ground. With longer or shorter legs the whole puppet is lifted or lowered so its lowest sole is where it was at shape 0: the feet stay on the floor through every clip (`skeleton.lift` says by how much).
+- **`pushes`**: where a plain scale looks wrong (a belly is not a longer torso), the parts on a bone are drawn as a **mesh**: a grid of points over the part (`puppet.mesh_cell`, default 16 pixels) whose points move. A point at `(x, y)` in the bone's frame (x along the bone from its joint, y across; for a bone that points up, +y is forward) moves at value 1 by `weight * [push[0], push[1] + swell * y]`. The weight is `along`'s trapezoid `[a, b, c, d]` (nothing before `a` and after `d`, full from `b` to `c`, smooth in between) times `across`'s ramp `[from, to]` (nothing at `from`, full at `to`). `swell` makes a limb fatter or thinner by its distance from the bone line. Points with no weight never move, so a mesh is cut only where it bends; give two bones that meet the same weight at their joint and the joint never opens.
+
+`set_shape(values)` changes the named values (the rest stay), `reset_shape()` sets all back to 0, `shape` gives every value of the rig. `PartMesh.for_part()`, `moves_for()`, `deform()` and `draw()` are there for a game's own meshes.
+
+**Tint layers.** A skin's part may carry grey **layers**, rectangles of the atlas the size of the part, rendered from the part's skin or hair alone: `"head": { "rect": [4, 4, 146, 163], ..., "layers": { "skin": [304, 4, 146, 163], "hair": [154, 4, 146, 163] } }`. `set_tint("skin", "#c29062")` multiplies the colour into the layer's grey and lays it over the part, so the shading and the outline stay; `set_tint("skin", null)` takes it off. `tints` gives them as data.
+
+**Marks** come from a **mark sheet**, an atlas of small pictures whose catalogue `rig` holds `marks` and no bones (dll-tce-assets 0.7.0, `rendered/puppet/marks`):
+
+```json
+{
+    "resolution": 2,
+    "marks": {
+        "dragon": { "rect": [4, 63, 90, 34], "pivot": [38, 20], "title": "Drache", "kind": "tattoo" },
+        "scar": { "rect": [4, 101, 54, 20], "pivot": [27, 10], "title": "Narbe", "kind": "scar", "blend": "normal", "opacity": 0.85 }
+    }
+}
+```
+
+`blend` is `"multiply"` (the default: ink in the skin) or `"normal"` (laid on: a plaster, paint), `on` names the layer it is clipped to (default `"skin"`; a part without that layer clips to its own outline). `MarkSheet.from_data(data, image)`, `sheet.mark(id)` (a `MarkPicture`), `puppet.use_marks(sheet)` (several sheets; one still loading is fine).
+
+- **`add_mark(id, slot, { x, y, angle, size, tint, blend, opacity, flip })`** puts a mark on a slot's part, at `x`, `y` in its bone's frame (rig units, as for anchors), turned by `angle` degrees on the bone (default: upright on the screen at rest), `size` times as large, an ink `tint`. It answers its number, or -1 for a slot or a mark the puppet doesn't have. The mark is clipped to the part (its skin layer), so nothing reaches past the outline; it moves, turns, stretches and bends with the part.
+- **`move_mark(index, placement, slot?)`**, **`remove_mark(index)`**, **`clear_marks()`**, **`marks`** (plain data, in the order laid on), **`set_marks(marks)`**, **`find_mark(id)`**.
+- For a game that drags marks on: **`slot_at(x, y)`** (the part under a point of `to_local()`), **`to_part(slot, x, y)`** (that point in the part's bone frame, through the mesh: where a mark dropped there goes), **`mark_at(x, y, within)`** (the mark under a point, to pick one up), **`mark_point(index, x, y, options)`** (where it is now), **`upright_angle(slot)`** (the angle that shows a mark upright in the pose now).
+
+**A character** is `CharacterData`: `{ skin, shape, tints, marks, outfit }`, all plain. `puppet.character` gives it, `set_character(data)` becomes it (what is left out goes back to plain) and answers false when something didn't fit (an unknown shape, slot, mark or piece), taking the rest. It goes through `SaveSlots` as it is, and Maskenbildner exports it as a file another game reads.
+
+**Drawing.** A part whose shape, tints or marks are not plain gets its **look** laid into a canvas once per change: the part, its tint layers, its marks clipped to it, the whole moved through its mesh. The looks of a puppet are packed side by side into one canvas, so drawing it stays one `setTransform` and one `drawImage` per part, from one picture, as at shape 0, and nothing is laid again until something changes. `puppet.make_canvas` makes the canvases (a page's canvas or an `OffscreenCanvas`; the ones a look is laid in are kept in memory, `willReadFrequently`, and only the packed one goes to the graphics card). Without a canvas (Node) meshes are drawn triangle by triangle, each through its own clip and transform, and tints and marks stay off; `draw(..., { direct_meshes: true })` forces that, for measuring.
+
 ## In the game shell
 
 A picture of `settings.catalogue_images` whose catalogue entry has a `rig` brings its puppet along: the host's `load_catalogue_url()` answers with `rig` in the `CatalogueFile`, and the shell puts it into `references.puppet(name)`. `logic.load_puppet(name, clip?)` is then a puppet in one line:
@@ -218,7 +278,15 @@ hero.use_wardrobe(this.load_wardrobe("clothes"));     // catalogue_images: { clo
 hero.set_outfit(saved_outfit);                        // worn when the wardrobe has come
 ```
 
-The puppet exists at once and waits while the data is on its way: it draws nothing and plays nothing; it starts the clip it was told (or the rig's default clip) as soon as the rig has it, and draws once the picture has come. `references.puppet(name).set_data(data)` also takes a game's own rig for a picture of `settings.images`. `@tce-v3/game-boot` fills the hook from `dll-tce-assets` (0.5.0 and later: `rendered/puppet/wanderer` and `rendered/puppet/gardener`; 0.6.0 and later also the wardrobes `rendered/puppet/clothes` and `rendered/puppet/accessories`).
+A picture whose `rig` is a mark sheet (it has `marks`, no `bones` and no `pieces`) goes to `references.mark_sheet(name)`, and `logic.load_marks(name)` hands it out:
+
+```ts
+const hero = this.load_puppet("model");                // catalogue_images: { model: "rendered/puppet/model", marks: "rendered/puppet/marks" }
+hero.use_marks(this.load_marks("marks"));
+hero.set_character(saved_character);                  // its marks are laid on when the sheet has come
+```
+
+The puppet exists at once and waits while the data is on its way: it draws nothing and plays nothing; it starts the clip it was told (or the rig's default clip) as soon as the rig has it, and draws once the picture has come. `references.puppet(name).set_data(data)` also takes a game's own rig for a picture of `settings.images`. `@tce-v3/game-boot` fills the hook from `dll-tce-assets` (0.5.0 and later: `rendered/puppet/wanderer` and `rendered/puppet/gardener`; 0.6.0 and later also the wardrobes `rendered/puppet/clothes` and `rendered/puppet/accessories`; 0.7.0 and later the model `rendered/puppet/model` with shapes and tint layers and the mark sheet `rendered/puppet/marks`).
 
 ## Picking a bone
 
@@ -251,5 +319,16 @@ Measured in Spielwerk step 38 (Intel i7-11700F; the wanderer, 16 bones and 15 pa
 | Most running puppets at 57 FPS or more, 960 × 640 | | 120 | 400 |
 
 Dressed (step 39, Node 22, the same machine): 1 000 running puppets, half of them in an outfit of six pieces (35 parts instead of 15), update in 0.63 ms and lay out their draw calls in 0.25 ms; changing an outfit, with its one sort of the drawing order and the first draw, takes about 18 µs. The clothes cost what their parts cost to draw, and nothing per frame besides.
+
+Shaped (step 40, the same machine; the model, 16 bones and 15 parts, running, drawn at 0.4 on 960 × 640; "shaped" is every shape value at its end, skin and hair tinted and three marks, "meshes" the same shapes with `direct_meshes`):
+
+| | Node 22 (calls only) | Chromium, software canvas (headless) | Chrome on an RTX 4070 |
+| --- | --- | --- | --- |
+| Most at 57 FPS or more: plain / shaped / meshes | | 90 / 50 / under 5 | 400 / 85 / 5 |
+| Draw 100, the script's time: plain / shaped / meshes | | 1.5 / 18 / 404 ms | 1.5 / 2.1 / 249 ms |
+| One shaped puppet drawn triangle by triangle | 389 `drawImage` instead of 15, 47 µs | 0.74 ms | 0.76 ms |
+| A slider step: the looks laid again and the first draw | 46 µs (meshes only) | 1.4 ms | 1.4 ms |
+
+So a mesh drawn triangle by triangle every frame is affordable for one character and nothing more; laid into a canvas once per change it costs one `drawImage` per part again. Before the looks were packed into one canvas per puppet (and with the work canvases on the graphics card too), the GPU managed 50 shaped puppets and spent 24 ms of script on 100.
 
 Updating is never the limit: a thousand puppets pose in about a millisecond. Drawing is the bill, one `setTransform` and one `drawImage` per part (about 1 µs of script per part, and the pixels after it): a few dozen puppets on any machine, a few hundred on a graphics card. For crowds of thousands, a sprite sheet rendered from the puppet ([animation.md](animation.md#crowds)) is the cheaper way.
