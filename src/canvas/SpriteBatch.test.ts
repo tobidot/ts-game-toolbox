@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SpriteSheet } from "./animation/SpriteSheet";
 import { SpriteBatch } from "./SpriteBatch";
 
 interface Matrix {
@@ -151,5 +152,127 @@ describe("SpriteBatch", () => {
             expect(draws[2499].transform.e).toBe(4998);
             expect(draws[2500].image).toBe(brute);
         }
+    });
+
+    it("draws sheet frames by their source rectangles, picture by picture, in the order added", () => {
+        const batch = new SpriteBatch();
+        const a = { left: 0, top: 0, width: 10, height: 20 };
+        const b = { left: 10, top: 0, width: 10, height: 20 };
+        batch.add_frame(walker, a, 100, 50, { anchor: { x: 5, y: 18 } });
+        batch.add_frame(brute, b, 0, 0);
+        batch.add_frame(walker, b, 200, 50, {
+            anchor: { x: 5, y: 18 },
+            scale: 2,
+        });
+        expect(batch.size).toBe(3);
+        const recording = recording_context(IDENTITY);
+        expect(batch.draw(recording.context)).toBe(3);
+        expect(recording.draws.map((draw) => draw.image)).toEqual([
+            walker,
+            walker,
+            brute,
+        ]);
+        // source rectangle, then where it lands: the anchor on the point
+        expect(recording.draws[0].rect).toEqual([0, 0, 10, 20, 95, 32, 10, 20]);
+        expect(recording.draws[1].rect).toEqual([
+            10, 0, 10, 20, 190, 14, 20, 40,
+        ]);
+        // without an anchor: around the frame's middle
+        expect(recording.draws[2].rect).toEqual([
+            10, 0, 10, 20, -5, -10, 10, 20,
+        ]);
+        // unturned and unflipped frames need no transform of their own
+        expect(
+            recording.calls.filter((call) => call === "setTransform"),
+        ).toEqual([]);
+        expect(recording.calls.filter((call) => call === "save")).toEqual([]);
+    });
+
+    it("keeps a flipped frame's anchor on its point, mirrored around it", () => {
+        const base = { a: 2, b: 0, c: 0, d: 2, e: 10, f: 20 };
+        const rect = { left: 30, top: 0, width: 10, height: 20 };
+        const anchor = { x: 2, y: 18 };
+        for (const angle of [0, 0.7]) {
+            const batch = new SpriteBatch();
+            batch.add_frame(walker, rect, 100, 50, {
+                anchor,
+                flip_x: true,
+                scale: 1.5,
+                angle,
+            });
+            const recording = recording_context(base);
+            batch.draw(recording.context);
+            const [draw] = recording.draws;
+            const [, , sw, sh, dx, dy, dw, dh] = draw.rect;
+            /** Where a pixel of the frame lands on the canvas. */
+            const pixel = (px: number, py: number) =>
+                apply(draw.transform, dx + (px * dw) / sw, dy + (py * dh) / sh);
+            const at = pixel(anchor.x, anchor.y);
+            // 100, 50 in game units: 210, 120 on the canvas
+            expect(at[0]).toBeCloseTo(210);
+            expect(at[1]).toBeCloseTo(120);
+            if (angle === 0) {
+                // mirrored: the frame's left edge lies right of the anchor
+                expect(pixel(0, anchor.y)[0]).toBeCloseTo(210 + 2 * 1.5 * 2);
+                expect(pixel(10, anchor.y)[0]).toBeCloseTo(210 - 8 * 1.5 * 2);
+            }
+            expect(recording.transform()).toEqual(base);
+        }
+    });
+
+    it("switches the transform only where flipped and unflipped frames change", () => {
+        const batch = new SpriteBatch();
+        const rect = { left: 0, top: 0, width: 8, height: 8 };
+        for (let index = 0; index < 10; index++) {
+            batch.add_frame(walker, rect, index, 0, { flip_x: index >= 5 });
+        }
+        const recording = recording_context(IDENTITY);
+        batch.draw(recording.context);
+        // once into the mirror, once back
+        expect(
+            recording.calls.filter((call) => call === "setTransform"),
+        ).toHaveLength(2);
+        expect(recording.transform()).toEqual(IDENTITY);
+    });
+
+    it("draws a player's current frame with the sheet's anchors", () => {
+        const sheet = SpriteSheet.grid(
+            { width: 64, height: 32 } as unknown as CanvasImageSource,
+            32,
+            32,
+            { anchor: { x: 16, y: 30 } },
+        ).add_clips({ walk: { frames: "0-1", fps: 10, loop: true } });
+        const player = sheet.player("walk");
+        player.update(0.1 + 1e-9);
+        const batch = new SpriteBatch();
+        expect(batch.add_animation(player, 50, 60, { scale: 0.5 })).toBe(true);
+        const recording = recording_context(IDENTITY);
+        batch.draw(recording.context);
+        expect(recording.draws[0].image).toBe(sheet.image);
+        expect(recording.draws[0].rect).toEqual([
+            32, 0, 32, 32, 42, 45, 16, 16,
+        ]);
+        // nothing to draw before the picture comes
+        sheet.image = null;
+        expect(batch.add_animation(player, 0, 0)).toBe(false);
+        expect(batch.size).toBe(0);
+    });
+
+    it("mixes whole pictures and frames of the same picture in one run", () => {
+        const batch = new SpriteBatch();
+        batch.add(walker, 10, 10, 0.5, 4, 4);
+        batch.add_frame(
+            walker,
+            { left: 0, top: 0, width: 4, height: 4 },
+            20,
+            20,
+        );
+        const recording = recording_context(IDENTITY);
+        batch.draw(recording.context);
+        expect(recording.draws[0].rect).toEqual([-2, -2, 4, 4]);
+        // back on the base for the frame after the turned picture
+        expect(recording.draws[1].transform).toEqual(IDENTITY);
+        expect(recording.draws[1].rect).toEqual([0, 0, 4, 4, 18, 18, 4, 4]);
+        expect(recording.transform()).toEqual(IDENTITY);
     });
 });
