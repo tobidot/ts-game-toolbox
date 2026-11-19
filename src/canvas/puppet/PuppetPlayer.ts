@@ -71,6 +71,11 @@ export class PuppetPlayer {
     public sends_events = true;
     /** The fade of `play()` without one, of `then` and of a queued clip, in seconds. */
     public default_fade = 0.15;
+    /**
+     * The clips' stretch (`scale_x`, `scale_y` keys) is applied; false keeps every bone at its
+     * length (a game's "stretch off" switch). Since step 41.
+     */
+    public stretch = true;
 
     private playing: PuppetClip | null = null;
     /** The clip asked for while the rig doesn't have it yet. */
@@ -241,10 +246,20 @@ export class PuppetPlayer {
             if (from !== null) {
                 blend(
                     from,
-                    [skeleton.rotation, skeleton.x, skeleton.y],
+                    [
+                        skeleton.rotation,
+                        skeleton.x,
+                        skeleton.y,
+                        skeleton.stretch_x,
+                        skeleton.stretch_y,
+                    ],
                     this.fade_weight(),
                 );
             }
+        }
+        if (!this.stretch) {
+            skeleton.stretch_x.fill(1);
+            skeleton.stretch_y.fill(1);
         }
         skeleton.update();
     }
@@ -350,13 +365,8 @@ export class PuppetPlayer {
     }
 
     private pose_of(clip: PuppetClip, time: number): Float64Array[] {
-        const count = this.rig.bone_count;
-        const pose = [
-            new Float64Array(count),
-            new Float64Array(count),
-            new Float64Array(count),
-        ];
-        clip.sample_into(time, pose[0], pose[1], pose[2]);
+        const pose = new_pose(this.rig.bone_count);
+        clip.sample_into(time, pose[0], pose[1], pose[2], pose[3], pose[4]);
         return pose;
     }
 
@@ -386,32 +396,46 @@ export class PuppetPlayer {
             return null;
         }
         if (this.scratch.length === 0 || this.scratch[0].length !== count) {
-            this.scratch = [
-                new Float64Array(count),
-                new Float64Array(count),
-                new Float64Array(count),
-            ];
+            this.scratch = new_pose(count);
         }
         this.fade_from.sample_into(
             this.fade_from_time,
             this.scratch[0],
             this.scratch[1],
             this.scratch[2],
+            this.scratch[3],
+            this.scratch[4],
         );
         return this.scratch;
     }
 }
 
-/** A pose (rotation, x, y) moved from `from` towards itself by `weight`; angles the short way round. */
+/** A pose's five arrays: rotation, x, y, stretch along and across. */
+function new_pose(count: number): Float64Array[] {
+    return [
+        new Float64Array(count),
+        new Float64Array(count),
+        new Float64Array(count),
+        new Float64Array(count).fill(1),
+        new Float64Array(count).fill(1),
+    ];
+}
+
+/**
+ * A pose (rotation, x, y, stretch along and across) moved from `from` towards itself by `weight`;
+ * angles the short way round, the rest in a straight line.
+ */
 function blend(from: Float64Array[], to: Float64Array[], weight: number): void {
     const count = Math.min(to[0].length, from[0].length);
+    const channels = Math.min(to.length, from.length);
     for (let index = 0; index < count; index++) {
         to[0][index] =
             from[0][index] +
             wrap_degrees(to[0][index] - from[0][index]) * weight;
-        to[1][index] =
-            from[1][index] + (to[1][index] - from[1][index]) * weight;
-        to[2][index] =
-            from[2][index] + (to[2][index] - from[2][index]) * weight;
+        for (let channel = 1; channel < channels; channel++) {
+            to[channel][index] =
+                from[channel][index] +
+                (to[channel][index] - from[channel][index]) * weight;
+        }
     }
 }

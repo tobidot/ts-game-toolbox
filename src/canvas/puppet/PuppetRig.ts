@@ -1,9 +1,11 @@
 import { PuppetShape, shapes_from_data } from "./PartMesh";
 import { Puppet } from "./Puppet";
 import { PuppetClip } from "./PuppetClip";
+import { jiggle_from_data, PuppetJiggleBone } from "./PuppetJiggle";
 import { PuppetSkin } from "./PuppetSkin";
 import { PuppetClipData, RigData } from "./RigData";
 import { Skeleton } from "./Skeleton";
+import { SoftSkin } from "./SoftSkin";
 
 /** A place in the drawing order, on a bone (by number). */
 export interface PuppetSlot {
@@ -40,6 +42,7 @@ export class PuppetRig {
     private clip_map = new Map<string, PuppetClip>();
     private anchor_map = new Map<string, PuppetAnchor>();
     private shape_map = new Map<string, PuppetShape>();
+    private jiggle_list: readonly PuppetJiggleBone[] = [];
     private picture: CanvasImageSource | null = null;
     private first_skin: string | null = null;
     private first_clip: string | null = null;
@@ -125,6 +128,12 @@ export class PuppetRig {
             soles.push(anchor);
         }
         template.set_soles(soles);
+        const jiggle_list = jiggle_from_data(data.jiggle ?? {}, (bone) =>
+            template.index_of(bone),
+        );
+        for (const skin of skin_map.values()) {
+            skin.soft?.bind(template.clone());
+        }
         const clip_map = new Map<string, PuppetClip>();
         for (const [name, clip] of Object.entries(data.clips ?? {})) {
             clip_map.set(
@@ -159,6 +168,7 @@ export class PuppetRig {
         this.skin_map = skin_map;
         this.anchor_map = anchor_map;
         this.shape_map = shape_map;
+        this.jiggle_list = jiggle_list;
         this.clip_map = clip_map;
         this.first_skin =
             data.default_skin ?? skin_map.keys().next().value ?? null;
@@ -251,6 +261,24 @@ export class PuppetRig {
     /** The body shape values (`set_shape()`'s names), in the data's order; empty without. */
     public get shapes(): ReadonlyMap<string, PuppetShape> {
         return this.shape_map;
+    }
+
+    /** The bones that jiggle (the data's `jiggle`), parents first. */
+    public get jiggle(): readonly PuppetJiggleBone[] {
+        return this.jiggle_list;
+    }
+
+    /**
+     * The first soft skin of the rig (since step 41), or null: `rig.soft_skin.cell_size = 16`
+     * changes its grid for every puppet wearing it.
+     */
+    public get soft_skin(): SoftSkin | null {
+        for (const skin of this.skin_map.values()) {
+            if (skin.soft !== null) {
+                return skin.soft;
+            }
+        }
+        return null;
     }
 
     /** The rest pose's box around the feet (`[x, y, width, height]`), if the data says it. */

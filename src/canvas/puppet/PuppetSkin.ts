@@ -1,4 +1,5 @@
 import { SkinData } from "./RigData";
+import { SoftSkin } from "./SoftSkin";
 
 const DEGREES = Math.PI / 180;
 
@@ -24,16 +25,37 @@ export interface PuppetPart {
  */
 export class PuppetSkin {
     public readonly parts: ReadonlyMap<string, PuppetPart>;
+    /**
+     * A soft skin (since step 41): whole pictures on a grid that bends with the bones, drawn
+     * instead of parts. Null for a skin of cut-out parts.
+     */
+    public readonly soft: SoftSkin | null;
+    private picture: CanvasImageSource | null;
 
     public constructor(
         public readonly name: string,
         /** The skeleton the parts are made for (the rig's `skeleton`). */
         public readonly skeleton: string,
         parts: ReadonlyMap<string, PuppetPart>,
-        /** The atlas; null until it arrives. */
-        public image: CanvasImageSource | null = null,
+        image: CanvasImageSource | null = null,
+        soft: SoftSkin | null = null,
     ) {
         this.parts = parts;
+        this.soft = soft;
+        this.picture = null;
+        this.image = image;
+    }
+
+    /** The atlas; null until it arrives. */
+    public get image(): CanvasImageSource | null {
+        return this.picture;
+    }
+
+    public set image(image: CanvasImageSource | null) {
+        this.picture = image;
+        if (this.soft !== null) {
+            this.soft.image = image;
+        }
     }
 
     /**
@@ -99,7 +121,11 @@ export class PuppetSkin {
                 ),
             });
         }
-        return new PuppetSkin(name, skeleton, parts, image);
+        const soft =
+            data.soft === undefined
+                ? null
+                : new SoftSkin(name, data.soft, resolution);
+        return new PuppetSkin(name, skeleton, parts, image, soft);
     }
 }
 

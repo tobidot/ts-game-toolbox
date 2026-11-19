@@ -9,3 +9,8 @@ export * from "./Wardrobe";
 export * from "./PartMesh";
 export * from "./MarkSheet";
 export * from "./PuppetLook";
+export * from "./PuppetJiggle";
+export * from "./SoftMesh";
+export * from "./SoftSkin";
+export * from "./SoftGpu";
+export * from "./SoftLayer";

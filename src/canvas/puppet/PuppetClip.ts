@@ -6,7 +6,7 @@ const EASES: Readonly<Record<PuppetEase, number>> = {
     smooth: 1,
     step: 2,
 };
-const CHANNELS = ["rotation", "x", "y"] as const;
+const CHANNELS = ["rotation", "x", "y", "scale_x", "scale_y"] as const;
 
 /** A named moment of a clip (`events: { "0.5": "step" }`). */
 export interface PuppetMoment {
@@ -17,7 +17,7 @@ export interface PuppetMoment {
 /** One channel of one bone: key times, values and the easing from each key to the next. */
 interface Channel {
     readonly bone: number;
-    /** 0 rotation, 1 x, 2 y. */
+    /** 0 rotation, 1 x, 2 y, 3 scale_x, 4 scale_y. */
     readonly channel: number;
     readonly times: Float64Array;
     readonly values: Float64Array;
@@ -98,6 +98,8 @@ export class PuppetClip {
         public readonly travel: number,
         moments: readonly PuppetMoment[],
         private readonly channels: readonly Channel[],
+        /** Bones whose track keys one scale only: the other is its inverse (pairs of bone, keyed channel). */
+        private readonly area_keeping: Int32Array,
         private readonly bone_count: number,
         private readonly data: PuppetClipData,
     ) {
@@ -130,6 +132,7 @@ export class PuppetClip {
         }
         moments.sort((a, b) => a.time - b.time);
         const channels: Channel[] = [];
+        const area_keeping: number[] = [];
         for (const [bone_name, keys] of Object.entries(data.tracks)) {
             const bone = index_of(bone_name);
             if (bone < 0) {
@@ -155,6 +158,11 @@ export class PuppetClip {
                     ),
                 });
             }
+            const has_x = keys.some((key) => key.scale_x !== undefined);
+            const has_y = keys.some((key) => key.scale_y !== undefined);
+            if (has_x !== has_y) {
+                area_keeping.push(bone, has_x ? 3 : 4);
+            }
         }
         return new PuppetClip(
             name,
@@ -164,6 +172,7 @@ export class PuppetClip {
             data.travel ?? 0,
             moments,
             channels,
+            Int32Array.from(area_keeping),
             bone_count,
             structuredClone(data),
         );
@@ -171,32 +180,67 @@ export class PuppetClip {
 
     /**
      * Writes the clip's pose at `time` (seconds from its start) into the skeleton's pose: every
-     * bone's rotation and shift, those without keys at rest. Call `skeleton.update()` after.
+     * bone's rotation, shift and stretch, those without keys at rest. Call `skeleton.update()` after.
      */
     public sample(time: number, skeleton: Skeleton): void {
-        this.sample_into(time, skeleton.rotation, skeleton.x, skeleton.y);
+        this.sample_into(
+            time,
+            skeleton.rotation,
+            skeleton.x,
+            skeleton.y,
+            skeleton.stretch_x,
+            skeleton.stretch_y,
+        );
     }
 
-    /** `sample()` into three arrays (rotation, x, y) of a pose, one entry per bone. */
+    /** The clip keys a stretch (`scale_x` or `scale_y`) somewhere. */
+    public get stretches(): boolean {
+        return this.channels.some((track) => track.channel >= 3);
+    }
+
+    /**
+     * `sample()` into the arrays of a pose (rotation, x, y and, if given, the stretch along and
+     * across), one entry per bone. A track keying one scale only keeps the area: the other is its inverse.
+     */
     public sample_into(
         time: number,
         rotation: Float64Array,
         x: Float64Array,
         y: Float64Array,
+        scale_x?: Float64Array,
+        scale_y?: Float64Array,
     ): void {
         const count = Math.min(this.bone_count, rotation.length);
         rotation.fill(0, 0, count);
         x.fill(0, 0, count);
         y.fill(0, 0, count);
-        const targets = [rotation, x, y];
+        scale_x?.fill(1, 0, count);
+        scale_y?.fill(1, 0, count);
+        const targets = [rotation, x, y, scale_x, scale_y];
         for (const track of this.channels) {
-            if (track.bone < count) {
-                targets[track.channel][track.bone] = channel_value(
+            const target = targets[track.channel];
+            if (track.bone < count && target !== undefined) {
+                target[track.bone] = channel_value(
                     track,
                     time,
                     this.length,
                     this.loop,
                 );
+            }
+        }
+        if (scale_x === undefined || scale_y === undefined) {
+            return;
+        }
+        const keeping = this.area_keeping;
+        for (let index = 0; index < keeping.length; index += 2) {
+            const bone = keeping[index];
+            if (bone >= count) {
+                continue;
+            }
+            if (keeping[index + 1] === 3) {
+                scale_y[bone] = 1 / Math.max(0.05, scale_x[bone]);
+            } else {
+                scale_x[bone] = 1 / Math.max(0.05, scale_y[bone]);
             }
         }
     }
@@ -235,6 +279,15 @@ function check_keys(
             if (value !== undefined && !Number.isFinite(value)) {
                 throw new Error(
                     `clip "${clip}", bone "${bone}": ${channel} at ${key.t} s must be a number`,
+                );
+            }
+            if (
+                (channel === "scale_x" || channel === "scale_y") &&
+                value !== undefined &&
+                !(value > 0)
+            ) {
+                throw new Error(
+                    `clip "${clip}", bone "${bone}": ${channel} at ${key.t} s must be above 0`,
                 );
             }
         }

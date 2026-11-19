@@ -42,6 +42,12 @@ export class Skeleton {
     public readonly scale_x: Float64Array;
     public readonly scale_y: Float64Array;
     /**
+     * The pose: each bone's stretch from the clip (its `scale_x` and `scale_y` keys; since step 41),
+     * times the scales above; 1 at rest. A jump stretches a body, a landing squashes it.
+     */
+    public readonly stretch_x: Float64Array;
+    public readonly stretch_y: Float64Array;
+    /**
      * The world transform of each bone after `update()`: six numbers per bone, as a canvas takes
      * them (`a, b, c, d, e, f`: a point `(px, py)` of the bone lands at `a px + c py + e`,
      * `b px + d py + f`). A turn and a shift: the bone's scale is not in it (`world_point()`
@@ -88,6 +94,8 @@ export class Skeleton {
         this.y = new Float64Array(count);
         this.scale_x = new Float64Array(count).fill(1);
         this.scale_y = new Float64Array(count).fill(1);
+        this.stretch_x = new Float64Array(count).fill(1);
+        this.stretch_y = new Float64Array(count).fill(1);
         this.world = new Float64Array(count * 6);
         this.world_angles = new Float64Array(count);
         this.reference = new Float64Array(count * 6);
@@ -183,14 +191,22 @@ export class Skeleton {
         this.sole_y = Float64Array.from(points.map((point) => point.y));
     }
 
-    /** The bone's scale along it: rest times pose. */
+    /** The bone's scale along it: rest times pose times the clip's stretch. */
     public length_scale(index: number): number {
-        return this.rest_scale_x[index] * this.scale_x[index];
+        return (
+            this.rest_scale_x[index] *
+            this.scale_x[index] *
+            this.stretch_x[index]
+        );
     }
 
-    /** The bone's scale across it: rest times pose. */
+    /** The bone's scale across it: rest times pose times the clip's stretch. */
     public width_scale(index: number): number {
-        return this.rest_scale_y[index] * this.scale_y[index];
+        return (
+            this.rest_scale_y[index] *
+            this.scale_y[index] *
+            this.stretch_y[index]
+        );
     }
 
     /** Some bone is scaled (rest or pose). */
@@ -236,11 +252,13 @@ export class Skeleton {
         return this.by_name.get(name) ?? -1;
     }
 
-    /** Back to the rest pose (call `update()` after). */
+    /** Back to the rest pose (call `update()` after). The shape's scales stay. */
     public reset_pose(): void {
         this.rotation.fill(0);
         this.x.fill(0);
         this.y.fill(0);
+        this.stretch_x.fill(1);
+        this.stretch_y.fill(1);
     }
 
     /**

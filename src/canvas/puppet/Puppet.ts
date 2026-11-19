@@ -11,11 +11,14 @@ import {
     PackedLooks,
     PuppetBaker,
 } from "./PuppetLook";
+import { PuppetJiggle } from "./PuppetJiggle";
 import { PuppetPlayer, PuppetPlayOptions } from "./PuppetPlayer";
 import { PuppetRig } from "./PuppetRig";
 import { PuppetPart, PuppetSkin } from "./PuppetSkin";
 import { CharacterData, MarkData, OutfitData } from "./RigData";
 import { PuppetPoint, Skeleton } from "./Skeleton";
+import { SoftLayer } from "./SoftLayer";
+import { skin_points, soft_matrices } from "./SoftMesh";
 import {
     first_slot_on,
     part_bone,
@@ -106,6 +109,17 @@ export interface PuppetDrawOptions {
      * was laid into once (for measuring; tints and marks then stay off). Default false.
      */
     readonly direct_meshes?: boolean;
+    /**
+     * A soft skin waits in this layer for `layer.draw(context)` (many puppets in one pass on the
+     * graphics card). Without one, a soft puppet is drawn at once through the context's shared layer.
+     */
+    readonly layer?: SoftLayer;
+    /** A soft skin's grid drawn over it. */
+    readonly grid?: boolean;
+    /** A soft skin in its bones' colours, each point mixed by its weights. */
+    readonly weights?: boolean;
+    /** A soft skin's opacity, 0 to 1. Default 1. */
+    readonly alpha?: number;
 }
 
 /** A box in the puppet's own space. */
@@ -176,6 +190,11 @@ export class Puppet {
     public make_canvas: MakePuppetCanvas = default_puppet_canvas;
     /** The spacing of a part mesh's grid, in the part's pixels. Smaller bends more smoothly and costs more. */
     public mesh_cell = 16;
+    /**
+     * The rig's jiggling bones (ears, tails; its `jiggle` data), one spring each: `enabled`,
+     * `strength`, and `carry(dx, dy)` when the game moves the puppet, so they lag behind the move.
+     */
+    public readonly jiggle = new PuppetJiggle();
 
     public constructor(
         public readonly rig: PuppetRig,
@@ -202,11 +221,54 @@ export class Puppet {
         return this.player.queue(name);
     }
 
-    /** Moves the clip on by `delta_seconds` and poses the skeleton. */
+    /** Moves the clip on by `delta_seconds`, poses the skeleton and swings the jiggling bones. */
     public update(delta_seconds: number): void {
         this.refresh();
         this.player.update(delta_seconds);
         this.player.apply(this.skeleton);
+        if (this.player.clip !== null) {
+            this.jiggle.step(delta_seconds, this.skeleton);
+        }
+    }
+
+    /**
+     * The clips' stretch and squash (their `scale_x`, `scale_y` keys) is shown; false keeps every
+     * bone at its length. Since step 41.
+     */
+    public get stretch(): boolean {
+        return this.player.stretch;
+    }
+
+    public set stretch(stretch: boolean) {
+        this.player.stretch = stretch;
+    }
+
+    /** The skin it wears is a soft skin (a grid over whole pictures), not cut-out parts. */
+    public get is_soft(): boolean {
+        return this.skin?.soft != null;
+    }
+
+    /**
+     * Where the points of its soft skin's grid are now, in the puppet's own space (two numbers
+     * per point; `cell_size` defaults to the skin's GPU grid). Null without a soft skin or its picture.
+     */
+    public soft_points(cell_size?: number): Float64Array | null {
+        const soft = this.skin?.soft ?? null;
+        const inverse = soft?.rest_inverse ?? null;
+        if (soft === null || inverse === null) {
+            return null;
+        }
+        const mesh = soft.mesh(cell_size ?? soft.cell_size);
+        if (mesh === null) {
+            return null;
+        }
+        const matrices = soft_matrices(
+            this.skeleton,
+            inverse,
+            [1, 0, 0, 1, 0, 0],
+            new Float64Array(this.skeleton.count * 6),
+        );
+        return skin_points(mesh, matrices, new Float64Array(mesh.count * 2));
     }
 
     /**
@@ -959,6 +1021,29 @@ export class Puppet {
         if (skin === null) {
             return null;
         }
+        if (skin.soft !== null && (of === undefined || of === "body")) {
+            // A soft skin: the box around its grid's points as they are now.
+            const points = this.soft_points(skin.soft.cpu_cell_size);
+            if (points === null || points.length === 0) {
+                return null;
+            }
+            let soft_left = Infinity;
+            let soft_top = Infinity;
+            let soft_right = -Infinity;
+            let soft_bottom = -Infinity;
+            for (let index = 0; index < points.length; index += 2) {
+                soft_left = Math.min(soft_left, points[index]);
+                soft_right = Math.max(soft_right, points[index]);
+                soft_top = Math.min(soft_top, points[index + 1]);
+                soft_bottom = Math.max(soft_bottom, points[index + 1]);
+            }
+            return {
+                x: soft_left,
+                y: soft_top,
+                width: soft_right - soft_left,
+                height: soft_bottom - soft_top,
+            };
+        }
         let left = Infinity;
         let top = Infinity;
         let right = -Infinity;
@@ -1016,6 +1101,15 @@ export class Puppet {
                 this.draw_bones(context, x, y, options);
             }
             return false;
+        }
+        if (skin.soft !== null) {
+            // A soft skin: the layer draws it (on the graphics card, or triangle by triangle).
+            const layer = options.layer ?? SoftLayer.for_context(context);
+            const added = layer.add(this, context, x, y, options);
+            if (options.layer === undefined) {
+                layer.draw(context);
+            }
+            return added;
         }
         const order = this.order_for(skin);
         const looks = this.looks_for(order);
@@ -1244,8 +1338,8 @@ export class Puppet {
         return -1;
     }
 
-    /** The bones as lines from joint to tip, joints as rings; on top of whatever is drawn. */
-    private draw_bones(
+    /** The bones as lines from joint to tip, joints as rings; on top of whatever is drawn (`debug`). */
+    public draw_bones(
         context: CanvasRenderingContext2D,
         x: number,
         y: number,
@@ -1283,6 +1377,7 @@ export class Puppet {
         if (this.version !== this.rig.version) {
             this.version = this.rig.version;
             this.skeleton = this.rig.make_skeleton();
+            this.jiggle.set_bones(this.rig.jiggle);
             this.worn = null;
             if (this.rig.has_data) {
                 for (const name of [...this.shape_values.keys()]) {

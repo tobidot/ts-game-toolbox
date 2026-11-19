@@ -43,6 +43,24 @@ export interface RigData {
      * height follows the leg length, through every clip. Default: none.
      */
     readonly soles?: readonly string[];
+    /**
+     * Bones that lag behind and swing a little (ears, a belly, a tail; since step 41): a spring per
+     * bone, stepped with the frame time and steady at any frame rate. `puppet.jiggle` switches it.
+     */
+    readonly jiggle?: Readonly<Record<string, JiggleData>>;
+}
+
+/**
+ * A bone that jiggles: its tip follows where the clip puts it through a spring, so it lags behind a
+ * turn and swings back. The lag turns the bone, at most `max` degrees either way.
+ */
+export interface JiggleData {
+    /** Seconds for a swing to die down to half. Default 0.2. */
+    readonly half_life?: number;
+    /** How much of the lag turns the bone: 0 none, 1 all of it. Default 1. */
+    readonly strength?: number;
+    /** The most it turns the bone either way, in degrees. Default 30. */
+    readonly max?: number;
 }
 
 /**
@@ -110,11 +128,56 @@ export interface SlotData {
     readonly bone: string;
 }
 
-/** A skin: one part per slot (a slot without one draws nothing). */
+/** A skin: one part per slot (a slot without one draws nothing), or a soft skin. */
 export interface SkinData {
     readonly attachments: Readonly<Record<string, AttachmentData>>;
     /** Atlas pixels per unit. Default 1; a sharper atlas of the same puppet says 2. */
     readonly resolution?: number;
+    /**
+     * A soft skin (since step 41): the creature as whole pictures in its rest pose, covered by a
+     * fine grid whose points move with up to four bones each. A skin with `soft` draws it instead
+     * of parts (its `attachments` may be empty).
+     */
+    readonly soft?: SoftSkinData;
+}
+
+/**
+ * A soft skin as plain data: whole pictures of the creature in its rest pose (the rig's bones
+ * at rest, no clip), drawn back to front, each with a bone map beside it in the same atlas. A
+ * fine grid is laid over each picture where it has pixels; every grid point binds to up to four
+ * bones, weighted by the bone map blurred a little, and moves with them (linear blend skinning).
+ */
+export interface SoftSkinData {
+    /**
+     * Back to front. One picture is the whole creature; a creature seen from the side with limbs
+     * on both sides takes more (the far legs, the body, the near legs), so a leg never hides
+     * the other in the picture.
+     */
+    readonly pictures: readonly SoftPictureData[];
+    /** Each bone's flat colour in the bone maps (`"#d04040"`). */
+    readonly colors?: Readonly<Record<string, string>>;
+    /** The bones a point may bind to. Default: those with a colour, else every bone. */
+    readonly bones?: readonly string[];
+    /** The grid's spacing on the graphics card, in atlas pixels. Default 12. */
+    readonly cell_size?: number;
+    /** The grid's spacing when drawn on the CPU (triangle by triangle on canvas 2D). Default 32. */
+    readonly cpu_cell_size?: number;
+    /** How far the bone map is blurred, in atlas pixels: the width of the soft crossover at a joint. Default 8. */
+    readonly blur?: number;
+}
+
+/** One picture of a soft skin: where it is in the atlas, its bone map, and where its root sits. */
+export interface SoftPictureData {
+    /** For people and errors (`"near"`). */
+    readonly name?: string;
+    /** `[x, y, width, height]` in the atlas's pixels. */
+    readonly rect: readonly [number, number, number, number];
+    /** The bone map: as large as `rect`, each pixel in its bone's colour. Without one, points bind by distance. */
+    readonly map?: readonly [number, number, number, number];
+    /** The pixel of the picture (from its top left) where the root sits at rest: the feet. */
+    readonly origin: readonly [number, number];
+    /** The bones this picture's points may bind to. Default: the skin's. */
+    readonly bones?: readonly string[];
 }
 
 /** A picture part on its bone: a rectangle of the atlas, turned and placed by its pivot. */
@@ -159,6 +222,13 @@ export interface PuppetKeyData {
     /** Added to the bone's rest position, in its parent's frame (the hip's walk bob). */
     readonly x?: number;
     readonly y?: number;
+    /**
+     * The bone's stretch along it (since step 41), 1 at rest: 1.2 is a fifth longer. A track that
+     * keys `scale_x` and never `scale_y` keeps the area: `scale_y` is `1 / scale_x` (longer is thinner).
+     */
+    readonly scale_x?: number;
+    /** The bone's stretch across it; alone it keeps the area as `scale_x` does. */
+    readonly scale_y?: number;
     /** From this key to the next. Default `linear`; `smooth` eases in and out; `step` holds. */
     readonly ease?: PuppetEase;
 }
