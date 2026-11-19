@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PartKitData } from "../canvas/puppet/PartKit";
 import { MarkSheetData, RigData, WardrobeData } from "../canvas/puppet/RigData";
 import { CanvasGameElement, CatalogueFile } from "./CanvasGameElement";
 import { CanvasGameLogic } from "./CanvasGameLogic";
@@ -90,13 +91,28 @@ const MARKS: MarkSheetData = {
     marks: { dot: { rect: [0, 0, 4, 4], title: "Punkt", kind: "tattoo" } },
 };
 
-/** A catalogue with two puppets of one skeleton, one of another, clothes, marks and a plain picture. */
+/** A part kit for generated creatures: one head. */
+const KIT: PartKitData = {
+    kinds: ["quadruped"],
+    parts: {
+        head: {
+            role: "head",
+            rect: [0, 0, 8, 6],
+            mask: [8, 0, 8, 6],
+            pivot: [0, 3],
+            tip: [8, 3],
+        },
+    },
+};
+
+/** A catalogue with two puppets of one skeleton, one of another, clothes, marks, a part kit and a plain picture. */
 const CATALOGUE = new Map<string, CatalogueFile>([
     ["rendered/puppet/hero", { url: "blob:hero", rig: rig("hero") }],
     ["rendered/puppet/twin", { url: "blob:twin", rig: rig("twin") }],
     ["rendered/puppet/crab", { url: "blob:crab", rig: rig("crab", "crab") }],
     ["rendered/puppet/clothes", { url: "blob:clothes", rig: CLOTHES }],
     ["rendered/puppet/marks", { url: "blob:marks", rig: MARKS }],
+    ["rendered/monster/quadruped-parts", { url: "blob:kit", rig: KIT }],
     ["pixel/prop/coin", { url: "blob:coin" }],
 ]);
 
@@ -108,6 +124,7 @@ class PuppetSettings extends CanvasGameSettings {
         crab: "rendered/puppet/crab",
         clothes: "rendered/puppet/clothes",
         marks: "rendered/puppet/marks",
+        beasts: "rendered/monster/quadruped-parts",
         coin: "pixel/prop/coin",
     };
 }
@@ -265,6 +282,27 @@ describe("puppets from a catalogue", () => {
         expect(hero.marks.map((mark) => mark.id)).toEqual(["dot"]);
     });
 
+    it("gives a part kit at once, filled when its data and its picture come", async () => {
+        const $element = connect();
+        const kit = $element.logic.load_kit("beasts");
+        expect(kit.has_data).toBe(false);
+        expect(kit.is_ready).toBe(false);
+        await flush();
+        expect(kit.has_data).toBe(true);
+        expect(kit.part("head")?.role).toBe("head");
+        expect(kit.parts_of("head", "quadruped").length).toBe(1);
+        expect($element.logic.references.puppets.has("beasts")).toBe(false);
+        expect($element.logic.references.mark_sheets.has("beasts")).toBe(false);
+        expect($element.logic.load_kit("beasts")).toBe(kit);
+        // Four pictures load at a time: the kit comes after the first ones.
+        arrive("blob:hero");
+        arrive("blob:twin");
+        await flush();
+        const $kit = arrive("blob:kit");
+        await flush();
+        expect(kit.image).toBe($kit);
+    });
+
     it("keeps a plain picture a plain picture", async () => {
         const $element = connect();
         await flush();
@@ -272,5 +310,6 @@ describe("puppets from a catalogue", () => {
         expect($element.logic.references.sheets.has("hero")).toBe(false);
         expect($element.logic.references.wardrobes.has("coin")).toBe(false);
         expect($element.logic.references.mark_sheets.has("coin")).toBe(false);
+        expect($element.logic.references.part_kits.has("coin")).toBe(false);
     });
 });

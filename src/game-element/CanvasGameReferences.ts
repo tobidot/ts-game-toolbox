@@ -1,6 +1,7 @@
 import { AssetManager } from "../assets/manager/AssetManager";
 import { SpriteSheet } from "../canvas/animation/SpriteSheet";
 import { MarkSheet } from "../canvas/puppet/MarkSheet";
+import { PartKit } from "../canvas/puppet/PartKit";
 import { PuppetRig } from "../canvas/puppet/PuppetRig";
 import { Wardrobe } from "../canvas/puppet/Wardrobe";
 import { CanvasStage } from "../stage/CanvasStage";
@@ -110,6 +111,12 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
      * `mark_sheet(name)` makes one.
      */
     public readonly mark_sheets = new Map<string, MarkSheet>();
+    /**
+     * Part kits by the game's name: a picture of `settings.catalogue_images` whose catalogue entry
+     * has a part kit's `rig` data (body parts for generated creatures) gets them here.
+     * `part_kit(name)` makes one.
+     */
+    public readonly part_kits = new Map<string, PartKit>();
 
     public constructor(
         host: HTMLElement,
@@ -199,7 +206,22 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
         return sheet;
     }
 
-    /** Gives every sheet, puppet rig, wardrobe and mark sheet still without a picture the one that came under its name. */
+    /**
+     * The part kit named `name`, empty until its data comes (from the catalogue's `rig` of a part
+     * kit, or a game's own `set_data()`). It takes the picture `assets.images` has under the same
+     * name, now or when it arrives; `kit.is_ready` says when creatures can be made from it.
+     */
+    public part_kit(name: string): PartKit {
+        let kit = this.part_kits.get(name);
+        if (kit === undefined) {
+            kit = new PartKit();
+            this.part_kits.set(name, kit);
+        }
+        this.take_picture(name, kit);
+        return kit;
+    }
+
+    /** Gives every sheet, puppet rig, wardrobe, mark sheet and part kit still without a picture the one that came under its name. */
     public update_sheet_images(): void {
         for (const [name, sheet] of this.sheets) {
             this.take_picture(name, sheet);
@@ -212,6 +234,9 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
         }
         for (const [name, marks] of this.mark_sheets) {
             this.take_picture(name, marks);
+        }
+        for (const [name, kit] of this.part_kits) {
+            this.take_picture(name, kit);
         }
     }
 

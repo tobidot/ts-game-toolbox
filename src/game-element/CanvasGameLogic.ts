@@ -1,6 +1,7 @@
 import { AudioPlayer } from "../audio/AudioPlayer";
 import { AnimationPlayer } from "../canvas/animation/AnimationPlayer";
 import { MarkSheet } from "../canvas/puppet/MarkSheet";
+import { PartKit } from "../canvas/puppet/PartKit";
 import { Puppet } from "../canvas/puppet/Puppet";
 import { Wardrobe } from "../canvas/puppet/Wardrobe";
 import { Progress } from "../flow";
@@ -192,6 +193,15 @@ export abstract class CanvasGameLogic<
      */
     public load_marks(name: string): MarkSheet {
         return this.references.mark_sheet(name);
+    }
+
+    /**
+     * A part kit (body parts for generated creatures) in one line: `references.part_kit(name)`,
+     * filled from the catalogue. With `settings.catalogue_images = { beasts: "rendered/monster/quadruped-parts" }`,
+     * `generate_creature("quadruped", seed, this.load_kit("beasts"))` once `kit.is_ready`.
+     */
+    public load_kit(name: string): PartKit {
+        return this.references.part_kit(name);
     }
 
     // ---- lifecycle ----

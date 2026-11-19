@@ -1,4 +1,5 @@
 import { SheetData } from "../canvas/animation/SheetData";
+import { is_part_kit_data, PartKitData } from "../canvas/puppet/PartKit";
 import {
     is_mark_sheet_data,
     is_wardrobe_data,
@@ -56,9 +57,11 @@ export interface CatalogueFile {
      * Or a clothes atlas: a wardrobe's pieces for a skeleton (`is_wardrobe_data()`), which go into
      * `references.wardrobe(name)`; `logic.load_wardrobe(name)` gives it. Or a mark sheet: marks
      * for skins (`is_mark_sheet_data()`), which go into `references.mark_sheet(name)`;
-     * `logic.load_marks(name)` gives it.
+     * `logic.load_marks(name)` gives it. Or a part kit: body parts for generated creatures
+     * (`is_part_kit_data()`), which go into `references.part_kit(name)`; `logic.load_kit(name)`
+     * gives it.
      */
-    readonly rig?: RigData | WardrobeData | MarkSheetData;
+    readonly rig?: RigData | WardrobeData | MarkSheetData | PartKitData;
 }
 
 /** `HTMLElement` where there is a DOM; a stand-in where the module is only imported (tests of a game). */
@@ -137,7 +140,11 @@ export abstract class CanvasGameElement<
                         }
                         if (kind === "image" && file.rig !== undefined) {
                             try {
-                                if (is_mark_sheet_data(file.rig)) {
+                                if (is_part_kit_data(file.rig)) {
+                                    references_of_game
+                                        .part_kit(name)
+                                        .set_data(file.rig);
+                                } else if (is_mark_sheet_data(file.rig)) {
                                     references_of_game
                                         .mark_sheet(name)
                                         .set_data(file.rig);
