@@ -10,6 +10,7 @@ A puppet is a skeleton of bones with picture parts on them: a thigh, a shin and 
 - **`Wardrobe`**: clothes and accessories for every puppet of one skeleton, in one atlas: pieces (a hat, a coat with its sleeves and tails) on bones and anchors, worn by place (since step 39, Kleiderschrank; [below](#clothes-on-anchors)).
 - **Body shape and skin**: shape values that scale bones and bend parts as meshes (`PartMesh`), tints that keep the shading, marks from a `MarkSheet` laid onto the skin, and the whole `character` as data (since step 40, Maskenbildner; [below](#body-shape-and-skin)).
 - **Soft skins**: one whole picture under a fine grid whose points follow up to four bones (`SoftSkin`, `SoftMesh`), weights from a bone map; drawn by a `SoftLayer` with WebGL 2 or on the CPU; scale keys for stretch and squash, and bones that jiggle after the motion (`PuppetJiggle`) (since step 41, Gummihaut; [below](#soft-skins)).
+- **Generated creatures**: a monster from a kind and a seed: its skeleton from a template with ranges, its body from a part kit painted into one soft skin (`compose_soft_skin`), gaits made from its measurements (two-bone IK for planted feet, a worm's wave, a flier's flap), and attacks with hit moments and hit areas; all of it plain data (since step 42, Bestiarium; [below](#generated-creatures)).
 
 The format is our own, close to Spine's and DragonBones' ideas (bones, slots, skins, keyed tracks) but much smaller; no Spine runtime or file is involved.
 
@@ -307,6 +308,44 @@ Each is a damped spring on the bone's tip: when the bone's parent moves, the tip
 - Both paths put every point in the same place: `skin_point_as_shader()` is the shader's skinning line by line in TypeScript, and the tests hold it against `skin_points()`. Step 41's browser check draws the beast both ways and finds about 1.3 % of its pixels differing by more than 48 of 255 (edges, where the two paths smooth differently).
 - The atlas must be readable (the same origin, or CORS) for the grid and the weights: `SoftSkin` reads its pixels once. In Node, set `rig.soft_skin.pixels` yourself (`{ width, height, data }`).
 
+## Generated creatures
+
+A creature is made, not drawn: a kind and a seed give its skeleton, its body, its colours, its movement and its attacks, and the same seed always gives the same creature. Since step 42, Bestiarium.
+
+```ts
+const kit = this.load_kit("beasts");                  // catalogue_images: { beasts: "rendered/monster/quadruped-parts" }
+// once kit.is_ready:
+const monster = generate_creature("quadruped", 4711, kit);
+monster.play("walk");                                  // idle, walk, run
+monster.events.attach(CreatureHitEvent, (hit) => {     // at each `hit` moment of an attack
+    const area = monster.area_now(hit.attack, x, floor_y, { scale: 0.5 });
+    if (area !== null && in_area(area, dummy_x, dummy_y)) { dummy.hit(); }
+});
+monster.attack("bite");                                // plays once, then the movement again
+// every frame:
+monster.update(delta_seconds);
+monster.draw(context, x, floor_y, { layer, scale: 0.5 });
+layer.draw(context);
+save(monster.data);                                    // plain data; creature_from_data(data, kit) makes it again
+```
+
+**Four kinds, each a template.** `CREATURE_TEMPLATES` (`quadruped`, `biped`, `worm`, `flyer`) are plain data (`CreatureTemplateData`): values a game may set (`params`: `size` and `legs`, `arms`, `segments`, `wings` or `tail`, each with a German `title`, `min`, `max`, `whole`), chains of bones with ranges for their count, length, angle and turns (`TemplateChainData`: a spine, a neck, a head with a jaw, legs on both sides, a tail, a worm's body, wings), and the pictures back to front (the far legs, the body, the near legs). `make_skeleton_from_template(template, seed, params)` picks the numbers, each value and each chain from a stream of its own (`seed_for(seed, name)`), so a longer tail leaves the legs as they were; it tilts the spine so all legs stand, lifts a worm onto the ground and hangs a flier in the air, and gives `CreatureSkeleton` (rig bones, anchors at every chain's tip, `"hind_r_sole"`, and the chains with their roles).
+
+**A part kit** (`PartKitData`, the `rig` of a catalogue picture like `rendered/monster/quadruped-parts`): body parts in one atlas, each in grey shading with its outline and, beside it, a tint mask (red takes the main colour, green the second, blue the accent, black stays as drawn; its alpha is the part without the outline). Each part has a `role` (`head`, `jaw`, `torso`, `neck`, `tail`, `tail_tip`, `leg_upper`, `leg_lower`, `foot`, `arm_upper`, `arm_lower`, `hand`, `wing`, `eye`, `horn`, `ear`, `spike`, `segment`), a German `title`, a `pivot` and a `tip` (the line that goes onto a bone), named `points` (a head's `mouth`, `jaw`, `eye`, `horn`, `ear`), and for a head its `jaw`, for a foot or hand `claws`. `PartKit` (`parts_of(role, kind)`, `part(id)`, `pixels`, `is_ready`) reads the atlas's pixels once. Step 42's kits are rendered in Blender (`collection-spielwerk/42-bestiarium/kit__blender`), 19 to 31 parts a kind.
+
+**One soft skin from the parts.** `compose_soft_skin(kit, placements, tints, { bones, pictures })` paints each placed part (`SoftPlacement`: the part, the picture, the bone or `bones` its pixels follow, `at` and `to` on the skeleton at rest, `girth`, `flip`, `shade`, `over`, `zone`) scaled and turned onto its bone, tinted, into its picture, and beside it the bone map step 41's `SoftMesh` reads. Parts of a picture are painted twice, whole and then without their outlines, so where a thigh meets the hip only the outline round both shows: no seams. A limb's root is painted in its parent's colour (`zone`), so it stretches with the body. Pure arithmetic on pixels: the same data paints the same bytes, in Node too. `build_creature(data, kit)` places the parts by the template (a torso over the spine, one part per leg bone, the eyes, horns and ears on the head's points, spikes along the back), composes the skin and writes a rig (`RigData` with the soft skin, the gaits and the attacks).
+
+**Movement is made from the measurements.** `make_gaits(body)` gives `idle`, `walk` and `run`, ordinary clips:
+
+- `make_walk(body, { run, period, stride, duty, phases })`: each standing leg's sole stays on the ground for `duty` of the cycle, sliding back at the clip's `travel`, then swings forward in an arc; `two_bone_ik(skeleton, upper, lower, end_x, end_y, target_x, target_y, bend)` finds the hip and knee for every key (`bend_of()` keeps a knee bending the way it was drawn). A lateral walk or a gallop for four legs, alternating for two; the body bobs, the spine flexes on a run, the tail and arms swing.
+- `make_wave(body, { fast, waves, amplitude })`: humps travel from the head to the tail along a worm, the wavelength from its length.
+- `make_flap(body, { glide, hover })`: a flier beats its wings and rises on the downstroke, glides with them held out, or hovers in its idle.
+- `make_idle(body)`: breathing with `scale_y` keys, the feet where they stand.
+
+**Attacks** (`CreatureAttackData`: a clip with `hit` moments, a `CreatureHitArea`, a `stream`): `make_bite` (the head draws back with the jaw open, lunges and snaps; one hit, a circle round the `mouth` anchor; null without a jaw), `make_fire` (rears back, opens the jaw; `start` and `end` moments for the stream, four hits, a cone of 18° from the mouth), `make_claw` (the near front limb, an arm or a flier's talons swipes; one hit at the end, a circle round its tip). `possible_attacks()` says what a body allows: a bite with a jaw, a claw with claws, fire always (chosen by chance, more often for worms and fliers).
+
+**The creature.** `make_creature_data(kind, seed, kit, overrides)` picks the values, parts, colours (`CREATURE_COLORS`) and attacks, `overrides` kept as given (a slider). `CreatureData` is `{ kind, seed, params, parts, tints, attacks, name? }`, so it goes through `SaveSlots` as it is; `creature_from_data(data, kit, image?)` makes the same creature from it, and refuses clearly with a part the kit doesn't have. `Creature`: `rig`, `puppet`, `attacks`, `events`, `data`, `kind`, `pixels`, `play(name)`, `attack(name)`, `attacking`, `streaming` (fire pours now), `moving`, `update`, `area_now(name, x, y, options)` (the area as drawn), `draw`; `in_area(area, x, y, slack)`. `copy()` gives another of the same creature sharing its rig (picture, grid, and on the graphics card its mesh and texture), playing on its own (step 42's Wildnis).
+
 ## In the game shell
 
 A picture of `settings.catalogue_images` whose catalogue entry has a `rig` brings its puppet along: the host's `load_catalogue_url()` answers with `rig` in the `CatalogueFile`, and the shell puts it into `references.puppet(name)`. `logic.load_puppet(name, clip?)` is then a puppet in one line:
@@ -343,7 +382,9 @@ hero.use_marks(this.load_marks("marks"));
 hero.set_character(saved_character);                  // its marks are laid on when the sheet has come
 ```
 
-The puppet exists at once and waits while the data is on its way: it draws nothing and plays nothing; it starts the clip it was told (or the rig's default clip) as soon as the rig has it, and draws once the picture has come. `references.puppet(name).set_data(data)` also takes a game's own rig for a picture of `settings.images`. `@tce-v3/game-boot` fills the hook from `dll-tce-assets` (0.5.0 and later: `rendered/puppet/wanderer` and `rendered/puppet/gardener`; 0.6.0 and later also the wardrobes `rendered/puppet/clothes` and `rendered/puppet/accessories`; 0.7.0 and later the model `rendered/puppet/model` with shapes and tint layers and the mark sheet `rendered/puppet/marks`; 0.8.0 and later the soft skins `rendered/puppet/wanderer-soft`, step 38's wanderer whole on the same skeleton, and `rendered/puppet/beast`, a dog-like beast with jiggling ears and tail).
+A picture whose `rig` is a part kit (it has `parts`, no `bones`, `pieces` or `marks`) goes to `references.part_kit(name)`, and `logic.load_kit(name)` hands it out; `kit.is_ready` says when its data and pixels are there (see [Generated creatures](#generated-creatures)).
+
+The puppet exists at once and waits while the data is on its way: it draws nothing and plays nothing; it starts the clip it was told (or the rig's default clip) as soon as the rig has it, and draws once the picture has come. `references.puppet(name).set_data(data)` also takes a game's own rig for a picture of `settings.images`. `@tce-v3/game-boot` fills the hook from `dll-tce-assets` (0.5.0 and later: `rendered/puppet/wanderer` and `rendered/puppet/gardener`; 0.6.0 and later also the wardrobes `rendered/puppet/clothes` and `rendered/puppet/accessories`; 0.7.0 and later the model `rendered/puppet/model` with shapes and tint layers and the mark sheet `rendered/puppet/marks`; 0.8.0 and later the soft skins `rendered/puppet/wanderer-soft`, step 38's wanderer whole on the same skeleton, and `rendered/puppet/beast`, a dog-like beast with jiggling ears and tail; 0.9.0 and later the part kits `rendered/monster/quadruped-parts`, `biped-parts`, `worm-parts` and `flyer-parts`).
 
 ## Picking a bone
 
@@ -401,3 +442,14 @@ Soft (step 41, the same machine; the beast, 24 bones, 5 pictures, 1 142 points a
 | The CPU's points per beast (12 / 32 px grid) | 15 / 3.9 µs | | |
 
 On the graphics card the bill is the script: at 2 500 beasts updating them takes about 12 ms of the frame, drawing them all is one call. On the CPU every triangle is a clip, a transform and a `drawImage`, about 6 µs each, so ten beasts are the most: the CPU path is a fallback for a few creatures, not for a herd.
+
+Generated (step 42, the same machine; making a creature is its data, its skeleton, the parts painted into the soft skin, its clips and attacks; its grid is the soft mesh at 12 px, made at its first drawing; medians of about 30 seeds):
+
+| | Node 22: body / grid | Chromium headless: body / grid | Chrome on an RTX 4070: body / grid |
+| --- | --- | --- | --- |
+| Vierbeiner | 45.6 / 33.4 ms | 52.5 / 16.9 ms | 51.9 / 17.4 ms |
+| Zweibeiner | 26.8 / 19.5 ms | 29.4 / 9.9 ms | 29.3 / 10.1 ms |
+| Wurm | 12.8 / 8.0 ms | 13.8 / 4.0 ms | 13.6 / 3.9 ms |
+| Flieger | 41.0 / 26.6 ms | 46.7 / 14.7 ms | 46.1 / 14.8 ms |
+
+So a game makes one creature a frame at most, or keeps them: step 42's Wildnis makes its dozen one a frame. Roaming, a dozen different creatures and copies of them (`copy()`, sharing the rig, so the mesh and texture go up once) through one `SoftLayer`: 1 440 to 1 536 at 57 FPS on the RTX 4070, 57 to 72 in headless Chromium. Sharing the rig saved uploads, not frame time (1 536 either way): as in step 41, the bill is updating the clips.
