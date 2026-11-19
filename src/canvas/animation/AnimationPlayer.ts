@@ -45,7 +45,7 @@ export interface PlayOptions {
  * More frames than this in one `update()` and the rest of the time is dropped: a tab that slept
  * for an hour doesn't replay the hour.
  */
-const MAX_FRAMES_PER_UPDATE = 10_000;
+export const MAX_FRAMES_PER_UPDATE = 10_000;
 
 /**
  * Plays the clips of a `SpriteSheet` for one sprite: `sheet.player("walk")`, then `update(dt)`
@@ -62,6 +62,11 @@ export class AnimationPlayer {
     /** Time runs this many times as fast; never below 0. */
     public speed = 1;
     public paused = false;
+    /**
+     * False: no `AnimationFrameEvent`s (the frames still play, and `AnimationEndEvent`s still
+     * come). For sprites nobody listens to, where footsteps would only cost.
+     */
+    public sends_events = true;
 
     private playing: AnimationClip | null = null;
     /** The clip asked for while the sheet doesn't have it yet. */
@@ -272,6 +277,9 @@ export class AnimationPlayer {
 
     /** The frame shown now came up: its event, if it has one. */
     private enter(): void {
+        if (!this.sends_events) {
+            return;
+        }
         const clip = this.playing!;
         const name = clip.events.get(this.index);
         if (name !== undefined) {
