@@ -21,7 +21,7 @@ npm install @game.object/ts-game-toolbox
 | Signals | Event and signal sockets, observable values | [signals.md](docs/signals.md) |
 | Flow | `Progress`, `FixedStepClock`, `Tween`, timers, `Throttler`, asserts | [flow.md](docs/flow.md) |
 | Input | `ActionMap`: actions by name from the keyboard, a gamepad and touch controls, owned by the game shell; `KeyboardState`, `PointerInput`, `MenuInput` | [misc.md](docs/misc.md#input), [game-shell.md](docs/game-shell.md#actions) |
-| World | `TileMap`, and pathfinding on any grid: `find_path` (A*), `flow_field` for many walkers to one place, `smooth_path` | [world.md](docs/world.md) |
+| World | `TileMap`, and pathfinding on any grid: `find_path` (A*), `flow_field` for many walkers to one place, `smooth_path`; visibility: `field_of_view` (symmetric shadowcasting), `FogOfWar` (unseen, seen, visible; many viewers, incremental, events for newly seen cells), `draw_fog` | [world.md](docs/world.md) |
 | Animation | Sprite sheets cut by grid or from a catalogue entry's data, clips as plain data, `AnimationPlayer` with play, queue, `then`, speed and frame events | [animation.md](docs/animation.md) |
 | Particles | `Particles`: effects as plain data (`PARTICLE_EFFECTS`), on the GPU (WebGL 2) or the CPU behind one API, picked by itself, exact motion, a lost context goes on on the CPU | [particles.md](docs/particles.md) |
 | Noise | Seeded simplex and value noise as functions, recipes as plain data with sizes in world units (`make_noise`, `NOISE_RECIPES`: hills, mountains, islands, clouds, marble), `fill_grid` into any `Grid2D`, `normalize_grid` | [noise.md](docs/noise.md) |
