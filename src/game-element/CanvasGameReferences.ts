@@ -1,5 +1,6 @@
 import { AssetManager } from "../assets/manager/AssetManager";
 import { SpriteSheet } from "../canvas/animation/SpriteSheet";
+import { MarkSheet } from "../canvas/puppet/MarkSheet";
 import { PuppetRig } from "../canvas/puppet/PuppetRig";
 import { Wardrobe } from "../canvas/puppet/Wardrobe";
 import { CanvasStage } from "../stage/CanvasStage";
@@ -103,6 +104,12 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
      * `wardrobe(name)` makes one.
      */
     public readonly wardrobes = new Map<string, Wardrobe>();
+    /**
+     * Mark sheets by the game's name: a picture of `settings.catalogue_images` whose catalogue
+     * entry has a mark sheet's `rig` data (tattoos, scars, freckles for skins) gets them here.
+     * `mark_sheet(name)` makes one.
+     */
+    public readonly mark_sheets = new Map<string, MarkSheet>();
 
     public constructor(
         host: HTMLElement,
@@ -177,7 +184,22 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
         return wardrobe;
     }
 
-    /** Gives every sheet, puppet rig and wardrobe still without a picture the one that came under its name. */
+    /**
+     * The mark sheet named `name`, empty until its data comes (from the catalogue's `rig` of a
+     * mark sheet, or a game's own `set_data()`). It takes the picture `assets.images` has under
+     * the same name, now or when it arrives; a puppet that uses it lays its marks once both came.
+     */
+    public mark_sheet(name: string): MarkSheet {
+        let sheet = this.mark_sheets.get(name);
+        if (sheet === undefined) {
+            sheet = new MarkSheet();
+            this.mark_sheets.set(name, sheet);
+        }
+        this.take_picture(name, sheet);
+        return sheet;
+    }
+
+    /** Gives every sheet, puppet rig, wardrobe and mark sheet still without a picture the one that came under its name. */
     public update_sheet_images(): void {
         for (const [name, sheet] of this.sheets) {
             this.take_picture(name, sheet);
@@ -187,6 +209,9 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
         }
         for (const [name, wardrobe] of this.wardrobes) {
             this.take_picture(name, wardrobe);
+        }
+        for (const [name, marks] of this.mark_sheets) {
+            this.take_picture(name, marks);
         }
     }
 

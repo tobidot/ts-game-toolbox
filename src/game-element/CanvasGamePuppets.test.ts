@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RigData, WardrobeData } from "../canvas/puppet/RigData";
+import { MarkSheetData, RigData, WardrobeData } from "../canvas/puppet/RigData";
 import { CanvasGameElement, CatalogueFile } from "./CanvasGameElement";
 import { CanvasGameLogic } from "./CanvasGameLogic";
 import { CanvasGameRenderer } from "./CanvasGameRenderer";
@@ -85,12 +85,18 @@ const CLOTHES: WardrobeData = {
     },
 };
 
-/** A catalogue with two puppets of one skeleton, one of another, clothes and a plain picture. */
+/** Marks for any skin: a dot. */
+const MARKS: MarkSheetData = {
+    marks: { dot: { rect: [0, 0, 4, 4], title: "Punkt", kind: "tattoo" } },
+};
+
+/** A catalogue with two puppets of one skeleton, one of another, clothes, marks and a plain picture. */
 const CATALOGUE = new Map<string, CatalogueFile>([
     ["rendered/puppet/hero", { url: "blob:hero", rig: rig("hero") }],
     ["rendered/puppet/twin", { url: "blob:twin", rig: rig("twin") }],
     ["rendered/puppet/crab", { url: "blob:crab", rig: rig("crab", "crab") }],
     ["rendered/puppet/clothes", { url: "blob:clothes", rig: CLOTHES }],
+    ["rendered/puppet/marks", { url: "blob:marks", rig: MARKS }],
     ["pixel/prop/coin", { url: "blob:coin" }],
 ]);
 
@@ -101,6 +107,7 @@ class PuppetSettings extends CanvasGameSettings {
         twin: "rendered/puppet/twin",
         crab: "rendered/puppet/crab",
         clothes: "rendered/puppet/clothes",
+        marks: "rendered/puppet/marks",
         coin: "pixel/prop/coin",
     };
 }
@@ -236,11 +243,34 @@ describe("puppets from a catalogue", () => {
         expect(hero.outfit).toEqual({ hat: "cap" });
     });
 
+    it("gives a mark sheet at once, whose marks a puppet wears when its data comes", async () => {
+        const $element = connect();
+        const hero = $element.logic.load_puppet("hero");
+        const marks = $element.logic.load_marks("marks");
+        hero.use_marks(marks);
+        expect(marks.has_data).toBe(false);
+        expect(hero.add_mark("dot", "body", { x: 4, y: 0 })).toBe(0);
+        await flush();
+        expect(marks.has_data).toBe(true);
+        expect(marks.mark("dot")?.title).toBe("Punkt");
+        expect($element.logic.references.puppets.has("marks")).toBe(false);
+        expect($element.logic.references.wardrobes.has("marks")).toBe(false);
+        // Four pictures load at a time: the marks come after the first ones.
+        arrive("blob:hero");
+        await flush();
+        const $marks = arrive("blob:marks");
+        await flush();
+        expect(marks.image).toBe($marks);
+        expect(hero.add_mark("star", "body")).toBe(-1);
+        expect(hero.marks.map((mark) => mark.id)).toEqual(["dot"]);
+    });
+
     it("keeps a plain picture a plain picture", async () => {
         const $element = connect();
         await flush();
         expect($element.logic.references.puppets.has("coin")).toBe(false);
         expect($element.logic.references.sheets.has("hero")).toBe(false);
         expect($element.logic.references.wardrobes.has("coin")).toBe(false);
+        expect($element.logic.references.mark_sheets.has("coin")).toBe(false);
     });
 });

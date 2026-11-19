@@ -1,5 +1,6 @@
 import { AudioPlayer } from "../audio/AudioPlayer";
 import { AnimationPlayer } from "../canvas/animation/AnimationPlayer";
+import { MarkSheet } from "../canvas/puppet/MarkSheet";
 import { Puppet } from "../canvas/puppet/Puppet";
 import { Wardrobe } from "../canvas/puppet/Wardrobe";
 import { Progress } from "../flow";
@@ -181,6 +182,16 @@ export abstract class CanvasGameLogic<
      */
     public load_wardrobe(name: string): Wardrobe {
         return this.references.wardrobe(name);
+    }
+
+    /**
+     * A mark sheet (tattoos, scars, freckles for skins) in one line: `references.mark_sheet(name)`,
+     * filled from the catalogue. With `settings.catalogue_images = { marks: "rendered/puppet/marks" }`,
+     * `hero.use_marks(this.load_marks("marks"))` and then `hero.add_mark("anchor", "upper_arm_r", { x, y })`;
+     * marks put on while it loads are laid on when it comes.
+     */
+    public load_marks(name: string): MarkSheet {
+        return this.references.mark_sheet(name);
     }
 
     // ---- lifecycle ----
