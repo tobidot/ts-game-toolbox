@@ -7,6 +7,7 @@ A puppet is a skeleton of bones with picture parts on them: a thigh, a shin and 
 - **`PuppetPlayer`**: plays the rig's clips for one puppet: `play` with a fade, `queue`, `then`, `speed`, `paused`, `seek`, and named moments as events.
 - **`Skeleton`**: the bones in flat arrays: the pose (`rotation`, `x`, `y` per bone, on the rest pose) and the world matrices `update()` makes from it.
 - **`PuppetClip`**: one clip: keys per bone, sampled at any time.
+- **`Wardrobe`**: clothes and accessories for every puppet of one skeleton, in one atlas: pieces (a hat, a coat with its sleeves and tails) on bones and anchors, worn by place (since step 39, Kleiderschrank; [below](#clothes-on-anchors)).
 
 The format is our own, close to Spine's and DragonBones' ideas (bones, slots, skins, keyed tracks) but much smaller; no Spine runtime or file is involved.
 
@@ -69,7 +70,7 @@ A rig is a JSON object, the shape a catalogue entry's `rig` has (dll-tce-assets 
 - **`bones`**: parents before their children. A bone's `x`, `y` is where its joint sits in its parent's frame (along the parent is +x), `rotation` its angle on the parent's at rest, `length` from the joint to its tip (for drawing and picking the bones). All default to 0.
 - **`slots`**: places for parts, in drawing order: the first is drawn first, behind the others. A slot sits on a bone. The far arm comes before the torso, the near arm after it.
 - **`skins`**: sets of parts by name, all in the rig's one picture. A part (`attachments[slot]`) is a `rect` `[x, y, width, height]` of the atlas, its `pivot` (the point of the part, from the rectangle's top left, that sits on the bone's joint) and its `rotation` on the bone (a part drawn upright on a bone that points down is `-90`). `resolution` says how many atlas pixels make one unit, for a sharper atlas of the same puppet. A slot a skin has no part for draws nothing. `default_skin` is the one a new puppet wears (default: the first).
-- **`anchors`**: named points on bones, in the bone's frame: the soles' heel and toe, where a hat or a sword goes. `rig.anchors.get(name)` and `skeleton.world_point(anchor.bone, anchor.x, anchor.y)` say where they are now.
+- **`anchors`**: named points on bones, in the bone's frame: the soles' heel and toe, where a hat or a sword goes. An anchor may have a `rotation` on its bone (default 0); clothes hang on it turned by that much, so a piece drawn upright hangs upright at rest (the catalogue's puppets have `head_top`, `hand_r`, `hand_l`, `belt`, `back`, `foot_r` and `foot_l`, each pointing the way the puppet faces at rest). `rig.anchors.get(name)` and `skeleton.world_point(anchor.bone, anchor.x, anchor.y)` say where they are now, `puppet.anchor_world(name)` with its angle.
 - **`clips`** (below), **`default_clip`** (default: the first), `facing` (the way the pictures face), `bounds` (the rest pose's box around the root, `[x, y, width, height]`).
 
 `from_data()` checks it and throws with a clear message: a bone before its parent, two bones of one name, a slot on an unknown bone, a part for an unknown slot, a clip on an unknown bone, keys out of order, an event past a clip's end. `new PuppetRig()` is a rig still on its way; `set_data(data)` fills it later and `image = picture` brings the picture; `has_data` and `is_ready` say how far it is, and `version` counts the changes (puppets made before follow by themselves).
@@ -131,6 +132,64 @@ wanderer.set_skin("wanderer");          // one of its own skins by name
 
 A rig may also hold several skins itself (`skins` in the data): a red and a blue team in one atlas.
 
+## Clothes on anchors
+
+A **wardrobe** is a second atlas for every puppet of one skeleton: pieces of clothing and things to hold, each in a **place** (`hat`, `top`, `trousers`, `shoes`, `back`, `hand_r`, ...), one piece per place. A piece has one or more parts: a hat is one part on the `head_top` anchor, a coat is a torso part, four sleeve parts on the arm bones and two tails on the thighs. The parts follow their bones as the skin's do, through every clip and on every skin of the skeleton: a coat made once fits the wanderer and the gardener.
+
+```ts
+const clothes = Wardrobe.from_data(clothes_data, clothes_atlas);
+const hero = rig.puppet("walk");
+hero.use_wardrobe(clothes);                           // shared by every puppet that uses it
+hero.wear("straw-hat");                               // in its place: what was there comes off
+hero.set_outfit({ hat: "top-hat", top: "blue-coat" }); // the whole outfit, one change
+hero.take_off("hat");                                 // a place, or a piece's id
+save(hero.outfit);                                    // plain data: { top: "blue-coat" }
+```
+
+The data, the shape a catalogue entry's `rig` has for a wardrobe (dll-tce-assets 0.6.0, `rendered/puppet/clothes` and `rendered/puppet/accessories`):
+
+```json
+{
+    "skeleton": "biped-side",
+    "facing": "right",
+    "places": { "trousers": 10, "shoes": 20, "top": 30, "hat": 60 },
+    "pieces": {
+        "straw-hat": {
+            "place": "hat", "title": "Strohhut",
+            "parts": [{ "name": "hat", "anchor": "head_top", "rect": [625, 480, 188, 56], "pivot": [96, 36.2] }]
+        },
+        "blue-coat": {
+            "place": "top", "title": "Blauer Mantel",
+            "parts": [
+                { "name": "torso", "bone": "torso", "rect": [132, 4, 112, 151], "pivot": [49.7, 124.5], "rotation": 90 },
+                { "name": "sleeve_upper_r", "bone": "upper_arm_r", "rect": [55, 292, 47, 97], "pivot": [23.7, 23.5], "rotation": -90 },
+                { "name": "tail_l", "bone": "thigh_l", "rect": [196, 393, 77, 82], "pivot": [40.7, 18.1], "rotation": -90 }
+            ]
+        },
+        "staff": {
+            "place": "hand_r", "title": "Wanderstab",
+            "parts": [{ "name": "staff", "anchor": "hand_r", "rect": [4, 4, 27, 273], "pivot": [8.9, 137], "behind": "hand_r" }]
+        }
+    }
+}
+```
+
+- **`places`**: the places by name with their **layer**: of two parts at the same spot the lower layer lies nearer the body (trousers under boots under a coat). A piece in a place the wardrobe doesn't list is an error.
+- **A part** sits on a `bone` or on an `anchor` (one of them), with `rect`, `pivot` and `rotation` as a skin's part. On an anchor, the pivot sits on the anchor's point and the part turns with the anchor's angle.
+- **Where it is drawn** is data, never decided by a frame: by default in front of the first slot on its bone (a sleeve over the arm); `in_front_of: "slot"` in front of another slot; `behind: "slot"` behind one (a backpack behind the far thigh, a staff behind the hand that holds it); `slot: "slot"` instead of the skin's part there (a whole new foot). Among parts at one spot the place's layer orders them (`layer` on a part overrides it): in front, the inner layer first; behind, the outer layer furthest back. Ties go by piece id, then by the part's number.
+- `title` is what a game shows; `resolution` as a skin's.
+
+**The drawing order** is sorted once when the outfit changes (or the skin, the rig or a wardrobe's data), never per frame: `puppet.drawing_order` is the same array until then, the slots' names and `"piece:part"` for clothes (`"blue-coat:sleeve_upper_r"`), for tests and editors. Drawing a dressed puppet is one `setTransform` and one `drawImage` per part, as without clothes.
+
+- **`use_wardrobe(wardrobe)`**: a puppet may use several (step 39: clothes and accessories); `find_piece(id)` looks in them in order. A wardrobe still loading is fine: an outfit naming its pieces waits for it and is worn when it comes (`set_outfit` answers true).
+- **`wear(id)`**, **`take_off(place_or_id)`**, **`undress()`**, **`set_outfit(outfit)`**, **`outfit`** (`OutfitData`, a piece id per place: save it as it is), **`worn_pieces`**. `wear` answers false, and nothing changes, for a piece none of the wardrobes has or one that doesn't fit; `fit_problems(id)` says why (`no anchor "back"`, `is made for the skeleton "quadruped", not "biped-side"`). `set_outfit` leaves such pieces out and answers false.
+- **`events`**: an `OutfitEvent` per change (`outfit`, `put_on`, `taken_off`), one for a whole `set_outfit`: a line on the stage ("Strohhut an"), a sound, an autosave.
+- **`anchor_world(name, x?, y?, { scale, flip_x }?)`**: where an anchor is now, with its angle (`{ x, y, rotation }`), in the puppet's own space or, given where and how `draw()` draws it, in the context's (mirrored with `flip_x`, the angle too). For a game that spawns a spark at the sword's tip or a ball at the hand. After `update()`.
+- **`bounds(of?)`**: the box around the parts as drawn now, of everything, the `"body"`, the `"clothes"` or one worn piece (its id). **`draw(..., { only_clothes: true })`** leaves the skin out: a piece on a hanger, framed with `bounds(id)`, as Kleiderschrank's drawers show them.
+- **`wardrobe.problems_on(rig, id)`**, **`pieces_in(place)`**, **`piece(id)`**, `places`, `pieces`: for a game's drawers and its tests. `Wardrobe.from_data()` throws with a clear message on data that doesn't hold together (a piece in an unknown place, a part on both a bone and an anchor, two orders for one part); whether a piece fits a rig is a separate question, asked when it is worn.
+
+The skin changes under the clothes: `set_skin(other_rig)` keeps the outfit, and the same parts sit on the same bones. A rig made for a later step may give its bones other shapes; clothes made for the skeleton still follow the bones.
+
 ## In the game shell
 
 A picture of `settings.catalogue_images` whose catalogue entry has a `rig` brings its puppet along: the host's `load_catalogue_url()` answers with `rig` in the `CatalogueFile`, and the shell puts it into `references.puppet(name)`. `logic.load_puppet(name, clip?)` is then a puppet in one line:
@@ -151,7 +210,15 @@ protected create_game(): Game {
 }
 ```
 
-The puppet exists at once and waits while the data is on its way: it draws nothing and plays nothing; it starts the clip it was told (or the rig's default clip) as soon as the rig has it, and draws once the picture has come. `references.puppet(name).set_data(data)` also takes a game's own rig for a picture of `settings.images`. `@tce-v3/game-boot` fills the hook from `dll-tce-assets` (0.5.0 and later: `rendered/puppet/wanderer` and `rendered/puppet/gardener`).
+A picture whose `rig` is a wardrobe (it has `pieces` and no `bones`) goes to `references.wardrobe(name)` instead, and `logic.load_wardrobe(name)` hands it out:
+
+```ts
+const hero = this.load_puppet("wanderer");
+hero.use_wardrobe(this.load_wardrobe("clothes"));     // catalogue_images: { clothes: "rendered/puppet/clothes" }
+hero.set_outfit(saved_outfit);                        // worn when the wardrobe has come
+```
+
+The puppet exists at once and waits while the data is on its way: it draws nothing and plays nothing; it starts the clip it was told (or the rig's default clip) as soon as the rig has it, and draws once the picture has come. `references.puppet(name).set_data(data)` also takes a game's own rig for a picture of `settings.images`. `@tce-v3/game-boot` fills the hook from `dll-tce-assets` (0.5.0 and later: `rendered/puppet/wanderer` and `rendered/puppet/gardener`; 0.6.0 and later also the wardrobes `rendered/puppet/clothes` and `rendered/puppet/accessories`).
 
 ## Picking a bone
 
@@ -182,5 +249,7 @@ Measured in Spielwerk step 38 (Intel i7-11700F; the wanderer, 16 bones and 15 pa
 | Update 1 / 100 / 1 000 puppets | 0.003 / 0.10 / 0.57 ms | 0.001 / 0.12 / 1.2 ms | 0.002 / 0.12 / 1.2 ms |
 | Draw 1 / 100 puppets (the script's time) | 0.003 / 0.017 ms (no canvas) | 0.013 / 1.4 ms | 0.013 / 1.4 ms |
 | Most running puppets at 57 FPS or more, 960 × 640 | | 120 | 400 |
+
+Dressed (step 39, Node 22, the same machine): 1 000 running puppets, half of them in an outfit of six pieces (35 parts instead of 15), update in 0.63 ms and lay out their draw calls in 0.25 ms; changing an outfit, with its one sort of the drawing order and the first draw, takes about 18 µs. The clothes cost what their parts cost to draw, and nothing per frame besides.
 
 Updating is never the limit: a thousand puppets pose in about a millisecond. Drawing is the bill, one `setTransform` and one `drawImage` per part (about 1 µs of script per part, and the pixels after it): a few dozen puppets on any machine, a few hundred on a graphics card. For crowds of thousands, a sprite sheet rendered from the puppet ([animation.md](animation.md#crowds)) is the cheaper way.
