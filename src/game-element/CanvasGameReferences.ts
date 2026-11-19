@@ -1,5 +1,6 @@
 import { AssetManager } from "../assets/manager/AssetManager";
 import { SpriteSheet } from "../canvas/animation/SpriteSheet";
+import { PuppetRig } from "../canvas/puppet/PuppetRig";
 import { CanvasStage } from "../stage/CanvasStage";
 import { StageLayout } from "../stage/StageLayout";
 import { CanvasGameSettings } from "./CanvasGameSettings";
@@ -90,6 +91,11 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
      * entry has `sheet` data gets its frames and clips here. `sheet(name)` makes one.
      */
     public readonly sheets = new Map<string, SpriteSheet>();
+    /**
+     * Puppet rigs by the game's name: a picture of `settings.catalogue_images` whose catalogue
+     * entry has `rig` data gets its bones, skins and clips here. `puppet(name)` makes one.
+     */
+    public readonly puppets = new Map<string, PuppetRig>();
 
     public constructor(
         host: HTMLElement,
@@ -134,20 +140,41 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
         return sheet;
     }
 
-    /** Gives every sheet still without a picture the one that came under its name. */
+    /**
+     * The puppet rig named `name`, empty until its data comes (from the catalogue's `rig`, or a
+     * game's own `set_data()`). It takes the picture `assets.images` has under the same name, now
+     * or when it arrives, so a puppet made from it at once starts moving as soon as it can.
+     */
+    public puppet(name: string): PuppetRig {
+        let rig = this.puppets.get(name);
+        if (rig === undefined) {
+            rig = new PuppetRig();
+            this.puppets.set(name, rig);
+        }
+        this.take_picture(name, rig);
+        return rig;
+    }
+
+    /** Gives every sheet and puppet rig still without a picture the one that came under its name. */
     public update_sheet_images(): void {
         for (const [name, sheet] of this.sheets) {
             this.take_picture(name, sheet);
         }
+        for (const [name, rig] of this.puppets) {
+            this.take_picture(name, rig);
+        }
     }
 
-    private take_picture(name: string, sheet: SpriteSheet): void {
-        if (sheet.image !== null) {
+    private take_picture(
+        name: string,
+        holder: { image: CanvasImageSource | null },
+    ): void {
+        if (holder.image !== null) {
             return;
         }
         const asset = this.assets.images.get(name);
         if (asset !== undefined && asset.ready) {
-            sheet.image = asset.element;
+            holder.image = asset.element;
         }
     }
 }

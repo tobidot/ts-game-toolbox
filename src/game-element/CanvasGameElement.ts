@@ -1,4 +1,5 @@
 import { SheetData } from "../canvas/animation/SheetData";
+import { RigData } from "../canvas/puppet/RigData";
 import { IntroGate } from "../stage/IntroGate";
 import { StageLayout } from "../stage/StageLayout";
 import { default_save_store, SaveStore } from "../storage/saves/SaveStore";
@@ -43,6 +44,11 @@ export interface CatalogueFile {
      * puts them into `references.sheet(name)`; `logic.load_animation(name)` plays them.
      */
     readonly sheet?: SheetData;
+    /**
+     * An image that is a puppet's atlas: its bones, slots, skins and clips, as plain data. The
+     * shell puts them into `references.puppet(name)`; `logic.load_puppet(name)` makes a puppet.
+     */
+    readonly rig?: RigData;
 }
 
 /** `HTMLElement` where there is a DOM; a stand-in where the module is only imported (tests of a game). */
@@ -115,6 +121,18 @@ export abstract class CanvasGameElement<
                             } catch (error) {
                                 console.warn(
                                     `<${this.localName}>: the sheet of "${id}" is not usable:`,
+                                    error,
+                                );
+                            }
+                        }
+                        if (kind === "image" && file.rig !== undefined) {
+                            try {
+                                references_of_game
+                                    .puppet(name)
+                                    .set_data(file.rig);
+                            } catch (error) {
+                                console.warn(
+                                    `<${this.localName}>: the rig of "${id}" is not usable:`,
                                     error,
                                 );
                             }

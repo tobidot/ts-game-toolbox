@@ -1,5 +1,6 @@
 import { AudioPlayer } from "../audio/AudioPlayer";
 import { AnimationPlayer } from "../canvas/animation/AnimationPlayer";
+import { Puppet } from "../canvas/puppet/Puppet";
 import { Progress } from "../flow";
 import { Vector2I } from "../geometries";
 import { InputDevice } from "../input/actions/ActionBindings";
@@ -158,6 +159,17 @@ export abstract class CanvasGameLogic<
      */
     public load_animation(name: string, clip?: string): AnimationPlayer {
         return this.references.sheet(name).player(clip);
+    }
+
+    /**
+     * A puppet in one line: a `Puppet` of the rig `references.puppet(name)` in its default skin,
+     * playing `clip` (default: the rig's default clip). With `settings.catalogue_images = { hero:
+     * "rendered/puppet/wanderer" }`, `this.load_puppet("hero")` plays the catalogue's clips; the
+     * puppet waits while the data is on its way and draws once the atlas is there. Another
+     * puppet's skin goes on with `hero.set_skin(this.references.puppet("other"))`.
+     */
+    public load_puppet(name: string, clip?: string): Puppet {
+        return this.references.puppet(name).puppet(clip);
     }
 
     // ---- lifecycle ----
