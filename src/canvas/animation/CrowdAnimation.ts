@@ -244,43 +244,28 @@ export class CrowdAnimation {
         const speeds = this.speeds;
         const flags = this.flags;
         const clip_ids = this.clip_ids;
-        for (let member = 0; member < this.size; member++) {
-            let clip = clips[clip_ids[member]];
+        const size = this.size;
+        for (let member = 0; member < size; member++) {
+            const clip = clips[clip_ids[member]];
             if (clip === null) {
                 continue;
             }
-            if (indices[member] < 0 || indices[member] >= clip.frames.length) {
-                if (indices[member] >= 0) {
-                    // New sheet data cut the clip short: it starts over.
-                    elapsed[member] = 0;
-                }
-                this.begin(member, clip);
-            }
-            if ((flags[member] & ENTRY_DUE) !== 0) {
-                flags[member] &= ~ENTRY_DUE;
-                this.enter(member, clip);
-            }
-            if ((flags[member] & FINISHED) !== 0) {
-                continue;
-            }
-            elapsed[member] += Math.max(
-                0,
-                delta_seconds * Math.max(0, speeds[member]),
-            );
-            let passed = 0;
-            while ((flags[member] & FINISHED) === 0) {
-                const seconds = clip.durations[indices[member]];
-                if (elapsed[member] < seconds) {
-                    break;
-                }
-                elapsed[member] -= seconds;
-                clip = this.advance(member, clip, false);
-                passed += 1;
-                if (passed >= MAX_FRAMES_PER_UPDATE) {
-                    elapsed[member] = 0;
-                    break;
+            const index = indices[member];
+            if (
+                (flags[member] & (ENTRY_DUE | FINISHED)) === 0 &&
+                index >= 0 &&
+                index < clip.frames.length
+            ) {
+                // Most updates: the frame goes on showing.
+                const time =
+                    elapsed[member] +
+                    Math.max(0, delta_seconds * Math.max(0, speeds[member]));
+                if (time < clip.durations[index]) {
+                    elapsed[member] = time;
+                    continue;
                 }
             }
+            this.step(member, clip, delta_seconds);
         }
     }
 
@@ -383,6 +368,50 @@ export class CrowdAnimation {
             added += 1;
         }
         return added;
+    }
+
+    /** One member's update the long way: starting, the first frame's event, frames passed. */
+    private step(
+        member: number,
+        playing: AnimationClip,
+        delta_seconds: number,
+    ): void {
+        const indices = this.indices;
+        const elapsed = this.elapsed;
+        const flags = this.flags;
+        let clip = playing;
+        if (indices[member] < 0 || indices[member] >= clip.frames.length) {
+            if (indices[member] >= 0) {
+                // New sheet data cut the clip short: it starts over.
+                elapsed[member] = 0;
+            }
+            this.begin(member, clip);
+        }
+        if ((flags[member] & ENTRY_DUE) !== 0) {
+            flags[member] &= ~ENTRY_DUE;
+            this.enter(member, clip);
+        }
+        if ((flags[member] & FINISHED) !== 0) {
+            return;
+        }
+        elapsed[member] += Math.max(
+            0,
+            delta_seconds * Math.max(0, this.speeds[member]),
+        );
+        let passed = 0;
+        while ((flags[member] & FINISHED) === 0) {
+            const seconds = clip.durations[indices[member]];
+            if (elapsed[member] < seconds) {
+                break;
+            }
+            elapsed[member] -= seconds;
+            clip = this.advance(member, clip, false);
+            passed += 1;
+            if (passed >= MAX_FRAMES_PER_UPDATE) {
+                elapsed[member] = 0;
+                break;
+            }
+        }
     }
 
     /** The number of a clip name, learned on first sight. */
