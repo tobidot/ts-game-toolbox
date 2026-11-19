@@ -25,6 +25,15 @@ export interface SheetAnchor {
     readonly y: number;
 }
 
+/**
+ * One frame of a packed sheet: where it lies in the picture, and, if it has its own, the point
+ * drawn at the sprite's position. A packer that trims frames gives each one its own anchor, so
+ * the feet stay on the spot while the frames differ in size.
+ */
+export interface SheetFrame extends RectI {
+    readonly anchor?: SheetAnchor;
+}
+
 /** How `SpriteSheet.draw_frame()` and `AnimationPlayer.draw()` draw. */
 export interface FrameDrawOptions {
     /** Default 1: one pixel of the picture is one unit of the context. */
@@ -88,6 +97,11 @@ export class SpriteSheet {
     public frames: RectI[];
     /** The point of every frame drawn at the sprite's position; null: the frame's middle. */
     public anchor: SheetAnchor | null;
+    /**
+     * Anchors of single frames (packed sheets, `from_frames()`), by frame; a frame without one
+     * (null or past the end) uses `anchor`. Empty for a grid.
+     */
+    public frame_anchors: (SheetAnchor | null)[] = [];
     /** The clip a new player starts with; null: the first clip. */
     public default_clip: string | null = null;
     public readonly clips = new Map<string, AnimationClip>();
@@ -122,17 +136,31 @@ export class SpriteSheet {
         return sheet;
     }
 
-    /** Frames of any size, packed anywhere in the picture. */
+    /**
+     * Frames of any size, packed anywhere in the picture. A frame may bring its own `anchor`;
+     * the others use `anchor` (default: their middle).
+     */
     public static from_frames(
         image: CanvasImageSource | null,
-        frames: readonly RectI[],
+        frames: readonly SheetFrame[],
         anchor: SheetAnchor | null = null,
     ): SpriteSheet {
-        return new SpriteSheet(
+        const sheet = new SpriteSheet(
             image,
-            frames.map((rect) => ({ ...rect })),
+            frames.map((frame) => ({
+                left: frame.left,
+                top: frame.top,
+                width: frame.width,
+                height: frame.height,
+            })),
             anchor,
         );
+        if (frames.some((frame) => frame.anchor !== undefined)) {
+            sheet.frame_anchors = frames.map((frame) =>
+                frame.anchor === undefined ? null : { ...frame.anchor },
+            );
+        }
+        return sheet;
     }
 
     /** A sheet from plain data, as a catalogue entry's `sheet` has it: frames, anchor and clips. */
@@ -176,6 +204,7 @@ export class SpriteSheet {
             },
         );
         this.anchor = data.anchor ? { ...data.anchor } : null;
+        this.frame_anchors = [];
         this.clips.clear();
         for (const clip of clips) {
             this.clips.set(clip.name, clip);
@@ -212,6 +241,11 @@ export class SpriteSheet {
         return first.done ? null : first.value;
     }
 
+    /** The point of `frame` drawn at the sprite's position: its own anchor, else the sheet's; null: its middle. */
+    public anchor_of(frame: number): SheetAnchor | null {
+        return this.frame_anchors[frame] ?? this.anchor;
+    }
+
     /** A new player for one sprite, playing `clip` (default: the start clip). */
     public player(clip?: string): AnimationPlayer {
         return new AnimationPlayer(this, clip);
@@ -234,8 +268,9 @@ export class SpriteSheet {
             return false;
         }
         const scale = options.scale ?? 1;
-        const anchor_x = (this.anchor?.x ?? rect.width / 2) * scale;
-        const anchor_y = (this.anchor?.y ?? rect.height / 2) * scale;
+        const anchor = this.anchor_of(frame);
+        const anchor_x = (anchor?.x ?? rect.width / 2) * scale;
+        const anchor_y = (anchor?.y ?? rect.height / 2) * scale;
         const width = rect.width * scale;
         const height = rect.height * scale;
         if (options.flip_x !== true) {

@@ -184,6 +184,52 @@ describe("SpriteSheet", () => {
         expect(sheet.is_ready).toBe(true);
     });
 
+    it("keeps an anchor per packed frame, the sheet's anchor for frames without one", () => {
+        const sheet = SpriteSheet.from_frames(
+            picture(64, 64),
+            [
+                {
+                    left: 0,
+                    top: 0,
+                    width: 20,
+                    height: 30,
+                    anchor: { x: 4, y: 28 },
+                },
+                { left: 20, top: 0, width: 44, height: 30 },
+            ],
+            { x: 22, y: 29 },
+        );
+        expect(sheet.frames[0]).toEqual({
+            left: 0,
+            top: 0,
+            width: 20,
+            height: 30,
+        });
+        expect(sheet.anchor_of(0)).toEqual({ x: 4, y: 28 });
+        expect(sheet.anchor_of(1)).toEqual({ x: 22, y: 29 });
+        const draws: number[][] = [];
+        const context = {
+            drawImage: (_image: unknown, ...rest: number[]) => {
+                draws.push(rest);
+            },
+        } as unknown as CanvasRenderingContext2D;
+        sheet.draw_frame(context, 0, 100, 100);
+        sheet.draw_frame(context, 1, 100, 100);
+        // Each frame's own anchor lands on 100, 100.
+        expect(draws[0].slice(4, 6)).toEqual([96, 72]);
+        expect(draws[1].slice(4, 6)).toEqual([78, 71]);
+        // Without a sheet anchor, a frame without its own is drawn around its middle.
+        const middle = SpriteSheet.from_frames(picture(64, 64), [
+            { left: 0, top: 0, width: 20, height: 30 },
+            { left: 20, top: 0, width: 44, height: 30, anchor: { x: 1, y: 2 } },
+        ]);
+        expect(middle.anchor_of(0)).toBeNull();
+        expect(middle.anchor_of(1)).toEqual({ x: 1, y: 2 });
+        // New data forgets the packed anchors.
+        middle.set_data({ frame_width: 32, frame_height: 32, columns: 2 });
+        expect(middle.anchor_of(1)).toBeNull();
+    });
+
     it("builds itself from a catalogue entry's sheet data", () => {
         const data: SheetData = {
             frame_width: 132,
