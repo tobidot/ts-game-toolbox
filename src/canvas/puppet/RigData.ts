@@ -32,6 +32,59 @@ export interface RigData {
     readonly clips?: Readonly<Record<string, PuppetClipData>>;
     /** The clip a new puppet plays. Default: the first clip. */
     readonly default_clip?: string;
+    /**
+     * Body shape values by name (`height`, `belly`, ...; since step 40): each scales bones and
+     * pushes the parts' soft meshes, 0 is the rig as drawn. `puppet.set_shape({ belly: 0.6 })`.
+     */
+    readonly shapes?: Readonly<Record<string, ShapeData>>;
+    /**
+     * Anchors that stand on the ground (the soles' heels and toes). With scaled bones (longer
+     * legs) the body is raised or lowered so they stand where they would at shape 0: the hip
+     * height follows the leg length, through every clip. Default: none.
+     */
+    readonly soles?: readonly string[];
+}
+
+/**
+ * One body shape value: how far it goes, the bones it scales and the soft pushes it gives the
+ * parts on its bones. At value `v` a bone is `1 + v * length` times as long and `1 + v * width`
+ * times as wide (summed over the values), and a point of a part moves by `v` times its push.
+ */
+export interface ShapeData {
+    /** What a game shows ("Bauch"). Default: the name. */
+    readonly title?: string;
+    /** Default -1. */
+    readonly min?: number;
+    /** Default 1. */
+    readonly max?: number;
+    /** Per bone `[length, width]`: the scale it adds per unit of the value. */
+    readonly bones?: Readonly<Record<string, readonly [number, number]>>;
+    /** Soft pushes: the parts on these bones are drawn as meshes whose points move. */
+    readonly pushes?: readonly ShapePushData[];
+}
+
+/**
+ * A soft push on the parts of one bone, in the bone's frame (x along the bone from its joint, y
+ * across it, rig units). A point at `(x, y)` moves at value 1 by `weight * [push[0], push[1] + swell * y]`,
+ * where the weight is `along`'s trapezoid at x times `across`'s ramp at y. Every part on the bone
+ * moves alike: the skin's, the clothes' and the marks on them, so a coat stays over a belly.
+ */
+export interface ShapePushData {
+    readonly bone: string;
+    /**
+     * `[a, b, c, d]` along the bone: no weight before `a` and after `d`, full from `b` to `c`,
+     * smooth in between. Default: the whole bone and well past its ends.
+     */
+    readonly along?: readonly [number, number, number, number];
+    /**
+     * `[from, to]` across the bone: no weight at `from`, full at `to` and beyond (`to` below
+     * `from` turns the other way). Default: full everywhere.
+     */
+    readonly across?: readonly [number, number];
+    /** How far a point with full weight moves at value 1: `[along, across]`. Default `[0, 0]`. */
+    readonly push?: readonly [number, number];
+    /** Across the bone a point moves by its distance from the bone's line times this (a fatter limb). Default 0. */
+    readonly swell?: number;
 }
 
 /** One bone: where it sits on its parent at rest, which way it points and how long it is. */
@@ -46,6 +99,9 @@ export interface BoneData {
     readonly rotation?: number;
     /** From the joint to where a child usually sits; for drawing the bones and picking them. */
     readonly length?: number;
+    /** Its rest scale along (`scale_x`) and across (`scale_y`) the bone. Default 1. */
+    readonly scale_x?: number;
+    readonly scale_y?: number;
 }
 
 /** A named place in the drawing order, on a bone. */
@@ -69,6 +125,15 @@ export interface AttachmentData {
     readonly pivot: readonly [number, number];
     /** The part's angle on its bone, in degrees (a part drawn upright on a bone that points down: -90). */
     readonly rotation?: number;
+    /**
+     * Tint layers by name (`skin`, `hair`; since step 40): rectangles of the same size as `rect`
+     * in the same atlas, the layer's pixels of the part in grey (its shading, white where fully
+     * lit). `puppet.set_tint("skin", colour)` multiplies the colour into them and lays them over
+     * the part: another colour with the shading kept.
+     */
+    readonly layers?: Readonly<
+        Record<string, readonly [number, number, number, number]>
+    >;
 }
 
 /** A point on a bone, in the bone's frame, with an angle (a hand's grip, the top of the head). */
@@ -182,12 +247,100 @@ export type OutfitData = Readonly<Record<string, string>>;
 
 /** A catalogue `rig` that is a wardrobe (pieces), not a puppet (bones). */
 export function is_wardrobe_data(
-    data: RigData | WardrobeData,
+    data: RigData | WardrobeData | MarkSheetData,
 ): data is WardrobeData {
     return (
         typeof data === "object" &&
         data !== null &&
         "pieces" in data &&
         !("bones" in data)
+    );
+}
+
+/**
+ * Marks for skins as plain data (since step 40): small pictures in one atlas (a mark sheet) that a
+ * puppet wears on its parts, tattoos, scars, freckles. The shape of a catalogue entry's `rig` for
+ * such a picture (`is_mark_sheet_data()` tells it from a puppet's and a wardrobe's). Marks belong
+ * to no skeleton: any puppet takes them (`puppet.use_marks(sheet)`).
+ */
+export interface MarkSheetData {
+    readonly marks: Readonly<Record<string, MarkPictureData>>;
+    /** Atlas pixels per rig unit, as a skin's. Default 1. */
+    readonly resolution?: number;
+}
+
+/** How a mark is laid onto the part: multiplied (ink, freckles: the shading shows through) or over it (a plaster). */
+export type MarkBlend = "multiply" | "normal";
+
+/** One mark's picture and how it is worn by default. */
+export interface MarkPictureData {
+    /** `[x, y, width, height]` in the mark sheet's pixels. */
+    readonly rect: readonly [number, number, number, number];
+    /** The point of the picture that sits on the mark's place. Default: its middle. */
+    readonly pivot?: readonly [number, number];
+    /** What a game shows ("Anker"). Default: the id. */
+    readonly title?: string;
+    /** A kind for a game to sort by (`tattoo`, `scar`, `freckles`, `birthmark`, `paint`, `plaster`). */
+    readonly kind?: string;
+    /** Default `multiply`. */
+    readonly blend?: MarkBlend;
+    /** Default 1. */
+    readonly opacity?: number;
+    /** The layer it is clipped to where the part has it (`skin`: ink never lands on a shirt). Default `skin`; `""` the part's outline. */
+    readonly on?: string;
+}
+
+/**
+ * A mark on a puppet, as plain data: which picture, on which slot's part, where in that part's
+ * bone frame (rig units, x along the bone from its joint, y across), turned and sized. The same
+ * data fits every skin of the skeleton.
+ */
+export interface MarkData {
+    /** The picture's id in a mark sheet. */
+    readonly id: string;
+    /** The slot whose part wears it (`upper_arm_r`). */
+    readonly slot: string;
+    readonly x: number;
+    readonly y: number;
+    /** Degrees on the bone. Default 0. */
+    readonly angle?: number;
+    /** Default 1: the picture at its sheet's resolution. */
+    readonly size?: number;
+    /** A colour multiplied into the picture (an ink colour). Default none. */
+    readonly tint?: string;
+    /** Default: the picture's. */
+    readonly blend?: MarkBlend;
+    /** Default: the picture's. */
+    readonly opacity?: number;
+    /** Mirrored across the bone. Default false. */
+    readonly flip?: boolean;
+}
+
+/**
+ * A whole character as plain data (since step 40): the skin it wears, its body shape, the tints
+ * of its layers, its marks and its outfit. `puppet.character` and `puppet.set_character(data)`;
+ * save it as it is, or export it as a file another game loads.
+ */
+export interface CharacterData {
+    /** The skin's name. */
+    readonly skin?: string;
+    /** Shape values by name; a value left out is 0. */
+    readonly shape?: Readonly<Record<string, number>>;
+    /** Colours by layer (`{ skin: "#c58c68" }`). */
+    readonly tints?: Readonly<Record<string, string>>;
+    readonly marks?: readonly MarkData[];
+    readonly outfit?: OutfitData;
+}
+
+/** A catalogue `rig` that is a mark sheet (marks), not a puppet (bones) or a wardrobe (pieces). */
+export function is_mark_sheet_data(
+    data: RigData | WardrobeData | MarkSheetData,
+): data is MarkSheetData {
+    return (
+        typeof data === "object" &&
+        data !== null &&
+        "marks" in data &&
+        !("bones" in data) &&
+        !("pieces" in data)
     );
 }

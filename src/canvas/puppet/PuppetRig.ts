@@ -1,3 +1,4 @@
+import { PuppetShape, shapes_from_data } from "./PartMesh";
 import { Puppet } from "./Puppet";
 import { PuppetClip } from "./PuppetClip";
 import { PuppetSkin } from "./PuppetSkin";
@@ -38,6 +39,7 @@ export class PuppetRig {
     private skin_map = new Map<string, PuppetSkin>();
     private clip_map = new Map<string, PuppetClip>();
     private anchor_map = new Map<string, PuppetAnchor>();
+    private shape_map = new Map<string, PuppetShape>();
     private picture: CanvasImageSource | null = null;
     private first_skin: string | null = null;
     private first_clip: string | null = null;
@@ -111,6 +113,18 @@ export class PuppetRig {
                 rotation: anchor.rotation ?? 0,
             });
         }
+        const shape_map = shapes_from_data(data.shapes ?? {}, (bone) =>
+            template.index_of(bone),
+        );
+        const soles: { bone: number; x: number; y: number }[] = [];
+        for (const name of data.soles ?? []) {
+            const anchor = anchor_map.get(name);
+            if (anchor === undefined) {
+                throw new Error(`soles: no anchor "${name}"`);
+            }
+            soles.push(anchor);
+        }
+        template.set_soles(soles);
         const clip_map = new Map<string, PuppetClip>();
         for (const [name, clip] of Object.entries(data.clips ?? {})) {
             clip_map.set(
@@ -144,6 +158,7 @@ export class PuppetRig {
         this.slot_names = slot_names;
         this.skin_map = skin_map;
         this.anchor_map = anchor_map;
+        this.shape_map = shape_map;
         this.clip_map = clip_map;
         this.first_skin =
             data.default_skin ?? skin_map.keys().next().value ?? null;
@@ -231,6 +246,11 @@ export class PuppetRig {
 
     public get anchors(): ReadonlyMap<string, PuppetAnchor> {
         return this.anchor_map;
+    }
+
+    /** The body shape values (`set_shape()`'s names), in the data's order; empty without. */
+    public get shapes(): ReadonlyMap<string, PuppetShape> {
+        return this.shape_map;
     }
 
     /** The rest pose's box around the feet (`[x, y, width, height]`), if the data says it. */

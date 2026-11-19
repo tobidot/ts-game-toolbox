@@ -14,6 +14,8 @@ export interface PuppetPart {
     readonly height: number;
     /** Six numbers (`a, b, c, d, e, f`) from the part's pixels to its bone's frame. */
     readonly transform: Float64Array;
+    /** Its tint layers by name: `[x, y]` of each layer's rectangle (as large as the part's) in the atlas. */
+    readonly layers?: ReadonlyMap<string, readonly [number, number]>;
 }
 
 /**
@@ -67,7 +69,24 @@ export class PuppetSkin {
                     `skin "${name}", slot "${slot}": rect [x, y, width, height] and pivot [x, y] must be numbers`,
                 );
             }
+            let layers: Map<string, readonly [number, number]> | undefined;
+            for (const [layer, box] of Object.entries(part.layers ?? {})) {
+                if (
+                    !Array.isArray(box) ||
+                    box.length !== 4 ||
+                    !box.every(Number.isFinite) ||
+                    box[2] !== rect[2] ||
+                    box[3] !== rect[3]
+                ) {
+                    throw new Error(
+                        `skin "${name}", slot "${slot}": layer "${layer}" must be [x, y, width, height] as large as the part`,
+                    );
+                }
+                layers = layers ?? new Map();
+                layers.set(layer, [box[0], box[1]]);
+            }
             parts.set(slot, {
+                ...(layers === undefined ? {} : { layers }),
                 slot,
                 source_x: rect[0],
                 source_y: rect[1],

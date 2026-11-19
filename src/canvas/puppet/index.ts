@@ -6,3 +6,6 @@ export * from "./PuppetSkin";
 export * from "./PuppetRig";
 export * from "./Puppet";
 export * from "./Wardrobe";
+export * from "./PartMesh";
+export * from "./MarkSheet";
+export * from "./PuppetLook";

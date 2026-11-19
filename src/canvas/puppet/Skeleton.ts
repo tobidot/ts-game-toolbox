@@ -30,15 +30,39 @@ export class Skeleton {
     /** The pose: added to each bone's rest position, in its parent's frame. */
     public readonly x: Float64Array;
     public readonly y: Float64Array;
+    /** The rest scale along and across each bone, from the data (default 1). */
+    public readonly rest_scale_x: Float64Array;
+    public readonly rest_scale_y: Float64Array;
+    /**
+     * The pose: each bone's scale along (`scale_x`) and across (`scale_y`) it, times its rest
+     * scale; 1 at rest. A puppet's `set_shape()` writes them. A scaled bone draws its parts
+     * stretched and moves its children's joints (a longer shin puts the foot lower); its frame
+     * in `world` stays a plain turn, so children are never sheared.
+     */
+    public readonly scale_x: Float64Array;
+    public readonly scale_y: Float64Array;
     /**
      * The world transform of each bone after `update()`: six numbers per bone, as a canvas takes
      * them (`a, b, c, d, e, f`: a point `(px, py)` of the bone lands at `a px + c py + e`,
-     * `b px + d py + f`).
+     * `b px + d py + f`). A turn and a shift: the bone's scale is not in it (`world_point()`
+     * and `bone_matrix()` add it).
      */
     public readonly world: Float64Array;
+    /**
+     * How far `update()` moved the body (all but the roots) up the screen so the soles stand
+     * where they would unscaled: positive with longer legs. 0 without soles or scales.
+     */
+    public lift = 0;
     private readonly world_angles: Float64Array;
     private readonly by_name: ReadonlyMap<string, number>;
     private readonly tip: PuppetPoint = { x: 0, y: 0 };
+    /** The soles: bone, x and y in the bone's frame, for each point that stands on the ground. */
+    private sole_bones = new Int32Array(0);
+    private sole_x = new Float64Array(0);
+    private sole_y = new Float64Array(0);
+    /** The world of the same pose unscaled, for the soles. */
+    private readonly reference: Float64Array;
+    private readonly reference_angles: Float64Array;
 
     private constructor(
         names: readonly string[],
@@ -47,6 +71,8 @@ export class Skeleton {
         rest_y: Float64Array,
         rest_rotation: Float64Array,
         lengths: Float64Array,
+        rest_scale_x: Float64Array,
+        rest_scale_y: Float64Array,
     ) {
         const count = names.length;
         this.names = names;
@@ -55,11 +81,17 @@ export class Skeleton {
         this.rest_y = rest_y;
         this.rest_rotation = rest_rotation;
         this.lengths = lengths;
+        this.rest_scale_x = rest_scale_x;
+        this.rest_scale_y = rest_scale_y;
         this.rotation = new Float64Array(count);
         this.x = new Float64Array(count);
         this.y = new Float64Array(count);
+        this.scale_x = new Float64Array(count).fill(1);
+        this.scale_y = new Float64Array(count).fill(1);
         this.world = new Float64Array(count * 6);
         this.world_angles = new Float64Array(count);
+        this.reference = new Float64Array(count * 6);
+        this.reference_angles = new Float64Array(count);
         this.by_name = new Map(names.map((name, index) => [name, index]));
         this.update();
     }
@@ -73,6 +105,8 @@ export class Skeleton {
         const rest_y = new Float64Array(count);
         const rest_rotation = new Float64Array(count);
         const lengths = new Float64Array(count);
+        const rest_scale_x = new Float64Array(count);
+        const rest_scale_y = new Float64Array(count);
         for (const [index, bone] of bones.entries()) {
             if (typeof bone.name !== "string" || bone.name === "") {
                 throw new Error(`bone ${index} has no name`);
@@ -98,6 +132,14 @@ export class Skeleton {
                 `bone "${bone.name}": rotation`,
             );
             lengths[index] = finite(bone.length, `bone "${bone.name}": length`);
+            rest_scale_x[index] = positive(
+                bone.scale_x,
+                `bone "${bone.name}": scale_x`,
+            );
+            rest_scale_y[index] = positive(
+                bone.scale_y,
+                `bone "${bone.name}": scale_y`,
+            );
         }
         return new Skeleton(
             names,
@@ -106,19 +148,83 @@ export class Skeleton {
             rest_y,
             rest_rotation,
             lengths,
+            rest_scale_x,
+            rest_scale_y,
         );
     }
 
-    /** Another skeleton with the same bones, at rest. */
+    /** Another skeleton with the same bones (and soles), at rest. */
     public clone(): Skeleton {
-        return new Skeleton(
+        const copy = new Skeleton(
             this.names,
             this.parents,
             this.rest_x,
             this.rest_y,
             this.rest_rotation,
             this.lengths,
+            this.rest_scale_x,
+            this.rest_scale_y,
         );
+        copy.sole_bones = this.sole_bones;
+        copy.sole_x = this.sole_x;
+        copy.sole_y = this.sole_y;
+        return copy;
+    }
+
+    /**
+     * The points that stand on the ground (bone and place in its frame): with scaled bones
+     * `update()` raises or lowers the body so the lowest of them is where it would be unscaled.
+     */
+    public set_soles(
+        points: readonly { bone: number; x: number; y: number }[],
+    ): void {
+        this.sole_bones = Int32Array.from(points.map((point) => point.bone));
+        this.sole_x = Float64Array.from(points.map((point) => point.x));
+        this.sole_y = Float64Array.from(points.map((point) => point.y));
+    }
+
+    /** The bone's scale along it: rest times pose. */
+    public length_scale(index: number): number {
+        return this.rest_scale_x[index] * this.scale_x[index];
+    }
+
+    /** The bone's scale across it: rest times pose. */
+    public width_scale(index: number): number {
+        return this.rest_scale_y[index] * this.scale_y[index];
+    }
+
+    /** Some bone is scaled (rest or pose). */
+    public get is_scaled(): boolean {
+        for (let index = 0; index < this.names.length; index++) {
+            if (
+                this.length_scale(index) !== 1 ||
+                this.width_scale(index) !== 1
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Bone `index`'s frame with its scale, six numbers as `world` has them: what its parts are
+     * drawn with. The same as `world` for an unscaled bone.
+     */
+    public bone_matrix(
+        index: number,
+        out: Float64Array = new Float64Array(6),
+    ): Float64Array {
+        const at = index * 6;
+        const world = this.world;
+        const scale_x = this.length_scale(index);
+        const scale_y = this.width_scale(index);
+        out[0] = world[at] * scale_x;
+        out[1] = world[at + 1] * scale_x;
+        out[2] = world[at + 2] * scale_y;
+        out[3] = world[at + 3] * scale_y;
+        out[4] = world[at + 4];
+        out[5] = world[at + 5];
+        return out;
     }
 
     public get count(): number {
@@ -137,17 +243,67 @@ export class Skeleton {
         this.y.fill(0);
     }
 
-    /** Each bone's world transform from the pose, parents first. */
+    /**
+     * Each bone's world transform from the pose, parents first. With scaled bones and soles, the
+     * body (all but the roots) is then moved up or down so the lowest sole is where it would be
+     * unscaled (`lift`): longer legs stand on the ground in every clip.
+     */
     public update(): void {
+        const is_scaled = this.is_scaled;
+        this.pass(this.world, this.world_angles, is_scaled);
+        this.lift = 0;
+        const soles = this.sole_bones.length;
+        if (!is_scaled || soles === 0) {
+            return;
+        }
+        this.pass(this.reference, this.reference_angles, false);
+        let lowest_unscaled = -Infinity;
+        let lowest = -Infinity;
         const world = this.world;
+        const reference = this.reference;
+        for (let index = 0; index < soles; index++) {
+            const bone = this.sole_bones[index];
+            const at = bone * 6;
+            const x = this.sole_x[index];
+            const y = this.sole_y[index];
+            lowest_unscaled = Math.max(
+                lowest_unscaled,
+                reference[at + 1] * x +
+                    reference[at + 3] * y +
+                    reference[at + 5],
+            );
+            const scaled_x = x * this.length_scale(bone);
+            const scaled_y = y * this.width_scale(bone);
+            lowest = Math.max(
+                lowest,
+                world[at + 1] * scaled_x +
+                    world[at + 3] * scaled_y +
+                    world[at + 5],
+            );
+        }
+        const shift = lowest_unscaled - lowest;
+        this.lift = -shift;
+        for (let index = 0; index < this.names.length; index++) {
+            if (this.parents[index] >= 0) {
+                world[index * 6 + 5] += shift;
+            }
+        }
+    }
+
+    /** The world transforms, with each parent's scale moving its children's joints, or without. */
+    private pass(
+        world: Float64Array,
+        world_angles: Float64Array,
+        is_scaled: boolean,
+    ): void {
         const count = this.names.length;
         for (let index = 0; index < count; index++) {
             const turn = this.rest_rotation[index] + this.rotation[index];
             const radians = turn * DEGREES;
             const cos = Math.cos(radians);
             const sin = Math.sin(radians);
-            const local_x = this.rest_x[index] + this.x[index];
-            const local_y = this.rest_y[index] + this.y[index];
+            let local_x = this.rest_x[index] + this.x[index];
+            let local_y = this.rest_y[index] + this.y[index];
             const at = index * 6;
             const parent = this.parents[index];
             if (parent < 0) {
@@ -157,8 +313,12 @@ export class Skeleton {
                 world[at + 3] = cos;
                 world[at + 4] = local_x;
                 world[at + 5] = local_y;
-                this.world_angles[index] = turn;
+                world_angles[index] = turn;
                 continue;
+            }
+            if (is_scaled) {
+                local_x *= this.length_scale(parent);
+                local_y *= this.width_scale(parent);
             }
             const p = parent * 6;
             const pa = world[p];
@@ -171,7 +331,7 @@ export class Skeleton {
             world[at + 3] = -pb * sin + pd * cos;
             world[at + 4] = pa * local_x + pc * local_y + world[p + 4];
             world[at + 5] = pb * local_x + pd * local_y + world[p + 5];
-            this.world_angles[index] = this.world_angles[parent] + turn;
+            world_angles[index] = world_angles[parent] + turn;
         }
     }
 
@@ -189,7 +349,10 @@ export class Skeleton {
         return this.world_angles[index];
     }
 
-    /** A point given in bone `index`'s frame (`x` along the bone), in the puppet's space. */
+    /**
+     * A point given in bone `index`'s frame (`x` along the bone, as at scale 1), in the puppet's
+     * space: on a scaled bone it moves with the scale (an anchor on a longer shin).
+     */
     public world_point(
         index: number,
         x: number,
@@ -198,8 +361,30 @@ export class Skeleton {
     ): PuppetPoint {
         const at = index * 6;
         const world = this.world;
-        out.x = world[at] * x + world[at + 2] * y + world[at + 4];
-        out.y = world[at + 1] * x + world[at + 3] * y + world[at + 5];
+        const scaled_x = x * this.length_scale(index);
+        const scaled_y = y * this.width_scale(index);
+        out.x = world[at] * scaled_x + world[at + 2] * scaled_y + world[at + 4];
+        out.y =
+            world[at + 1] * scaled_x + world[at + 3] * scaled_y + world[at + 5];
+        return out;
+    }
+
+    /** A point of the puppet's space in bone `index`'s frame, as at scale 1: `world_point()` turned back. */
+    public local_point(
+        index: number,
+        x: number,
+        y: number,
+        out: PuppetPoint = { x: 0, y: 0 },
+    ): PuppetPoint {
+        const at = index * 6;
+        const world = this.world;
+        const dx = x - world[at + 4];
+        const dy = y - world[at + 5];
+        // The frame is a plain turn: its inverse is its transpose.
+        out.x =
+            (world[at] * dx + world[at + 1] * dy) / this.length_scale(index);
+        out.y =
+            (world[at + 2] * dx + world[at + 3] * dy) / this.width_scale(index);
         return out;
     }
 
@@ -233,6 +418,16 @@ export class Skeleton {
         }
         return best;
     }
+}
+
+function positive(value: number | undefined, what: string): number {
+    if (value === undefined) {
+        return 1;
+    }
+    if (!Number.isFinite(value) || value <= 0) {
+        throw new Error(`${what} must be a number above 0`);
+    }
+    return value;
 }
 
 function finite(value: number | undefined, what: string): number {
