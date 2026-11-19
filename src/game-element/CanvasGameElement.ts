@@ -1,5 +1,9 @@
 import { SheetData } from "../canvas/animation/SheetData";
-import { RigData } from "../canvas/puppet/RigData";
+import {
+    is_wardrobe_data,
+    RigData,
+    WardrobeData,
+} from "../canvas/puppet/RigData";
 import { IntroGate } from "../stage/IntroGate";
 import { StageLayout } from "../stage/StageLayout";
 import { default_save_store, SaveStore } from "../storage/saves/SaveStore";
@@ -47,8 +51,10 @@ export interface CatalogueFile {
     /**
      * An image that is a puppet's atlas: its bones, slots, skins and clips, as plain data. The
      * shell puts them into `references.puppet(name)`; `logic.load_puppet(name)` makes a puppet.
+     * Or a clothes atlas: a wardrobe's pieces for a skeleton (`is_wardrobe_data()`), which go into
+     * `references.wardrobe(name)`; `logic.load_wardrobe(name)` gives it.
      */
-    readonly rig?: RigData;
+    readonly rig?: RigData | WardrobeData;
 }
 
 /** `HTMLElement` where there is a DOM; a stand-in where the module is only imported (tests of a game). */
@@ -127,9 +133,15 @@ export abstract class CanvasGameElement<
                         }
                         if (kind === "image" && file.rig !== undefined) {
                             try {
-                                references_of_game
-                                    .puppet(name)
-                                    .set_data(file.rig);
+                                if (is_wardrobe_data(file.rig)) {
+                                    references_of_game
+                                        .wardrobe(name)
+                                        .set_data(file.rig);
+                                } else {
+                                    references_of_game
+                                        .puppet(name)
+                                        .set_data(file.rig);
+                                }
                             } catch (error) {
                                 console.warn(
                                     `<${this.localName}>: the rig of "${id}" is not usable:`,

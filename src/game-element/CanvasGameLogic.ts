@@ -1,6 +1,7 @@
 import { AudioPlayer } from "../audio/AudioPlayer";
 import { AnimationPlayer } from "../canvas/animation/AnimationPlayer";
 import { Puppet } from "../canvas/puppet/Puppet";
+import { Wardrobe } from "../canvas/puppet/Wardrobe";
 import { Progress } from "../flow";
 import { Vector2I } from "../geometries";
 import { InputDevice } from "../input/actions/ActionBindings";
@@ -170,6 +171,16 @@ export abstract class CanvasGameLogic<
      */
     public load_puppet(name: string, clip?: string): Puppet {
         return this.references.puppet(name).puppet(clip);
+    }
+
+    /**
+     * A wardrobe (a clothes atlas) in one line: `references.wardrobe(name)`, filled from the
+     * catalogue. With `settings.catalogue_images = { clothes: "rendered/puppet/clothes" }`,
+     * `hero.use_wardrobe(this.load_wardrobe("clothes"))` and then `hero.wear("straw-hat")`; an
+     * outfit set while it loads is worn when it comes.
+     */
+    public load_wardrobe(name: string): Wardrobe {
+        return this.references.wardrobe(name);
     }
 
     // ---- lifecycle ----

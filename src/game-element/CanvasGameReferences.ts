@@ -1,6 +1,7 @@
 import { AssetManager } from "../assets/manager/AssetManager";
 import { SpriteSheet } from "../canvas/animation/SpriteSheet";
 import { PuppetRig } from "../canvas/puppet/PuppetRig";
+import { Wardrobe } from "../canvas/puppet/Wardrobe";
 import { CanvasStage } from "../stage/CanvasStage";
 import { StageLayout } from "../stage/StageLayout";
 import { CanvasGameSettings } from "./CanvasGameSettings";
@@ -96,6 +97,12 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
      * entry has `rig` data gets its bones, skins and clips here. `puppet(name)` makes one.
      */
     public readonly puppets = new Map<string, PuppetRig>();
+    /**
+     * Wardrobes by the game's name: a picture of `settings.catalogue_images` whose catalogue entry
+     * has a wardrobe's `rig` data (pieces for a skeleton, a clothes atlas) gets them here.
+     * `wardrobe(name)` makes one.
+     */
+    public readonly wardrobes = new Map<string, Wardrobe>();
 
     public constructor(
         host: HTMLElement,
@@ -155,13 +162,31 @@ export class CanvasGameReferences<L extends StageLayout = StageLayout> {
         return rig;
     }
 
-    /** Gives every sheet and puppet rig still without a picture the one that came under its name. */
+    /**
+     * The wardrobe named `name`, empty until its data comes (from the catalogue's `rig` of a
+     * clothes atlas, or a game's own `set_data()`). It takes the picture `assets.images` has under
+     * the same name, now or when it arrives; a puppet that uses it wears its pieces once both came.
+     */
+    public wardrobe(name: string): Wardrobe {
+        let wardrobe = this.wardrobes.get(name);
+        if (wardrobe === undefined) {
+            wardrobe = new Wardrobe();
+            this.wardrobes.set(name, wardrobe);
+        }
+        this.take_picture(name, wardrobe);
+        return wardrobe;
+    }
+
+    /** Gives every sheet, puppet rig and wardrobe still without a picture the one that came under its name. */
     public update_sheet_images(): void {
         for (const [name, sheet] of this.sheets) {
             this.take_picture(name, sheet);
         }
         for (const [name, rig] of this.puppets) {
             this.take_picture(name, rig);
+        }
+        for (const [name, wardrobe] of this.wardrobes) {
+            this.take_picture(name, wardrobe);
         }
     }
 

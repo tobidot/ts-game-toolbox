@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RigData } from "../canvas/puppet/RigData";
+import { RigData, WardrobeData } from "../canvas/puppet/RigData";
 import { CanvasGameElement, CatalogueFile } from "./CanvasGameElement";
 import { CanvasGameLogic } from "./CanvasGameLogic";
 import { CanvasGameRenderer } from "./CanvasGameRenderer";
@@ -73,11 +73,24 @@ function rig(skin: string, skeleton = "stick"): RigData {
     };
 }
 
-/** A catalogue with two puppets of one skeleton, one of another, and a plain picture. */
+/** A clothes atlas for the stick: a hat on the body bone. */
+const CLOTHES: WardrobeData = {
+    skeleton: "stick",
+    places: { hat: 10 },
+    pieces: {
+        cap: {
+            place: "hat",
+            parts: [{ bone: "body", rect: [0, 0, 8, 4], pivot: [4, 4] }],
+        },
+    },
+};
+
+/** A catalogue with two puppets of one skeleton, one of another, clothes and a plain picture. */
 const CATALOGUE = new Map<string, CatalogueFile>([
     ["rendered/puppet/hero", { url: "blob:hero", rig: rig("hero") }],
     ["rendered/puppet/twin", { url: "blob:twin", rig: rig("twin") }],
     ["rendered/puppet/crab", { url: "blob:crab", rig: rig("crab", "crab") }],
+    ["rendered/puppet/clothes", { url: "blob:clothes", rig: CLOTHES }],
     ["pixel/prop/coin", { url: "blob:coin" }],
 ]);
 
@@ -87,6 +100,7 @@ class PuppetSettings extends CanvasGameSettings {
         hero: "rendered/puppet/hero",
         twin: "rendered/puppet/twin",
         crab: "rendered/puppet/crab",
+        clothes: "rendered/puppet/clothes",
         coin: "pixel/prop/coin",
     };
 }
@@ -204,10 +218,29 @@ describe("puppets from a catalogue", () => {
         expect(hero.skin?.name).toBe("twin");
     });
 
+    it("gives a wardrobe at once, whose pieces a puppet wears when its data comes", async () => {
+        const $element = connect();
+        const hero = $element.logic.load_puppet("hero");
+        const clothes = $element.logic.load_wardrobe("clothes");
+        hero.use_wardrobe(clothes);
+        expect(hero.set_outfit({ hat: "cap" })).toBe(true);
+        expect(clothes.has_data).toBe(false);
+        await flush();
+        expect(clothes.has_data).toBe(true);
+        expect($element.logic.references.puppets.has("clothes")).toBe(false);
+        expect(hero.drawing_order).toEqual(["body", "cap:0"]);
+        const $clothes = arrive("blob:clothes");
+        await flush();
+        expect(clothes.image).toBe($clothes);
+        expect(hero.wear("cap")).toBe(true);
+        expect(hero.outfit).toEqual({ hat: "cap" });
+    });
+
     it("keeps a plain picture a plain picture", async () => {
         const $element = connect();
         await flush();
         expect($element.logic.references.puppets.has("coin")).toBe(false);
         expect($element.logic.references.sheets.has("hero")).toBe(false);
+        expect($element.logic.references.wardrobes.has("coin")).toBe(false);
     });
 });
