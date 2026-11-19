@@ -292,6 +292,62 @@ describe("SpriteSheet", () => {
         expect(sheet.draw_frame(context, 9, 0, 0)).toBe(false);
     });
 
+    it("draws from a smaller copy of its picture once prescaled, at the same size", () => {
+        const made: Array<{
+            width: number;
+            height: number;
+            draws: unknown[][];
+        }> = [];
+        const make_canvas = (width: number, height: number) => {
+            const draws: unknown[][] = [];
+            made.push({ width, height, draws });
+            return {
+                width,
+                height,
+                getContext: () => ({
+                    imageSmoothingEnabled: false,
+                    imageSmoothingQuality: "low",
+                    drawImage: (...args: unknown[]) => draws.push(args),
+                }),
+            } as unknown as HTMLCanvasElement;
+        };
+        const original = picture(264, 128);
+        const sheet = SpriteSheet.grid(original, 132, 128, {
+            anchor: { x: 66, y: 124 },
+        });
+        expect(sheet.picture_scale).toBe(1);
+        expect(sheet.prescale(0.25, make_canvas)).toBe(true);
+        expect(made).toHaveLength(1);
+        expect([made[0].width, made[0].height]).toEqual([66, 32]);
+        expect(made[0].draws[0]).toEqual([original, 0, 0, 66, 32]);
+        expect(sheet.picture_scale).toBe(0.25);
+        // frames and anchors stay in the first picture's pixels
+        expect(sheet.frames[1]).toEqual({
+            left: 132,
+            top: 0,
+            width: 132,
+            height: 128,
+        });
+        const draws: number[][] = [];
+        const context = {
+            drawImage: (_image: unknown, ...rest: number[]) => {
+                draws.push(rest);
+            },
+        } as unknown as CanvasRenderingContext2D;
+        sheet.draw_frame(context, 1, 100, 200, { scale: 0.5 });
+        // the source from the small copy, the place and size as before
+        expect(draws[0]).toEqual([33, 0, 33, 32, 67, 138, 66, 64]);
+        // new data keeps counting in the first picture's pixels
+        sheet.set_data({ frame_width: 132, frame_height: 64, columns: 2 });
+        expect(sheet.frames.length).toBe(4);
+        // a new picture is drawn as it is
+        sheet.image = picture(264, 128);
+        expect(sheet.picture_scale).toBe(1);
+        // only smaller, and only with a picture
+        expect(sheet.prescale(1.5, make_canvas)).toBe(false);
+        expect(new SpriteSheet().prescale(0.5, make_canvas)).toBe(false);
+    });
+
     it("draws around the middle of the frame without an anchor, and nothing without a picture", () => {
         const sheet = SpriteSheet.grid(picture(32, 32), 32, 32);
         const draws: number[][] = [];

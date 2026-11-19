@@ -42,6 +42,29 @@ export interface FrameDrawOptions {
     readonly flip_x?: boolean;
 }
 
+/** Makes the canvas `SpriteSheet.prescale()` draws the smaller picture into; null when there is none to make. */
+export type MakeSheetCanvas = (
+    width: number,
+    height: number,
+) => HTMLCanvasElement | OffscreenCanvas | null;
+
+/** A canvas from the page's document, else an `OffscreenCanvas`, else none. */
+function default_sheet_canvas(
+    width: number,
+    height: number,
+): HTMLCanvasElement | OffscreenCanvas | null {
+    if (typeof document !== "undefined") {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        return canvas;
+    }
+    if (typeof OffscreenCanvas !== "undefined") {
+        return new OffscreenCanvas(width, height);
+    }
+    return null;
+}
+
 /** The size a picture says it has: `naturalWidth` for an image, `width` for a canvas. */
 function picture_size(
     image: CanvasImageSource,
@@ -91,8 +114,6 @@ function fitting(
  * is there, drawing draws nothing and says so.
  */
 export class SpriteSheet {
-    /** Null until the picture has come. */
-    public image: CanvasImageSource | null;
     /** The frames, numbered as the clips count them. */
     public frames: RectI[];
     /** The point of every frame drawn at the sprite's position; null: the frame's middle. */
@@ -105,6 +126,8 @@ export class SpriteSheet {
     /** The clip a new player starts with; null: the first clip. */
     public default_clip: string | null = null;
     public readonly clips = new Map<string, AnimationClip>();
+    private picture: CanvasImageSource | null = null;
+    private shrink = 1;
 
     public constructor(
         image: CanvasImageSource | null = null,
@@ -114,6 +137,67 @@ export class SpriteSheet {
         this.image = image;
         this.frames = frames;
         this.anchor = anchor;
+    }
+
+    /** Null until the picture has come. A new picture is drawn as it is (`picture_scale` 1). */
+    public get image(): CanvasImageSource | null {
+        return this.picture;
+    }
+
+    public set image(image: CanvasImageSource | null) {
+        this.picture = image;
+        this.shrink = 1;
+    }
+
+    /**
+     * How large `image` is against the picture the frames were cut from: 1, or what
+     * `prescale()` made it. Frames and anchors always count in the first picture's pixels.
+     */
+    public get picture_scale(): number {
+        return this.shrink;
+    }
+
+    /**
+     * Draws the picture once at `scale` into a canvas of its own and draws from that from now
+     * on: a sheet shown at a quarter of its size reads a sixteenth of the pixels per sprite,
+     * which is what a crowd of thousands costs. Choose the size the sprites are shown at (their
+     * scale times the view's). Frames, anchors and the drawn size stay as they were. Only
+     * shrinks; false (and nothing changed) when `scale` is 1 or more, there is no picture yet, or
+     * no canvas could be made.
+     */
+    public prescale(
+        scale: number,
+        make_canvas: MakeSheetCanvas = default_sheet_canvas,
+    ): boolean {
+        const image = this.picture;
+        const size = image === null ? null : picture_size(image);
+        if (image === null || size === null || !(scale > 0) || scale >= 1) {
+            return false;
+        }
+        const total = this.shrink * scale;
+        const width = Math.max(
+            1,
+            Math.round((size.width / this.shrink) * total),
+        );
+        const height = Math.max(
+            1,
+            Math.round((size.height / this.shrink) * total),
+        );
+        const canvas = make_canvas(width, height);
+        const context = canvas?.getContext("2d") as
+            | CanvasRenderingContext2D
+            | OffscreenCanvasRenderingContext2D
+            | null
+            | undefined;
+        if (canvas === null || context === null || context === undefined) {
+            return false;
+        }
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = "high";
+        context.drawImage(image, 0, 0, width, height);
+        this.picture = canvas;
+        this.shrink = total;
+        return true;
     }
 
     /**
@@ -128,7 +212,7 @@ export class SpriteSheet {
     ): SpriteSheet {
         const sheet = new SpriteSheet(image, [], options.anchor ?? null);
         sheet.frames = SpriteSheet.grid_frames(
-            image,
+            image === null ? null : picture_size(image),
             frame_width,
             frame_height,
             options,
@@ -192,8 +276,14 @@ export class SpriteSheet {
             );
             rows = Math.floor(highest / data.columns) + 1;
         }
+        const size = this.image === null ? null : picture_size(this.image);
         this.frames = SpriteSheet.grid_frames(
-            this.image,
+            size === null
+                ? null
+                : {
+                      width: size.width / this.shrink,
+                      height: size.height / this.shrink,
+                  },
             data.frame_width,
             data.frame_height,
             {
@@ -273,13 +363,14 @@ export class SpriteSheet {
         const anchor_y = (anchor?.y ?? rect.height / 2) * scale;
         const width = rect.width * scale;
         const height = rect.height * scale;
+        const shrink = this.shrink;
         if (options.flip_x !== true) {
             context.drawImage(
                 image,
-                rect.left,
-                rect.top,
-                rect.width,
-                rect.height,
+                rect.left * shrink,
+                rect.top * shrink,
+                rect.width * shrink,
+                rect.height * shrink,
                 x - anchor_x,
                 y - anchor_y,
                 width,
@@ -292,10 +383,10 @@ export class SpriteSheet {
         context.scale(-1, 1);
         context.drawImage(
             image,
-            rect.left,
-            rect.top,
-            rect.width,
-            rect.height,
+            rect.left * shrink,
+            rect.top * shrink,
+            rect.width * shrink,
+            rect.height * shrink,
             -anchor_x,
             -anchor_y,
             width,
@@ -306,14 +397,13 @@ export class SpriteSheet {
     }
 
     private static grid_frames(
-        image: CanvasImageSource | null,
+        size: { width: number; height: number } | null,
         frame_width: number,
         frame_height: number,
         options: SheetGridOptions,
     ): RectI[] {
         const margin = options.margin ?? 0;
         const spacing = options.spacing ?? 0;
-        const size = image === null ? null : picture_size(image);
         const columns =
             options.columns ??
             (size === null

@@ -259,6 +259,7 @@ describe("CrowdAnimation", () => {
             scale: 0.5,
             flip_x: true,
             anchor: { x: 16, y: 30 },
+            picture_scale: 1,
         });
         // without a picture there is nothing to draw
         shared.image = null;

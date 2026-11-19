@@ -27,6 +27,12 @@ export interface BatchFrameOptions {
     readonly flip_x?: boolean;
     /** Radians, clockwise on the screen, around the anchor. Default 0. */
     readonly angle?: number;
+    /**
+     * The picture is this many times the size `rect` and `anchor` count in (a sheet's
+     * `picture_scale` after `prescale()`): the source is read there, the drawn size stays.
+     * Default 1.
+     */
+    readonly picture_scale?: number;
 }
 
 /** How `SpriteBatch.add_animation()` draws a player's frame. */
@@ -108,6 +114,7 @@ export class SpriteBatch {
         options?: BatchFrameOptions,
     ): void {
         const scale = options?.scale ?? 1;
+        const shrink = options?.picture_scale ?? 1;
         const anchor = options?.anchor;
         const values = this.slot(image);
         const at = this.at;
@@ -116,10 +123,10 @@ export class SpriteBatch {
         values[at + 2] = options?.angle ?? 0;
         values[at + 3] = rect.width * scale;
         values[at + 4] = rect.height * scale;
-        values[at + 5] = rect.left;
-        values[at + 6] = rect.top;
-        values[at + 7] = rect.width;
-        values[at + 8] = rect.height;
+        values[at + 5] = rect.left * shrink;
+        values[at + 6] = rect.top * shrink;
+        values[at + 7] = rect.width * shrink;
+        values[at + 8] = rect.height * shrink;
         values[at + 9] = (anchor?.x ?? rect.width / 2) * scale;
         values[at + 10] = (anchor?.y ?? rect.height / 2) * scale;
         values[at + 11] = options?.flip_x === true ? FRAME | FLIPPED : FRAME;
@@ -147,6 +154,7 @@ export class SpriteBatch {
             scale: options?.scale,
             flip_x: options?.flip_x,
             angle: options?.angle,
+            picture_scale: sheet.picture_scale,
         });
         return true;
     }

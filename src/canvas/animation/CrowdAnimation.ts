@@ -67,6 +67,7 @@ interface FrameScratch {
     anchor: SheetAnchor | null;
     scale: number;
     flip_x: boolean;
+    picture_scale: number;
 }
 
 /** A member's start time that is to be drawn at random once its clip is known. */
@@ -117,6 +118,7 @@ export class CrowdAnimation {
         anchor: null,
         scale: 1,
         flip_x: false,
+        picture_scale: 1,
     };
 
     public constructor(
@@ -347,6 +349,7 @@ export class CrowdAnimation {
         );
         const scale = options.scale ?? 1;
         const scratch = this.scratch;
+        scratch.picture_scale = sheet.picture_scale;
         let added = 0;
         for (let at = 0; at < count; at++) {
             const member = order === undefined ? at : order[at];

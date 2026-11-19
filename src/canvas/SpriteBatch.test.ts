@@ -258,6 +258,35 @@ describe("SpriteBatch", () => {
         expect(batch.size).toBe(0);
     });
 
+    it("reads a prescaled sheet's frames from its smaller picture", () => {
+        const sheet = SpriteSheet.grid(
+            { width: 64, height: 32 } as unknown as CanvasImageSource,
+            32,
+            32,
+            { anchor: { x: 16, y: 30 } },
+        ).add_clips({ walk: { frames: "0-1", fps: 10, loop: true } });
+        const small = {
+            width: 32,
+            height: 16,
+            // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
+            getContext: () => ({
+                // eslint-disable-next-line @typescript-eslint/naming-convention -- DOM name
+                drawImage: () => undefined,
+            }),
+        } as unknown as HTMLCanvasElement;
+        sheet.prescale(0.5, () => small);
+        const player = sheet.player("walk");
+        player.update(0.1 + 1e-9);
+        const batch = new SpriteBatch();
+        batch.add_animation(player, 50, 60, { scale: 0.5 });
+        const recording = recording_context(IDENTITY);
+        batch.draw(recording.context);
+        expect(recording.draws[0].image).toBe(small);
+        expect(recording.draws[0].rect).toEqual([
+            16, 0, 16, 16, 42, 45, 16, 16,
+        ]);
+    });
+
     it("mixes whole pictures and frames of the same picture in one run", () => {
         const batch = new SpriteBatch();
         batch.add(walker, 10, 10, 0.5, 4, 4);
