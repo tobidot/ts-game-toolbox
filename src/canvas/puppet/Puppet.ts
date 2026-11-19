@@ -43,6 +43,8 @@ export interface PuppetAnchorPoint {
 interface DrawEntry {
     /** The slot's name, or `piece:part` for clothes. */
     readonly name: string;
+    /** The piece's id; null for the skin's parts. */
+    readonly piece: string | null;
     readonly bone: number;
     readonly source_x: number;
     readonly source_y: number;
@@ -66,6 +68,16 @@ export interface PuppetDrawOptions {
     readonly debug_color?: string;
     /** A bone drawn thicker with `debug` (the one an editor picked); -1 for none. */
     readonly highlight?: number;
+    /** Only the clothes, not the skin's parts: a piece on a hanger, a drawer's picture. */
+    readonly only_clothes?: boolean;
+}
+
+/** A box in the puppet's own space. */
+export interface PuppetBox {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 }
 
 /**
@@ -359,6 +371,64 @@ export class Puppet {
     }
 
     /**
+     * The box around the parts as they are drawn now, in the puppet's own space (`draw()` puts
+     * the root at its `x`, `y`): of every part (default), of the skin's (`"body"`), of the clothes
+     * (`"clothes"`) or of one worn piece (its id). Rectangles, not pixels. Null when there is none.
+     * For framing a piece in a drawer, a hit area, a camera.
+     */
+    public bounds(of?: string): PuppetBox | null {
+        this.refresh();
+        const skin = this.worn;
+        if (skin === null) {
+            return null;
+        }
+        const world = this.skeleton.world;
+        let left = Infinity;
+        let top = Infinity;
+        let right = -Infinity;
+        let bottom = -Infinity;
+        for (const entry of this.order_for(skin)) {
+            const is_body = entry.piece === null;
+            if (
+                (of === "body" && !is_body) ||
+                (of === "clothes" && is_body) ||
+                (of !== undefined &&
+                    of !== "body" &&
+                    of !== "clothes" &&
+                    entry.piece !== of)
+            ) {
+                continue;
+            }
+            const at = entry.bone * 6;
+            const m = entry.transform;
+            const a = world[at] * m[0] + world[at + 2] * m[1];
+            const b = world[at + 1] * m[0] + world[at + 3] * m[1];
+            const c = world[at] * m[2] + world[at + 2] * m[3];
+            const d = world[at + 1] * m[2] + world[at + 3] * m[3];
+            const e = world[at] * m[4] + world[at + 2] * m[5] + world[at + 4];
+            const f =
+                world[at + 1] * m[4] + world[at + 3] * m[5] + world[at + 5];
+            for (const [u, v] of [
+                [0, 0],
+                [entry.width, 0],
+                [0, entry.height],
+                [entry.width, entry.height],
+            ]) {
+                const x = a * u + c * v + e;
+                const y = b * u + d * v + f;
+                left = Math.min(left, x);
+                top = Math.min(top, y);
+                right = Math.max(right, x);
+                bottom = Math.max(bottom, y);
+            }
+        }
+        if (left === Infinity) {
+            return null;
+        }
+        return { x: left, y: top, width: right - left, height: bottom - top };
+    }
+
+    /**
      * Draws the parts in their drawing order (the skin's slots, the clothes in front of or behind
      * them), each on its bone, with the puppet's feet (the root) at `x`, `y`. False while the data
      * or the skin's picture isn't there yet; a wardrobe's picture still on its way leaves its
@@ -394,7 +464,10 @@ export class Puppet {
         for (let index = 0; index < order.length; index++) {
             const part = order[index];
             const picture = part.picture.image;
-            if (picture === null) {
+            if (
+                picture === null ||
+                (options.only_clothes === true && part.piece === null)
+            ) {
                 continue;
             }
             const at = part.bone * 6;
@@ -718,6 +791,7 @@ export class Puppet {
                 if (part !== null) {
                     order.push({
                         name: slots[index].name,
+                        piece: null,
                         bone: slots[index].bone,
                         source_x: part.source_x,
                         source_y: part.source_y,
@@ -762,6 +836,7 @@ export class Puppet {
         }
         return {
             name: `${piece.id}:${part.name}`,
+            piece: piece.id,
             bone,
             source_x: part.source_x,
             source_y: part.source_y,

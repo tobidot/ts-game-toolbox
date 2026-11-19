@@ -735,4 +735,34 @@ describe("Wardrobe", () => {
         expect(again.outfit).toEqual(puppet.outfit);
         expect(again.drawing_order).toEqual(order);
     });
+
+    it("draws the clothes alone, and says where the drawn parts lie", () => {
+        const { puppet } = dressed();
+        puppet.set_outfit({ hat: "straw-hat", top: "blue-coat" });
+        puppet.update(0);
+        const { context, images } = recording_context();
+        expect(puppet.draw(context, 0, 0, { only_clothes: true })).toBe(true);
+        expect(images.map((entry) => entry.image)).toEqual([
+            CLOTHES_PICTURE,
+            CLOTHES_PICTURE,
+            CLOTHES_PICTURE,
+            CLOTHES_PICTURE,
+        ]);
+        // The hat: 40 x 16 with its pivot (20, 12) on the top of the head (0, -170), upright.
+        const hat = puppet.bounds("straw-hat");
+        near(hat?.x ?? NaN, -20);
+        near(hat?.y ?? NaN, -182);
+        near(hat?.width ?? NaN, 40);
+        near(hat?.height ?? NaN, 16);
+        const body = puppet.bounds("body");
+        const all = puppet.bounds();
+        const clothes = puppet.bounds("clothes");
+        expect(body).not.toBeNull();
+        expect(all?.y).toBeCloseTo(-182);
+        expect(clothes?.y).toBeCloseTo(-182);
+        expect((all?.height ?? 0) >= (body?.height ?? 0)).toBe(true);
+        expect(puppet.bounds("sword")).toBeNull();
+        puppet.undress();
+        expect(puppet.bounds("clothes")).toBeNull();
+    });
 });
