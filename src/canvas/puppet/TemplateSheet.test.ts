@@ -22,6 +22,9 @@ describe("template_sheet", () => {
                             texts.push(text);
                         };
                     }
+                    if (name === "measureText") {
+                        return (text: string) => ({ width: text.length * 6 });
+                    }
                     return (...args: unknown[]) => {
                         calls.push(`${name}(${args.length})`);
                     };
@@ -35,6 +38,10 @@ describe("template_sheet", () => {
         expect(arcs.length).toBe(template.joints.length);
         expect(texts.some((text) => text.includes("Zweibeiner"))).toBe(true);
         expect(texts).toContain("Boden");
+        // Every joint of the near side gets its word (a far one's may make way).
+        for (const joint of template.joints.filter((each) => !/_l$/.test(each.name))) {
+            expect(texts).toContain(joint.title);
+        }
         expect(layout.height).toBeGreaterThan(template.height);
         // Every joint inside the sheet, the feet on the ground line.
         for (const [x, y] of arcs) {

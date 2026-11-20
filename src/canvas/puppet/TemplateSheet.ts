@@ -150,14 +150,17 @@ export function draw_template_sheet(
         context.lineTo(to[0], to[1]);
     }
     context.stroke();
-    // The joints, the far side's hollow.
+    // The joints, the far side's hollow; the near side's words first, each where it covers no other word.
     context.font = `10px ${font}`;
-    for (const joint of template.joints) {
+    const is_far = (name: string) => name.endsWith("_l") || /_[hf]l$/.test(name);
+    const placed: [number, number, number, number][] = [];
+    const ordered = [...template.joints].sort((a, b) => Number(is_far(a.name)) - Number(is_far(b.name)));
+    for (const joint of ordered) {
         const at = joints[joint.name];
         if (at === undefined) {
             continue;
         }
-        const far = joint.name.endsWith("_l") || /_[hf]l$/.test(joint.name);
+        const far = is_far(joint.name);
         context.beginPath();
         context.arc(at[0], at[1], 4, 0, Math.PI * 2);
         if (far) {
@@ -168,8 +171,13 @@ export function draw_template_sheet(
             context.fillStyle = "#26306a";
             context.fill();
         }
-        context.fillStyle = "rgba(38, 48, 106, 0.75)";
-        context.fillText(joint.title, at[0] + 7, at[1] + (far ? 9 : -7));
+        const text_width = context.measureText(joint.title).width;
+        const spot = label_spot(at, text_width, 11, placed);
+        if (spot !== null) {
+            placed.push([spot[0], spot[1] - 9, text_width, 11]);
+            context.fillStyle = "rgba(38, 48, 106, 0.75)";
+            context.fillText(joint.title, spot[0], spot[1]);
+        }
     }
     context.fillStyle = "#26306a";
     context.font = `bold 15px ${font}`;
@@ -220,4 +228,35 @@ export function template_sheet(
     }
     draw_template_sheet(context, template, options);
     return canvas;
+}
+
+/**
+ * Where a joint's word goes (its baseline's left end): right of the point above or below it, then
+ * left, a little further out each round; null when every spot covers a word already placed.
+ */
+function label_spot(
+    at: readonly [number, number],
+    width: number,
+    height: number,
+    placed: readonly (readonly [number, number, number, number])[],
+): [number, number] | null {
+    for (const reach of [7, 14, 22]) {
+        const spots: [number, number][] = [
+            [at[0] + reach, at[1] - 4],
+            [at[0] + reach, at[1] + 10],
+            [at[0] - reach - width, at[1] - 4],
+            [at[0] - reach - width, at[1] + 10],
+        ];
+        for (const [x, y] of spots) {
+            const top = y - 9;
+            const overlaps = placed.some(
+                ([left, other_top, other_width, other_height]) =>
+                    x < left + other_width + 2 && x + width + 2 > left && top < other_top + other_height && top + height > other_top,
+            );
+            if (!overlaps) {
+                return [x, y];
+            }
+        }
+    }
+    return null;
 }
