@@ -128,8 +128,7 @@ describe("rig_from_picture", () => {
         const made = rig_from_picture({
             layers: [
                 { name: "back", pixels: back, bones: far_leg },
-                figure.layers[1],
-                figure.layers[2],
+                ...figure.layers.filter((layer) => layer.name !== "far_leg"),
             ],
             joints,
             template,

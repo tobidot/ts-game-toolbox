@@ -326,22 +326,18 @@ function biped_template(): SkeletonTemplate {
             },
         ],
         soles: ["heel_l", "toe_l", "heel_r", "toe_r"],
+        // Five, as step 41's soft wanderer: an arm hanging over a leg must be a picture of its own,
+        // or the cells between them tear when the arm swings forward and the leg back.
         layers: [
-            {
-                name: "back",
-                title: "Hinten",
-                bones: [...limb("l"), ...leg("l")],
-            },
+            { name: "far_arm", title: "Arm hinten", bones: limb("l") },
+            { name: "far_leg", title: "Bein hinten", bones: leg("l") },
+            { name: "near_leg", title: "Bein vorne", bones: leg("r") },
             {
                 name: "body",
                 title: "Körper",
                 bones: ["hip", "torso", "head", "jaw"],
             },
-            {
-                name: "front",
-                title: "Vorne",
-                bones: [...limb("r"), ...leg("r")],
-            },
+            { name: "near_arm", title: "Arm vorne", bones: limb("r") },
         ],
         slots: [
             ...limb("l"),
