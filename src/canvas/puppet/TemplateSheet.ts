@@ -1,6 +1,7 @@
 import {
     JointPoints,
     SkeletonTemplate,
+    TemplateBoneData,
     template_joints,
     template_point,
 } from "./SkeletonTemplate";
@@ -16,7 +17,11 @@ export interface SheetPicture {
 
 /** How the draw-over template is laid out. */
 export interface TemplateSheetOptions {
-    /** The sheet's size in pixels; default 1.4 times the template's height tall, as wide as tall. */
+    /**
+     * The sheet's size in pixels. Default: the skeleton's own shape (upright for a Zweibeiner,
+     * wide for a Vierbeiner) with a margin all round, room for the words at the top and under the
+     * ground line, and room for the whole character when one is given.
+     */
     readonly width?: number;
     readonly height?: number;
     /** Pixels per template unit. Default 1 (a Zweibeiner about 390 pixels tall). */
@@ -25,7 +30,12 @@ export interface TemplateSheetOptions {
     readonly picture?: SheetPicture | null;
     /** How strongly the character shows. Default 0.3. */
     readonly picture_alpha?: number;
-    /** The words at the top. Default: the template's title and how to draw on it. */
+    /**
+     * The bones of one layer: they and their joints are drawn strongly and named, the rest of the
+     * skeleton faint and without words. Default: the whole skeleton strongly.
+     */
+    readonly bones?: readonly string[] | null;
+    /** The words at the top, wrapped to the sheet. Default: the template's title and how to draw on it. */
     readonly title?: string;
     readonly font?: string;
 }
@@ -37,48 +47,166 @@ export interface TemplateSheetLayout {
     readonly origin: readonly [number, number];
     readonly joints: Record<string, [number, number]>;
     readonly scale: number;
+    /** The space kept round the figure (and its joints), in pixels. */
+    readonly margin: number;
+    /** Where the words at the top end: the figure's room starts below. */
+    readonly top: number;
 }
 
-/** The sheet's size and where the joints go on it (shared by the drawing and its tests). */
+/** Room at the left edge for the ruler and its numbers. */
+const RULER_ROOM = 40;
+/** Room under the ground line. */
+const GROUND_ROOM = 40;
+/** The title's size, and the width of one of its letters as a share of it (a monospace font). */
+const TITLE_SIZE = 15;
+const LETTER_SHARE = 0.62;
+
+/** The default words at the top of a template's sheet. */
+function default_title(template: SkeletonTemplate): string {
+    return `${template.title}: nach rechts schauen, Füße auf die Linie, ferne Glieder (hohle Punkte) auf eine eigene Ebene.`;
+}
+
+/** The title's lines on a sheet `width` wide (by letters, so the layout needs no canvas). */
+function title_lines(title: string, width: number): string[] {
+    const per_line = Math.max(
+        8,
+        Math.floor((width - 32) / (TITLE_SIZE * LETTER_SHARE)),
+    );
+    const lines: string[] = [];
+    let line = "";
+    for (const word of title.split(/\s+/).filter((each) => each !== "")) {
+        if (line !== "" && line.length + 1 + word.length > per_line) {
+            lines.push(line);
+            line = word;
+        } else {
+            line = line === "" ? word : `${line} ${word}`;
+        }
+    }
+    if (line !== "") {
+        lines.push(line);
+    }
+    return lines;
+}
+
+/** How far down the words at the top reach, for `lines` lines. */
+function title_room(lines: number): number {
+    return 12 + Math.max(1, lines) * (TITLE_SIZE + 4) + 6;
+}
+
+/**
+ * The joints a set of bones turns on (since step 43): both ends of each, and both joints of a
+ * point that lies between two.
+ */
+export function template_bone_joints(
+    template: SkeletonTemplate,
+    bones: readonly string[],
+): Set<string> {
+    const joints = new Set<string>();
+    const add = (point: TemplateBoneData["from"]) => {
+        if (typeof point === "string") {
+            joints.add(point);
+        } else {
+            joints.add(point.from);
+            joints.add(point.toward);
+        }
+    };
+    for (const bone of template.bones) {
+        if (bones.includes(bone.name)) {
+            add(bone.from);
+            add(bone.to);
+        }
+    }
+    return joints;
+}
+
+/**
+ * The sheet's size and where the joints go on it (shared by the drawing and its tests). The
+ * figure's room is its joints' box (from the ground up to the template's height), at least 0.6
+ * times as wide as tall and a quarter as tall as wide, and the character's whole picture when
+ * one is given; a margin of 15 % of its larger side (at least 40 pixels) goes round it, the words
+ * above, the ruler on the left and 40 pixels under the ground line.
+ */
 export function template_sheet_layout(
     template: SkeletonTemplate,
     options: TemplateSheetOptions = {},
 ): TemplateSheetLayout {
     const scale = options.scale ?? 1;
-    const xs = template.joints.map((joint) => joint.at[0]);
-    const span = (Math.max(...xs) - Math.min(...xs)) * scale;
-    const tall = template.height * scale;
-    const height = Math.round(options.height ?? Math.max(240, tall * 1.4 + 60));
-    const width = Math.round(options.width ?? Math.max(height, span + 160));
-    const raw: Record<string, [number, number]> = {};
-    for (const joint of template.joints) {
-        raw[joint.name] = [joint.at[0], joint.at[1]];
-    }
-    const root_x = template_point(template.root, raw)[0];
-    const middle = (Math.max(...xs) + Math.min(...xs)) / 2;
-    const origin: [number, number] = [
-        Math.round(width / 2 + (root_x - middle) * scale),
-        Math.round(height - Math.max(40, (height - tall) / 3)),
-    ];
-    let joints = template_joints(template, { origin, scale });
-    const picture = options.picture;
+    // The joints round the root on the ground (0, 0), in sheet pixels.
+    const picture = options.picture ?? null;
+    let joints: Record<string, [number, number]> = template_joints(template, {
+        origin: [0, 0],
+        scale,
+    });
     if (picture?.joints !== undefined) {
         joints = {};
         for (const [name, at] of Object.entries(picture.joints)) {
             joints[name] = [
-                at[0] - picture.origin[0] + origin[0],
-                at[1] - picture.origin[1] + origin[1],
+                at[0] - picture.origin[0],
+                at[1] - picture.origin[1],
             ];
         }
     }
-    return { width, height, origin, joints, scale };
+    const xs = Object.values(joints).map((at) => at[0]);
+    const ys = Object.values(joints).map((at) => at[1]);
+    let left = Math.min(...xs);
+    let right = Math.max(...xs);
+    let top = Math.min(...ys, -template.height * scale);
+    let bottom = Math.max(...ys, 0);
+    const size = picture_size(picture);
+    if (picture !== null && size !== null) {
+        left = Math.min(left, -picture.origin[0]);
+        right = Math.max(right, size[0] - picture.origin[0]);
+        top = Math.min(top, -picture.origin[1]);
+        bottom = Math.max(bottom, size[1] - picture.origin[1]);
+    }
+    const room_width = Math.max(right - left, 0.6 * (bottom - top));
+    const room_height = Math.max(bottom - top, 0.25 * (right - left));
+    const margin = Math.round(
+        Math.max(40, 0.15 * Math.max(room_width, room_height)),
+    );
+    const width = Math.round(
+        options.width ?? RULER_ROOM + margin * 2 + room_width,
+    );
+    const title = options.title ?? default_title(template);
+    const words = title_room(title_lines(title, width).length);
+    const height = Math.round(
+        options.height ?? words + margin + room_height + GROUND_ROOM,
+    );
+    // The figure's room in the middle of the sheet right of the ruler, standing on the ground line.
+    const origin: [number, number] = [
+        Math.round(
+            RULER_ROOM + (width - RULER_ROOM - (right - left)) / 2 - left,
+        ),
+        Math.round(height - GROUND_ROOM - Math.max(0, bottom)),
+    ];
+    const placed: Record<string, [number, number]> = {};
+    for (const [name, at] of Object.entries(joints)) {
+        placed[name] = [at[0] + origin[0], at[1] + origin[1]];
+    }
+    return { width, height, origin, joints: placed, scale, margin, top: words };
+}
+
+/** A picture's size when its image tells it (a canvas, an image, a bitmap). */
+function picture_size(picture: SheetPicture | null): [number, number] | null {
+    const image = picture?.image as
+        | { width?: unknown; height?: unknown }
+        | undefined;
+    if (
+        image === undefined ||
+        typeof image.width !== "number" ||
+        typeof image.height !== "number"
+    ) {
+        return null;
+    }
+    return [image.width, image.height];
 }
 
 /**
  * Draws the draw-over template of a skeleton (since step 43): a white sheet with the ground line
  * and a size ruler, an existing character faint if given, the bones as light lines and every joint
  * as a dot with its name. Someone draws a character over it facing right, its feet on the line,
- * and its joints land near the dots.
+ * and its joints land near the dots. With `bones` it is the sheet of one layer: those bones and
+ * their joints strong and named, the rest faint.
  */
 export function draw_template_sheet(
     context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
@@ -128,9 +256,10 @@ export function draw_template_sheet(
     context.strokeStyle = "#26306a";
     context.lineWidth = 1;
     context.beginPath();
+    const ruler_top = layout.top + 4;
     context.moveTo(24.5, origin[1]);
-    context.lineTo(24.5, 40);
-    for (let step = 0; origin[1] - step * 100 >= 40; step++) {
+    context.lineTo(24.5, ruler_top);
+    for (let step = 0; origin[1] - step * 100 >= ruler_top; step++) {
         const y = origin[1] - step * 100 + 0.5;
         context.moveTo(18, y);
         context.lineTo(31, y);
@@ -138,19 +267,37 @@ export function draw_template_sheet(
     }
     context.stroke();
     context.fillText("Boden", width - 64, origin[1] - 10);
-    // The bones.
-    context.strokeStyle = "rgba(108, 218, 217, 0.9)";
-    context.lineWidth = 4;
+    // The bones: the chosen ones strong, the rest faint (all strong without a choice).
+    const chosen = options.bones ?? null;
+    const is_strong = (bone: string) =>
+        chosen === null || chosen.includes(bone);
+    const strong_joints =
+        chosen === null
+            ? new Set(template.joints.map((joint) => joint.name))
+            : template_bone_joints(template, chosen);
     context.lineCap = "round";
-    context.beginPath();
-    for (const bone of template.bones) {
-        const from = template_point(bone.from, joints);
-        const to = template_point(bone.to, joints);
-        context.moveTo(from[0], from[1]);
-        context.lineTo(to[0], to[1]);
+    for (const strong of [false, true]) {
+        const bones = template.bones.filter(
+            (bone) => is_strong(bone.name) === strong,
+        );
+        if (bones.length === 0) {
+            continue;
+        }
+        context.strokeStyle = strong
+            ? "rgba(108, 218, 217, 0.9)"
+            : "rgba(108, 218, 217, 0.3)";
+        context.lineWidth = strong ? 4 : 2;
+        context.beginPath();
+        for (const bone of bones) {
+            const from = template_point(bone.from, joints);
+            const to = template_point(bone.to, joints);
+            context.moveTo(from[0], from[1]);
+            context.lineTo(to[0], to[1]);
+        }
+        context.stroke();
     }
-    context.stroke();
-    // The joints, the far side's hollow; the near side's words first, each where it covers no other word.
+    // The joints, the far side's hollow; the near side's words first, each where it covers no other
+    // word. A joint of no chosen bone is a faint dot without a word.
     context.font = `10px ${font}`;
     const is_far = (name: string) =>
         name.endsWith("_l") || /_[hf]l$/.test(name);
@@ -164,8 +311,10 @@ export function draw_template_sheet(
             continue;
         }
         const far = is_far(joint.name);
+        const strong = strong_joints.has(joint.name);
+        context.globalAlpha = strong ? 1 : 0.3;
         context.beginPath();
-        context.arc(at[0], at[1], 4, 0, Math.PI * 2);
+        context.arc(at[0], at[1], strong ? 4 : 3, 0, Math.PI * 2);
         if (far) {
             context.strokeStyle = "#26306a";
             context.lineWidth = 2;
@@ -173,6 +322,10 @@ export function draw_template_sheet(
         } else {
             context.fillStyle = "#26306a";
             context.fill();
+        }
+        context.globalAlpha = 1;
+        if (!strong) {
+            continue;
         }
         const text_width = context.measureText(joint.title).width;
         const spot = label_spot(at, text_width, 11, placed);
@@ -182,16 +335,14 @@ export function draw_template_sheet(
             context.fillText(joint.title, spot[0], spot[1]);
         }
     }
+    // The words at the top, wrapped to the sheet.
     context.fillStyle = "#26306a";
-    context.font = `bold 15px ${font}`;
+    context.font = `bold ${TITLE_SIZE}px ${font}`;
     context.textBaseline = "top";
-    context.fillText(
-        options.title ??
-            `${template.title}: nach rechts schauen, Füße auf die Linie, ferne Glieder (hohle Punkte) auf eine eigene Ebene.`,
-        16,
-        12,
-        width - 32,
-    );
+    const lines = title_lines(options.title ?? default_title(template), width);
+    lines.forEach((line, index) => {
+        context.fillText(line, 16, 12 + index * (TITLE_SIZE + 4), width - 32);
+    });
     context.restore();
     return layout;
 }
