@@ -16,6 +16,7 @@ export * from "./SoftGpu";
 export * from "./SoftLayer";
 export * from "./PuppetIk";
 export * from "./PuppetLayers";
+export * from "./PuppetConstraints";
 export * from "./PartKit";
 export * from "./SoftCompose";
 export * from "./CreatureTemplate";

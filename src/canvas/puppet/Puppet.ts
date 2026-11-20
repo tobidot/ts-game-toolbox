@@ -12,6 +12,7 @@ import {
     PuppetBaker,
 } from "./PuppetLook";
 import { PuppetJiggle } from "./PuppetJiggle";
+import { PuppetConstraints } from "./PuppetConstraints";
 import { PuppetLayers } from "./PuppetLayers";
 import { PuppetPlayer, PuppetPlayOptions } from "./PuppetPlayer";
 import { PuppetRig } from "./PuppetRig";
@@ -123,6 +124,14 @@ export interface PuppetDrawOptions {
     readonly alpha?: number;
 }
 
+/** Where a game draws a puppet: its feet at `x`, `y`, `scale` and mirrored or not (`Puppet.place()`). */
+export interface PuppetPlacement {
+    x: number;
+    y: number;
+    scale: number;
+    flip_x: boolean;
+}
+
 /** A box in the puppet's own space. */
 export interface PuppetBox {
     x: number;
@@ -201,6 +210,21 @@ export class Puppet {
      * legs run while the arms aim. `layers.play("aim", "hold", { mask: "upper_body" })`.
      */
     public readonly layers: PuppetLayers;
+    /**
+     * Where the game draws the puppet (`place()`): the space that targets, hits and ragdolls take
+     * their points in. Default: the puppet's own space (0, 0, scale 1, not mirrored).
+     */
+    public readonly placement: PuppetPlacement = {
+        x: 0,
+        y: 0,
+        scale: 1,
+        flip_x: false,
+    };
+    /**
+     * Aims, looks and reaches that turn bones towards targets after the clips and layers (since
+     * step 44): `constraints.aim("arm_r", mouse_x, mouse_y)`, in the placement's space.
+     */
+    public readonly constraints: PuppetConstraints;
 
     public constructor(
         public readonly rig: PuppetRig,
@@ -208,6 +232,7 @@ export class Puppet {
     ) {
         this.player = new PuppetPlayer(rig, clip);
         this.layers = new PuppetLayers(rig);
+        this.constraints = new PuppetConstraints(rig, this.placement);
         this.skeleton = rig.make_skeleton();
         this.refresh();
     }
@@ -236,12 +261,56 @@ export class Puppet {
         this.refresh();
         this.player.update(delta_seconds);
         this.layers.update(delta_seconds);
+        this.constraints.update(delta_seconds);
         this.player.apply(this.skeleton, false);
         this.layers.apply(this.skeleton);
         this.skeleton.update();
+        this.constraints.apply(this.skeleton);
         if (this.player.clip !== null) {
             this.jiggle.step(delta_seconds, this.skeleton);
         }
+    }
+
+    /**
+     * Tells the puppet where the game draws it (its feet at `x`, `y`, as `draw()` takes them), so
+     * targets, hits and ragdolls work in the game's space. Call it when the puppet moves (each
+     * frame for one that walks); `draw()` itself doesn't need it.
+     */
+    public place(
+        x: number,
+        y: number,
+        options: { readonly scale?: number; readonly flip_x?: boolean } = {},
+    ): void {
+        this.placement.x = x;
+        this.placement.y = y;
+        this.placement.scale = options.scale ?? this.placement.scale;
+        this.placement.flip_x = options.flip_x ?? this.placement.flip_x;
+    }
+
+    /** A point of the placement's space (the game's) in the puppet's own space. */
+    public world_to_local(
+        x: number,
+        y: number,
+        out: PuppetPoint = { x: 0, y: 0 },
+    ): PuppetPoint {
+        const placement = this.placement;
+        const scale = placement.scale;
+        out.x = (x - placement.x) / (placement.flip_x ? -scale : scale);
+        out.y = (y - placement.y) / scale;
+        return out;
+    }
+
+    /** A point of the puppet's own space in the placement's space (the game's). */
+    public local_to_world(
+        x: number,
+        y: number,
+        out: PuppetPoint = { x: 0, y: 0 },
+    ): PuppetPoint {
+        const placement = this.placement;
+        const scale = placement.scale;
+        out.x = placement.x + x * (placement.flip_x ? -scale : scale);
+        out.y = placement.y + y * scale;
+        return out;
     }
 
     /**

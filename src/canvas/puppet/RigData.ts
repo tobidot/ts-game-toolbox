@@ -60,7 +60,60 @@ export interface RigData {
      * bone tree (`lower_body`, `upper_body`, `arm_r`, ...) where the rig names none.
      */
     readonly masks?: Readonly<Record<string, readonly string[]>>;
+    /**
+     * Constraints by name (since step 44): an aim, a look or a reach that turns bones towards a
+     * target after the clips (`puppet.constraints.aim("arm_r", x, y)`). Names a rig leaves out
+     * are made from the bone names where they can be.
+     */
+    readonly constraints?: Readonly<Record<string, ConstraintData>>;
 }
+
+/**
+ * A constraint of a rig (since step 44): turns bones towards a target the game sets each frame.
+ * `weight` (default 1) is how much of the turn shows, `enabled` (default true) whether it starts on.
+ */
+export type ConstraintData =
+    | {
+          /** Turns a chain so the line of an anchor (a hand) goes through the target. */
+          readonly kind: "aim";
+          /** The bones that turn, from the body outwards (spine, upper arm, forearm). */
+          readonly chain: readonly string[];
+          /** The anchor whose line (from its point, along its angle) is aimed. */
+          readonly anchor: string;
+          /** How the turn is shared along the chain. Default: equally. */
+          readonly weights?: readonly number[];
+          /** Per bone, `[low, high]` degrees it may turn away from the clip's pose. Default ±180. */
+          readonly limits?: readonly (readonly [number, number])[];
+          readonly weight?: number;
+          readonly enabled?: boolean;
+      }
+    | {
+          /** Turns one bone so its axis points at the target: a head. */
+          readonly kind: "look_at";
+          readonly bone: string;
+          /**
+           * Degrees from the bone's line to where it looks. Default: the way the puppet faces at rest
+           * (a head bone pointing up looks ahead).
+           */
+          readonly axis?: number;
+          /** `[low, high]` degrees it may turn away from the clip's pose. Default ±45. */
+          readonly limits?: readonly [number, number];
+          readonly weight?: number;
+          readonly enabled?: boolean;
+      }
+    | {
+          /** Puts the end of two bones (a foot, a hand) on the target: two-bone IK. */
+          readonly kind: "reach";
+          readonly upper: string;
+          /** The upper bone's child. */
+          readonly lower: string;
+          /** The end on the lower bone: an anchor on it, or `[x, y]` in its frame. Default its tip. */
+          readonly end?: string | readonly [number, number];
+          /** 1 or -1, the side the middle joint bends to. Default: the side it bends to in the pose. */
+          readonly bend?: number;
+          readonly weight?: number;
+          readonly enabled?: boolean;
+      };
 
 /** A drawn character's rigging, kept in its rig (since step 43). */
 export interface RigDrawingData {
