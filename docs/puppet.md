@@ -382,6 +382,42 @@ const monster = rig.puppet("walk");
 
 **What it costs.** Making the rig again after a joint moved (the step's Kobold, five layers, 340 × 450 pixels, its grid and clips) takes 16 ms in headless Chromium; a folder built in Node 22 with its PNGs decoded, 33 to 39 ms for a drawn character, 18 ms for a 27-part kit.
 
+## In action
+
+What a game needs to fight with puppets: legs that run while the arms aim, a gun that points at the mouse, bolts that hit the head and not the air beside it, and a body that falls over when it is beaten. Since step 44, Knopper Klopper (a side-scroller where every figure of steps 38 to 43 shoots and is shot).
+
+```ts
+hero.place(x, floor_y, { scale: 0.5, flip_x });                     // where the game draws it: targets and hits use this space
+hero.layers.play("hold", "aim_idle", { mask: "upper_body" });          // the legs keep running
+hero.constraints.aim("arm_r", mouse_x, mouse_y, { from: muzzle });     // the muzzle's line through the mouse
+hero.layers.play("recoil", "recoil", { mode: "add" });                 // a kick on top, gone when it ends
+const hit = monster.ray_hit(bolt_from, bolt_to);                       // { name: "head", x, y, normal, t } or null
+monster.flinch(hit.bone, bolt_direction, 1);
+const fallen = monster.ragdoll(world, { push: { bone: "torso", x: 600, y: -300 }, scatter: true });
+monster.get_up("idle", { fade: 0.5, y: ground_at(fallen.joint_of("hip").x) });
+```
+
+**Placement.** `place(x, y, { scale, flip_x })` tells a puppet where the game draws it (its feet, as `draw()` takes them); `world_to_local` and `local_to_world` turn points between that space and the puppet's own. Targets, hits, piece points and ragdolls all work in it. `draw()` doesn't need it; call it when the puppet moves.
+
+**Layers** (`PuppetLayers`, `puppet.layers`): clips over the puppet's own clip, each on the bones of a mask, applied in the order they were first played. `play(name, clip, { mask, weight, mode, fade, restart, speed, until_done })` starts a layer or switches its clip with a fade; `stop(name, fade)`, `set_weight(name, weight, fade)`, `clear()`, `layer(name)`. `"replace"` (the default) blends the layer's pose over the pose below by its weight; `"add"` adds its keys on top (offsets on the rest pose: a recoil keyed from 0 to -12 and back), and an added clip played once fades out and goes by itself. Masks (`PuppetMask`, a weight per bone) by name: `all`, `lower_body` (or `legs`: the roots, the hip and the legs), `upper_body` (the rest), `arm_r`, `arm_l`, `leg_r`, `leg_l`, `head`, and the rig's own `masks` (`RigData.masks`: bone names, each with its children); or a list of bone names, or a mask made with `mask_from(skeleton, bones, { weight, children })`. A layer plays its own `PuppetPlayer` without events. Each fades in over `LAYER_FADE` (0.15 s) unless told.
+
+**Constraints** (`PuppetConstraints`, `puppet.constraints`): bones turned towards targets after the clips and layers, each with a weight that fades (`CONSTRAINT_FADE`, 0.15 s) and limits relative to the clip's pose. Three kinds (`ConstraintData`, plain data in `RigData.constraints`, or made from the bone names):
+- **`aim(name, x, y, { from, fade })`** turns a chain (by default `arm_r`: the spine, the upper arm and the forearm, sharing the turn 0.2, 0.55, 0.25, the spine within ±35 degrees) until the line of an anchor goes through the target. `from` is a point in the anchor's frame the line starts from: a gun's muzzle (`part_point(part, "muzzle")`), off the hand's line. Iterative, within 0.01 degrees, mirrored puppets too.
+- **`look_at(name, x, y)`** turns one bone (by default `head`, within ±40 degrees) so the way it faces points at the target.
+- **`reach(name, x, y)`** puts the end of two bones on the target with step 42's `two_bone_ik` (by default `foot_r`, `hand_l` and the others by their names): a foot on a slope, a far hand on a grip.
+
+`release(name, fade)` lets go, `set_enabled(name, false)` turns one off, `get(name)` and `set(name, data)`. The legs are left alone by an aim: the run underneath plays exactly as it would.
+
+**Piece points.** A worn piece's part may name points (`PiecePartData.points`, picture pixels like the pivot: `muzzle`, `grip`). `part_point(part, name)` gives one in the anchor's frame, `puppet.piece_point(place_or_id, name)` where it is now in the placement's space, with the angle it points along: where a bolt leaves the gun.
+
+**Hit capsules** (`puppet.hit_shapes`, `HitCapsule`): a capsule per bone, as wide as the bone's picture: from a soft skin's bone map (each pixel to its bone) or a cut-out part's opaque pixels (its rectangle without pixels), the capsule laid along the bone over what the bone carries, its radius covering 96 % of it. Made once per skin and shared by every puppet wearing it (step 44's figure: 16 capsules in 7 ms). On the drawn test figure they miss 6 % of the picture's pixels and are 4 % air. `hit_at(x, y)` (the capsule drawn on top), `ray_hit(from, to)` (the first capsule a bolt meets: `PuppetHit` with the bone, its `name`, the point, the `normal` and `t` along the ray) and `overlaps({ x, y, radius })` (a blast, a club's head) all take points in the placement's space; `PuppetHitTest` and `distance_to_segment` do the same for a game's own shapes.
+
+**Flinch.** `flinch(bone, direction, strength)` kicks a bone round by the push across it (its parent half as much, the grandparent a quarter; never a root), and a damped spring turns it back (`PuppetFlinch`: half-life 0.09 s, at most 45 degrees, stepped in fixed steps of `FLINCH_STEP` = 1/240 s, so it looks the same at any frame rate). A push forward on the screen turns a mirrored puppet the same way.
+
+**Ragdolls** (`PuppetRagdoll`): `puppet.ragdoll(world, { velocity, push, scatter, seed, layer, mask, iterations, damping })` lays a stick of two bodies of a `PhysicsWorld` along every bone (octagons as wide as its capsule, on `RAGDOLL_LAYER`, meeting the ground and crates but not each other), starting exactly where the pose has them and moving as the last update moved them, plus the puppet's own `velocity` and a `push` on one bone (both in the placement's space). In each world step, once the world moved the bodies (`world.steps`), the ragdoll holds every bone rigid with the joints of the bones on it (shape matching), keeps it within its angle limits (both sides of the joint turning by their weight), and puts the bodies back with `world.place()`, which pushes them out of the walls; the walls they touched stay in its solving for the next step. The limits (`ragdoll_limits(rig)`) are how far the rig's clips turn each bone plus 25 degrees (±30 for a bone no clip turns), or the rig's own `limits` (`RigData.limits`: `[low, high]` per bone, as clip rotations). The puppet then shows the ragdoll's pose, the bones' angles from its sticks, so the drawing never stretches; keep drawing it at its placement. `scatter: true` lets a cut-out puppet's parts fly apart, away from its middle and spinning (`scatter_speed`, `seed`); a soft skin stays whole, its picture would tear. `ragdoll.is_settled` (every point slower than 20 units a second, in the rig's units, for 0.4 s), `push(bone, x, y)` for a second blow, `joint_of(bone)`, `bounds()`, `stretch()` (how far the bones are off rigid, for tests), `remove()`. `puppet.get_up(clip, { fade, y })` stands it up where its hip lies (on `y`, the ground there) and blends from the pose it lies in into the clip; `end_ragdoll()` just takes the bodies out. A hard landing bends a bone by a few units for a frame or two (the ground has the last word); at rest the bones are rigid to half a unit.
+
+**What it costs** (Node 22, the same machine as below): 1 000 running wanderers update in 0.89 ms; with an upper-body layer 1.39 ms, with an aim 1.23 ms, with both 1.94 ms. `hit_at` 1.0 µs, `ray_hit` 1.9 µs, `overlaps` 0.9 µs on the drawn figure's 16 capsules. A falling soft figure as a ragdoll (23 bodies) costs 0.27 ms a frame with its world and drawing pose, 10 at once 0.72 ms, 40 at once 2.6 ms; all settle within 2 to 3 seconds.
+
 ## In the game shell
 
 A picture of `settings.catalogue_images` whose catalogue entry has a `rig` brings its puppet along: the host's `load_catalogue_url()` answers with `rig` in the `CatalogueFile`, and the shell puts it into `references.puppet(name)`. `logic.load_puppet(name, clip?)` is then a puppet in one line:
