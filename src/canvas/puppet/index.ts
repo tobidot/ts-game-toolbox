@@ -22,3 +22,4 @@ export * from "./CreatureGait";
 export * from "./CreatureAttack";
 export * from "./Creature";
 export * from "./SkeletonTemplate";
+export * from "./RigPicture";
