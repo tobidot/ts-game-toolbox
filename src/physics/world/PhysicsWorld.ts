@@ -9,7 +9,7 @@ import {
     create_broad_phase,
 } from "./BroadPhase";
 import { CollisionRule, SAT_SWEEP } from "./CollisionRule";
-import { ContactEvent } from "./ContactEvent";
+import { ContactEvent, WorldStepEvent } from "./ContactEvent";
 import { ALL_LAYERS, BodyOptions, PhysicsBody } from "./PhysicsBody";
 
 /** What `new PhysicsWorld()` takes; every field has a default. */
@@ -147,6 +147,16 @@ export class PhysicsWorld<D = unknown> {
     public readonly step_seconds: number;
     /** `ContactEvent`s, sent after each step. */
     public readonly events = new EventSocket<ContactEvent<D>>();
+    /**
+     * A `WorldStepEvent` in every even step, once the bodies moved and before their contacts are
+     * found and pushed apart: where a game keeps its own constraints between bodies (a ragdoll's
+     * joints), so nothing they move stays inside a wall. Listeners may move bodies and set speeds.
+     */
+    public readonly steps = new EventSocket<WorldStepEvent>();
+    private step_event: WorldStepEvent | null = null;
+    private is_in_step_event = false;
+    /** Where each moving body is in `moving`, while a `steps` listener places bodies. */
+    private moving_index: Map<PhysicsBody<D>, number> | null = null;
     public readonly stats: PhysicsWorldStats = {
         bodies: 0,
         pairs_tested: 0,
@@ -317,6 +327,12 @@ export class PhysicsWorld<D = unknown> {
             this.delta.y = body.velocity.y * dt;
             this.move(index, this.delta);
         }
+        // The game's own constraints, before the contacts: these have the last word.
+        this.step_event ??= new WorldStepEvent(dt);
+        this.is_in_step_event = true;
+        this.steps.dispatch(this.step_event);
+        this.is_in_step_event = false;
+        this.moving_index = null;
         this.find_pairs();
         for (let pass = 0; pass < this.passes; pass++) {
             this.separate();
@@ -480,6 +496,26 @@ export class PhysicsWorld<D = unknown> {
             }
         }
         return walls;
+    }
+
+    /**
+     * Puts a body at (x, y). From a `steps` listener it is then pushed out of any still body it
+     * ended in, and its speed into that body is gone, as after a push between two moving bodies;
+     * elsewhere it just sets the position. Answers whether it was pushed out.
+     */
+    public place(body: PhysicsBody<D>, x: number, y: number): boolean {
+        body.position.x = x;
+        body.position.y = y;
+        if (!this.is_in_step_event || body.is_static) {
+            return false;
+        }
+        if (this.moving_index === null) {
+            this.moving_index = new Map(
+                this.moving.map((known, index) => [known, index]),
+            );
+        }
+        const index = this.moving_index.get(body);
+        return index !== undefined && this.push_out_of_walls(index);
     }
 
     /** Moves moving body `index` by `delta` against the still bodies, as the rule says. */
@@ -734,10 +770,12 @@ export class PhysicsWorld<D = unknown> {
         b.velocity.y = after_b.y + change * (1 - share_a) * tangent_y;
     }
 
-    private push_out_of_walls(index: number): void {
+    /** Pushes moving body `index` out of the still bodies it overlaps; answers whether it was in one. */
+    private push_out_of_walls(index: number): boolean {
         const body = this.moving[index];
         const walls = this.walls_near(body, body.box);
         const rule = this.rule;
+        let is_pushed = false;
         for (const wall of walls) {
             this.stats.pairs_tested += 1;
             const contact = rule.overlap(body, wall);
@@ -749,7 +787,9 @@ export class PhysicsWorld<D = unknown> {
             body.position.x += contact.normal.x * contact.depth;
             body.position.y += contact.normal.y * contact.depth;
             this.land(index, wall, contact.normal);
+            is_pushed = true;
         }
+        return is_pushed;
     }
 
     /**

@@ -20,3 +20,16 @@ export class ContactEvent<D = unknown> extends EventBase {
         super(ContactEvent.EVENT_NAME);
     }
 }
+
+/**
+ * A world's bodies moved in a step, before the contacts are pushed apart: a game's own constraints
+ * on the bodies (a puppet's ragdoll joints, since step 44) go here, once per even step. `seconds` is
+ * the step's.
+ */
+export class WorldStepEvent extends EventBase {
+    public static readonly EVENT_NAME = "physics.step";
+
+    public constructor(public readonly seconds: number) {
+        super(WorldStepEvent.EVENT_NAME);
+    }
+}

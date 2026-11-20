@@ -3,7 +3,7 @@ import { PolygonI } from "../../geometries/Polygon";
 import { SeededRandom } from "../../random/SeededRandom";
 import { sat_axes, sat_overlap } from "../sweeping_sat/Sat";
 import { AABB, AABB_SWEEP, CollisionRule, SAT_SWEEP } from "./CollisionRule";
-import { ContactEvent } from "./ContactEvent";
+import { ContactEvent, WorldStepEvent } from "./ContactEvent";
 import { ALL_LAYERS, PhysicsBody } from "./PhysicsBody";
 import { PhysicsWorld, PhysicsWorldOptions, holds_up } from "./PhysicsWorld";
 
@@ -619,6 +619,48 @@ describe("PhysicsWorld", () => {
         expect(world.stats.contacts).toBeGreaterThan(0);
         // the default sends them all
         expect(new PhysicsWorld().contact_event_layers).toBe(ALL_LAYERS);
+    });
+
+    it("tells its steps listeners once the bodies moved; what they place goes out of the walls", () => {
+        const world = boxed_world();
+        // Two bodies the game holds 60 apart, as a ragdoll holds its joints.
+        const left = world.add({
+            shape: crate(20),
+            position: { x: 370, y: 500 },
+        });
+        const right = world.add({
+            shape: crate(20),
+            position: { x: 430, y: 500 },
+        });
+        let calls = 0;
+        let pushed = 0;
+        const listener = world.steps.attach(WorldStepEvent, (event) => {
+            calls += 1;
+            expect(event.seconds).toBe(world.step_seconds);
+            // Down into the floor with the left one: the floor has the last word.
+            const middle_x = (left.position.x + right.position.x) / 2;
+            const y = Math.max(left.position.y, right.position.y) + 5;
+            for (const [body, x] of [
+                [left, middle_x - 30],
+                [right, middle_x + 30],
+            ] as const) {
+                if (world.place(body, x, y)) {
+                    pushed += 1;
+                }
+            }
+        });
+        run(world, 1);
+        expect(calls).toBe(60);
+        expect(pushed).toBeGreaterThan(0);
+        for (const body of [left, right]) {
+            expect(body.position.y).toBeCloseTo(590, 6);
+            expect(body.velocity.y).toBeLessThanOrEqual(0);
+        }
+        expect(right.position.x - left.position.x).toBeCloseTo(60, 9);
+        world.steps.detach(listener);
+        // Outside a step, place only moves.
+        expect(world.place(left, 370, 700)).toBe(false);
+        expect(left.position.y).toBe(700);
     });
 
     it("takes another rule between steps", () => {
