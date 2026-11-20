@@ -48,6 +48,30 @@ export interface RigData {
      * bone, stepped with the frame time and steady at any frame rate. `puppet.jiggle` switches it.
      */
     readonly jiggle?: Readonly<Record<string, JiggleData>>;
+    /**
+     * How a hand-drawn character was rigged (since step 43, `rig_from_picture()`): its skeleton
+     * template, the joints placed on the picture and the ground line, so an editor opens the built
+     * character again (`drawing_from_rig()`). Games ignore it.
+     */
+    readonly drawing?: RigDrawingData;
+}
+
+/** A drawn character's rigging, kept in its rig (since step 43). */
+export interface RigDrawingData {
+    /** The skeleton template's name (`zweibeiner`, `vierbeiner`, `wurm`, `flieger`). */
+    readonly template: string;
+    /** The joints in the drawn picture's pixels. */
+    readonly joints: Readonly<Record<string, readonly [number, number]>>;
+    /** The ground line's y in the picture's pixels. */
+    readonly ground: number;
+    /** The drawn picture's size (every layer's). */
+    readonly size: readonly [number, number];
+    /** The layers back to front: the bones each may follow, and whether its bone map was painted by hand. */
+    readonly layers: readonly {
+        readonly name: string;
+        readonly bones?: readonly string[];
+        readonly map?: boolean;
+    }[];
 }
 
 /**

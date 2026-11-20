@@ -11,6 +11,7 @@ import {
     PuppetClipData,
     PuppetKeyData,
     RigData,
+    RigDrawingData,
     SoftPictureData,
 } from "./RigData";
 import {
@@ -532,8 +533,95 @@ export function rig_from_picture(input: RigFromPicture): PictureRig {
         clips,
         default_clip: "idle",
         ...(Object.keys(jiggle).length > 0 ? { jiggle } : {}),
+        drawing: {
+            template: template.name,
+            joints: Object.fromEntries(
+                Object.entries(input.joints).map(([name, at]) => [
+                    name,
+                    [r2(at[0]), r2(at[1])] as const,
+                ]),
+            ),
+            ground: r2(ground),
+            size: [width, height],
+            layers: input.layers.map((layer) => ({
+                name: layer.name,
+                ...(layer.bones !== undefined && layer.bones !== null
+                    ? { bones: layer.bones }
+                    : {}),
+                ...(layer.map !== undefined && layer.map !== null
+                    ? { map: true }
+                    : {}),
+            })),
+        },
     };
     return { rig, pixels: atlas, fitted, attacks, maps };
+}
+
+/** A built character opened again for rigging: what `rig_from_picture()` takes, back from its rig and atlas. */
+export interface OpenedDrawing {
+    readonly template: string;
+    readonly joints: JointPoints;
+    readonly ground: number;
+    /** The skin's name. */
+    readonly name: string;
+    /** Each layer as large as the drawn picture, its pixels where they were drawn (tints laid in). */
+    readonly layers: readonly PictureLayer[];
+}
+
+/**
+ * Opens a character built by `rig_from_picture()` again (since step 43): its layers cut back out
+ * of the atlas and put where they were drawn, a hand-painted bone map with them, and the template,
+ * joints and ground from the rig's `drawing`. Null for a rig that was not drawn (no `drawing`).
+ * `rig_from_picture(opened)` gives the same rig again.
+ */
+export function drawing_from_rig(
+    rig: RigData,
+    atlas: RgbaPixels,
+): OpenedDrawing | null {
+    const drawing: RigDrawingData | undefined = rig.drawing;
+    if (drawing === undefined) {
+        return null;
+    }
+    const name = rig.default_skin ?? Object.keys(rig.skins)[0];
+    const soft = rig.skins[name]?.soft;
+    if (soft === undefined) {
+        return null;
+    }
+    const template = skeleton_template(drawing.template);
+    const fitted = fit_template(template, drawing.joints, drawing.ground);
+    const [ox, oy] = fitted.origin;
+    const [width, height] = drawing.size;
+    const layers: PictureLayer[] = drawing.layers.map((layer) => {
+        const pixels = blank_pixels(width, height);
+        const picture = soft.pictures.find((each) => each.name === layer.name);
+        let map: RgbaPixels | null = null;
+        if (picture !== undefined) {
+            const x = Math.round(ox - picture.origin[0]);
+            const y = Math.round(oy - picture.origin[1]);
+            copy_pixels(atlas, picture.rect, pixels, x, y);
+            if (layer.map === true && picture.map !== undefined) {
+                map = blank_pixels(width, height);
+                copy_pixels(atlas, picture.map, map, x, y);
+            }
+        }
+        return {
+            name: layer.name,
+            pixels,
+            bones: layer.bones ?? null,
+            map,
+        };
+    });
+    const joints: Record<string, [number, number]> = {};
+    for (const [joint, at] of Object.entries(drawing.joints)) {
+        joints[joint] = [at[0], at[1]];
+    }
+    return {
+        template: drawing.template,
+        joints,
+        ground: drawing.ground,
+        name,
+        layers,
+    };
 }
 
 function r2(value: number): number {

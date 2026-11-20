@@ -4,6 +4,7 @@ import { PuppetRig } from "./PuppetRig";
 import {
     blank_pixels,
     carry_clips,
+    drawing_from_rig,
     drawn_box,
     pack_boxes,
     rig_from_picture,
@@ -235,6 +236,41 @@ describe("rig_from_picture", () => {
                 template,
             }),
         ).toThrow(/all layers must be as large/);
+    });
+
+    it("a built character opens again from its rig and atlas and rigs the same", () => {
+        const template = SKELETON_TEMPLATES.flieger;
+        const figure = draw_figure(template, { size: [640, 560] });
+        const layers = figure.layers.map((layer, index) =>
+            index === 0 ? { ...layer, map: null } : layer,
+        );
+        const made = rig_from_picture({
+            layers,
+            joints: figure.joints,
+            template,
+            name: "drache",
+        });
+        expect(made.rig.drawing!.template).toBe("flieger");
+        expect(made.rig.drawing!.size).toEqual([640, 560]);
+        const opened = drawing_from_rig(made.rig, made.pixels)!;
+        expect(opened.name).toBe("drache");
+        expect(opened.layers.map((layer) => layer.name)).toEqual(
+            figure.layers.map((layer) => layer.name),
+        );
+        for (const [index, layer] of opened.layers.entries()) {
+            expect(Array.from(layer.pixels.data)).toEqual(
+                Array.from(figure.layers[index].pixels.data),
+            );
+        }
+        const again = rig_from_picture({
+            ...opened,
+            template: opened.template,
+        });
+        expect(again.rig).toEqual(made.rig);
+        // A rig that was not drawn has nothing to open.
+        expect(
+            drawing_from_rig({ ...made.rig, drawing: undefined }, made.pixels),
+        ).toBeNull();
     });
 
     it("carry_clips leaves out clips on bones the skeleton lacks", () => {
