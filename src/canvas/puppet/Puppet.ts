@@ -12,6 +12,7 @@ import {
     PuppetBaker,
 } from "./PuppetLook";
 import { PuppetJiggle } from "./PuppetJiggle";
+import { PuppetLayers } from "./PuppetLayers";
 import { PuppetPlayer, PuppetPlayOptions } from "./PuppetPlayer";
 import { PuppetRig } from "./PuppetRig";
 import { PuppetPart, PuppetSkin } from "./PuppetSkin";
@@ -195,12 +196,18 @@ export class Puppet {
      * `strength`, and `carry(dx, dy)` when the game moves the puppet, so they lag behind the move.
      */
     public readonly jiggle = new PuppetJiggle();
+    /**
+     * Clip layers over the puppet's own clip, each on the bones of a mask (since step 44): the
+     * legs run while the arms aim. `layers.play("aim", "hold", { mask: "upper_body" })`.
+     */
+    public readonly layers: PuppetLayers;
 
     public constructor(
         public readonly rig: PuppetRig,
         clip?: string,
     ) {
         this.player = new PuppetPlayer(rig, clip);
+        this.layers = new PuppetLayers(rig);
         this.skeleton = rig.make_skeleton();
         this.refresh();
     }
@@ -221,11 +228,17 @@ export class Puppet {
         return this.player.queue(name);
     }
 
-    /** Moves the clip on by `delta_seconds`, poses the skeleton and swings the jiggling bones. */
+    /**
+     * Moves the clip and its layers on by `delta_seconds`, poses the skeleton (the clip, the layers
+     * mixed over it) and swings the jiggling bones.
+     */
     public update(delta_seconds: number): void {
         this.refresh();
         this.player.update(delta_seconds);
-        this.player.apply(this.skeleton);
+        this.layers.update(delta_seconds);
+        this.player.apply(this.skeleton, false);
+        this.layers.apply(this.skeleton);
+        this.skeleton.update();
         if (this.player.clip !== null) {
             this.jiggle.step(delta_seconds, this.skeleton);
         }

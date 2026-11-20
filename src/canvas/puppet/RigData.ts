@@ -54,6 +54,12 @@ export interface RigData {
      * character again (`drawing_from_rig()`). Games ignore it.
      */
     readonly drawing?: RigDrawingData;
+    /**
+     * Named bone masks for clip layers (since step 44): each a list of bones, every one with its
+     * children (`{ "upper_body": ["torso"] }`). `PuppetLayers.mask()` adds the ones made from the
+     * bone tree (`lower_body`, `upper_body`, `arm_r`, ...) where the rig names none.
+     */
+    readonly masks?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** A drawn character's rigging, kept in its rig (since step 43). */

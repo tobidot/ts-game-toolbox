@@ -233,9 +233,10 @@ export class PuppetPlayer {
 
     /**
      * Writes the pose of the clip at its time into the skeleton (blended with the clip or pose
-     * before while fading) and updates the skeleton. Nothing while there is no clip.
+     * before while fading) and updates the skeleton; `update_world` false leaves that to the
+     * caller (a puppet mixes its layers in first). Nothing while there is no clip.
      */
-    public apply(skeleton: Skeleton): void {
+    public apply(skeleton: Skeleton, update_world = true): void {
         const clip = this.playing;
         if (clip === null) {
             return;
@@ -261,7 +262,40 @@ export class PuppetPlayer {
             skeleton.stretch_x.fill(1);
             skeleton.stretch_y.fill(1);
         }
-        skeleton.update();
+        if (update_world) {
+            skeleton.update();
+        }
+    }
+
+    /**
+     * The pose of the clip at its time (blended with the one before while fading) written into
+     * five arrays, one number per bone: rotation, x, y, stretch along and across. For a layer that
+     * mixes it over another clip (`PuppetLayers`). False, and nothing written, while no clip plays.
+     */
+    public pose_into(pose: readonly Float64Array[]): boolean {
+        const clip = this.playing;
+        if (clip === null) {
+            return false;
+        }
+        clip.sample_into(
+            this.elapsed,
+            pose[0],
+            pose[1],
+            pose[2],
+            pose[3],
+            pose[4],
+        );
+        if (this.fading) {
+            const from = this.from_pose(pose[0].length);
+            if (from !== null) {
+                blend(from, pose as Float64Array[], this.fade_weight());
+            }
+        }
+        if (!this.stretch) {
+            pose[3].fill(1);
+            pose[4].fill(1);
+        }
+        return true;
     }
 
     /** The rig has that clip, or has no clips yet to say no. */
