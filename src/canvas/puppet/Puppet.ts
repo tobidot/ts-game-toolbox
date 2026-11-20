@@ -1,3 +1,4 @@
+import { PhysicsWorld } from "../../physics/world/PhysicsWorld";
 import { EventBase, EventSocket } from "../../signals/EventSocket";
 import { MarkPicture, MarkSheet } from "./MarkSheet";
 import { PartMesh } from "./PartMesh";
@@ -23,6 +24,7 @@ import { PuppetJiggle } from "./PuppetJiggle";
 import { PuppetConstraints } from "./PuppetConstraints";
 import { PuppetLayers } from "./PuppetLayers";
 import { PuppetPlayer, PuppetPlayOptions } from "./PuppetPlayer";
+import { PuppetRagdoll, RagdollOptions } from "./PuppetRagdoll";
 import { PuppetRig } from "./PuppetRig";
 import { PuppetPart, PuppetSkin } from "./PuppetSkin";
 import { CharacterData, MarkData, OutfitData } from "./RigData";
@@ -246,6 +248,16 @@ export class Puppet {
     /** Bones turned by a hit, springing back (since step 44; `flinch()`). */
     public readonly flinches = new PuppetFlinch();
     private readonly hit_test = new PuppetHitTest();
+    private ragdoll_state: PuppetRagdoll | null = null;
+    /** The world matrices before the last update, and its seconds: how fast the bones moved. */
+    private last_world = new Float64Array(0);
+    private last_seconds = 0;
+    /** A pose being faded from into the clips (getting up). */
+    private pose_fade: {
+        readonly from: Float64Array[];
+        elapsed: number;
+        readonly length: number;
+    } | null = null;
     private readonly hit_point: PuppetPoint = { x: 0, y: 0 };
     private readonly hit_point_2: PuppetPoint = { x: 0, y: 0 };
 
@@ -282,6 +294,18 @@ export class Puppet {
      */
     public update(delta_seconds: number): void {
         this.refresh();
+        const ragdoll = this.ragdoll_state;
+        if (ragdoll !== null && !ragdoll.removed) {
+            // A ragdoll: the world moves the bones.
+            ragdoll.write(this.skeleton);
+            this.jiggle.step(delta_seconds, this.skeleton);
+            return;
+        }
+        if (this.last_world.length !== this.skeleton.world.length) {
+            this.last_world = new Float64Array(this.skeleton.world.length);
+        }
+        this.last_world.set(this.skeleton.world);
+        this.last_seconds = delta_seconds;
         this.player.update(delta_seconds);
         this.layers.update(delta_seconds);
         this.constraints.update(delta_seconds);
@@ -289,6 +313,7 @@ export class Puppet {
         this.player.apply(this.skeleton, false);
         this.layers.apply(this.skeleton);
         this.flinches.apply(this.skeleton);
+        this.fade_pose(delta_seconds);
         this.skeleton.update();
         this.constraints.apply(this.skeleton);
         if (this.player.clip !== null) {
@@ -336,6 +361,144 @@ export class Puppet {
         out.x = placement.x + x * (placement.flip_x ? -scale : scale);
         out.y = placement.y + y * scale;
         return out;
+    }
+
+    // ---- ragdolls ----
+
+    /**
+     * Falls as a ragdoll in a physics world (since step 44): every bone a stick of two bodies,
+     * starting exactly where the pose has it, moving as the last update moved it (plus `velocity`,
+     * the puppet's own speed, and `push`), held at its joints within angle limits. `scatter` lets a
+     * cut-out puppet's parts fly apart (a soft skin stays whole). Until `get_up()` or
+     * `end_ragdoll()` the puppet shows the ragdoll's pose; keep drawing it at its placement.
+     */
+    public ragdoll(
+        world: PhysicsWorld<unknown>,
+        options: RagdollOptions = {},
+    ): PuppetRagdoll {
+        this.refresh();
+        this.end_ragdoll();
+        const has_last = this.last_world.length === this.skeleton.world.length;
+        this.ragdoll_state = new PuppetRagdoll(
+            world,
+            this.rig,
+            this.skeleton,
+            has_last ? this.last_world : null,
+            this.last_seconds,
+            this.placement,
+            this.hit_shapes,
+            options.scatter === true && !this.is_soft,
+            options,
+        );
+        this.flinches.reset();
+        return this.ragdoll_state;
+    }
+
+    /** The ragdoll it lies as now; null when it stands. */
+    public get ragdolled(): PuppetRagdoll | null {
+        return this.ragdoll_state;
+    }
+
+    /** Takes the ragdoll's bodies out of its world; the puppet stays in its last pose until the next update. */
+    public end_ragdoll(): void {
+        this.ragdoll_state?.remove();
+        this.ragdoll_state = null;
+    }
+
+    /**
+     * Gets up from the ragdoll: stands at its hip's place (on `y`, the ground there; default where
+     * it fell) and blends from the pose it lies in into `clip` over `fade` seconds. Answers where it
+     * now stands (in the placement's space); null when it isn't a ragdoll.
+     */
+    public get_up(
+        clip: string,
+        options: { readonly fade?: number; readonly y?: number } = {},
+    ): PuppetPoint | null {
+        const ragdoll = this.ragdoll_state;
+        if (ragdoll === null) {
+            return null;
+        }
+        const skeleton = this.skeleton;
+        ragdoll.write(skeleton);
+        let x = this.placement.x;
+        for (let bone = 0; bone < skeleton.count; bone++) {
+            const parent = skeleton.parents[bone];
+            if (parent >= 0 && skeleton.parents[parent] < 0) {
+                x = ragdoll.joint_of(bone)?.x ?? x;
+                break;
+            }
+        }
+        const y = options.y ?? this.placement.y;
+        this.end_ragdoll();
+        // The pose seen from where it will stand: the bones on a root move by the step between.
+        const scale = this.placement.scale;
+        const side = this.placement.flip_x ? -scale : scale;
+        const shift_x = (this.placement.x - x) / side;
+        const shift_y = (this.placement.y - y) / scale;
+        for (let bone = 0; bone < skeleton.count; bone++) {
+            const parent = skeleton.parents[bone];
+            if (parent < 0 || skeleton.parents[parent] >= 0) {
+                continue;
+            }
+            const at = parent * 6;
+            const world = skeleton.world;
+            skeleton.x[bone] +=
+                (world[at] * shift_x + world[at + 1] * shift_y) /
+                skeleton.length_scale(parent);
+            skeleton.y[bone] +=
+                (world[at + 2] * shift_x + world[at + 3] * shift_y) /
+                skeleton.width_scale(parent);
+        }
+        this.place(x, y);
+        this.pose_fade = {
+            from: [
+                Float64Array.from(skeleton.rotation),
+                Float64Array.from(skeleton.x),
+                Float64Array.from(skeleton.y),
+                Float64Array.from(skeleton.stretch_x),
+                Float64Array.from(skeleton.stretch_y),
+            ],
+            elapsed: 0,
+            length: Math.max(1e-3, options.fade ?? 0.6),
+        };
+        skeleton.update();
+        this.last_world = new Float64Array(0);
+        this.play(clip, { restart: true, fade: 0 });
+        return { x, y };
+    }
+
+    /** Blends from a held pose into the pose of the clips while getting up. */
+    private fade_pose(delta_seconds: number): void {
+        const fade = this.pose_fade;
+        if (fade === null) {
+            return;
+        }
+        fade.elapsed += Math.max(0, delta_seconds);
+        const part = Math.min(1, fade.elapsed / fade.length);
+        const weight = part * part * (3 - 2 * part);
+        const skeleton = this.skeleton;
+        const count = Math.min(skeleton.count, fade.from[0].length);
+        const [rotation, x, y, stretch_x, stretch_y] = fade.from;
+        for (let bone = 0; bone < count; bone++) {
+            let turn = (skeleton.rotation[bone] - rotation[bone]) % 360;
+            if (turn > 180) {
+                turn -= 360;
+            } else if (turn < -180) {
+                turn += 360;
+            }
+            skeleton.rotation[bone] = rotation[bone] + turn * weight;
+            skeleton.x[bone] = x[bone] + (skeleton.x[bone] - x[bone]) * weight;
+            skeleton.y[bone] = y[bone] + (skeleton.y[bone] - y[bone]) * weight;
+            skeleton.stretch_x[bone] =
+                stretch_x[bone] +
+                (skeleton.stretch_x[bone] - stretch_x[bone]) * weight;
+            skeleton.stretch_y[bone] =
+                stretch_y[bone] +
+                (skeleton.stretch_y[bone] - stretch_y[bone]) * weight;
+        }
+        if (part >= 1) {
+            this.pose_fade = null;
+        }
     }
 
     // ---- hits ----

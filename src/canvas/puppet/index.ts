@@ -18,6 +18,7 @@ export * from "./PuppetIk";
 export * from "./PuppetLayers";
 export * from "./PuppetConstraints";
 export * from "./PuppetHits";
+export * from "./PuppetRagdoll";
 export * from "./PartKit";
 export * from "./SoftCompose";
 export * from "./CreatureTemplate";

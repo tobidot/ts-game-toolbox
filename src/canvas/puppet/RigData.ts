@@ -66,6 +66,11 @@ export interface RigData {
      * are made from the bone names where they can be.
      */
     readonly constraints?: Readonly<Record<string, ConstraintData>>;
+    /**
+     * How far bones may turn on their parents in a ragdoll (since step 44): `[low, high]` degrees as
+     * a clip's rotation keys. Bones left out get the range their clips turn them through, plus 25.
+     */
+    readonly limits?: Readonly<Record<string, readonly [number, number]>>;
 }
 
 /**
