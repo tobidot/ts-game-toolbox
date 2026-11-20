@@ -11,6 +11,7 @@ A puppet is a skeleton of bones with picture parts on them: a thigh, a shin and 
 - **Body shape and skin**: shape values that scale bones and bend parts as meshes (`PartMesh`), tints that keep the shading, marks from a `MarkSheet` laid onto the skin, and the whole `character` as data (since step 40, Maskenbildner; [below](#body-shape-and-skin)).
 - **Soft skins**: one whole picture under a fine grid whose points follow up to four bones (`SoftSkin`, `SoftMesh`), weights from a bone map; drawn by a `SoftLayer` with WebGL 2 or on the CPU; scale keys for stretch and squash, and bones that jiggle after the motion (`PuppetJiggle`) (since step 41, Gummihaut; [below](#soft-skins)).
 - **Generated creatures**: a monster from a kind and a seed: its skeleton from a template with ranges, its body from a part kit painted into one soft skin (`compose_soft_skin`), gaits made from its measurements (two-bone IK for planted feet, a worm's wave, a flier's flap), and attacks with hit moments and hit areas; all of it plain data (since step 42, Bestiarium; [below](#generated-creatures)).
+- **Drawn characters**: a picture drawn whole in a paint program, a skeleton template laid onto it by its joints (`rig_from_picture`), a soft skin and the template's clips at once; source folders that keep every rigged item editable (`build_rig_source`, `split_rig_atlas`), and a draw-over sheet (`template_sheet`) (since step 43, Knochenwerkstatt; [below](#drawn-characters)).
 
 The format is our own, close to Spine's and DragonBones' ideas (bones, slots, skins, keyed tracks) but much smaller; no Spine runtime or file is involved.
 
@@ -345,6 +346,41 @@ save(monster.data);                                    // plain data; creature_f
 **Attacks** (`CreatureAttackData`: a clip with `hit` moments, a `CreatureHitArea`, a `stream`): `make_bite` (the head draws back with the jaw open, lunges and snaps; one hit, a circle round the `mouth` anchor; null without a jaw), `make_fire` (rears back, opens the jaw; `start` and `end` moments for the stream, four hits, a cone of 18° from the mouth), `make_claw` (the near front limb, an arm or a flier's talons swipes; one hit at the end, a circle round its tip). `possible_attacks()` says what a body allows: a bite with a jaw, a claw with claws, fire always (chosen by chance, more often for worms and fliers).
 
 **The creature.** `make_creature_data(kind, seed, kit, overrides)` picks the values, parts, colours (`CREATURE_COLORS`) and attacks, `overrides` kept as given (a slider). `CreatureData` is `{ kind, seed, params, parts, tints, attacks, name? }`, so it goes through `SaveSlots` as it is; `creature_from_data(data, kit, image?)` makes the same creature from it, and refuses clearly with a part the kit doesn't have. `Creature`: `rig`, `puppet`, `attacks`, `events`, `data`, `kind`, `pixels`, `play(name)`, `attack(name)`, `attacking`, `streaming` (fire pours now), `moving`, `update`, `area_now(name, x, y, options)` (the area as drawn), `draw`; `in_area(area, x, y, slack)`. `copy()` gives another of the same creature sharing its rig (picture, grid, and on the graphics card its mesh and texture), playing on its own (step 42's Wildnis).
+
+## Drawn characters
+
+A character drawn whole in a paint program becomes a puppet: a skeleton template laid onto the picture by its joints, the picture turned into step 41's soft skin, and the clips of the template on it at once. Nothing is animated by hand. Since step 43, Knochenwerkstatt (the rig editor that drags the joints).
+
+```ts
+const built = rig_from_picture({
+    layers: [{ name: "back", pixels: back }, { name: "body", pixels: body }, { name: "front", pixels: front }],
+    joints: { pelvis: [210, 250], neck: [330, 205], /* ... every joint of the template, picture pixels */ },
+    template: "vierbeiner",                           // zweibeiner, vierbeiner, wurm, flieger
+});
+const rig = PuppetRig.from_data(built.rig);           // idle, walk, run, bite, fire, claw
+rig.image = canvas_of_pixels(built.pixels);           // the atlas: each layer cut to its pixels, its bone map beside it
+const monster = rig.puppet("walk");
+```
+
+**Skeleton templates** (`SkeletonTemplate`, plain data; `SKELETON_TEMPLATES`, `SKELETON_TEMPLATE_NAMES`, `skeleton_template(name)`): `zweibeiner`, `vierbeiner`, `wurm` and `flieger`, each with the joints a person drags (`joints`: a name, a German `title`, a place on a template drawing 1 unit = 1 pixel at `scale` 1), the bones between them (`bones`: `from` and `to` as joint names or points between two joints, `TemplatePoint`), the anchors (soles, mouth, hands), the chains with their roles (as step 42's creature templates, so its gaits and attacks run on them) and the suggested layers back to front (`layers`: a name, a German title and the bones a layer follows). A Zweibeiner suggests five (`far_arm`, `far_leg`, `near_leg`, `body`, `near_arm`): an arm and a leg on one picture would bind to each other and tear on a run. The Vierbeiner and the Flieger suggest `back`, `body`, `front`; a Wurm one picture. `template_joints(template, { origin, scale })` lays the template's joints at a place, `template_point(point, joints)` finds a bone's end among them, `fit_template(template, joints, ground)` makes the skeleton from placed joints (`FittedSkeleton`: bone lengths and angles, `lines`, `origin`), `joints_of_fit` goes back.
+
+**`rig_from_picture(input)`** (`RigFromPicture`): `layers` back to front, all of one size (`PictureLayer`: `name`, `pixels`, the `bones` it may follow, an optional hand-painted bone `map` and `tint` mask), the `joints`, the `template`, the `ground` (default: the lowest drawn row). Without a map each pixel follows the nearest bone it may (`paint_bone_map`). It gives a `PictureRig`: `rig` (a `RigData` with the soft skin, the template's gaits from step 42, and bite, fire and claw where the body allows; `attacks: false` leaves them out), the atlas `pixels`, the `fitted` skeleton, the `attacks` and the `maps`. `keyed_clips` (a rig of the same bones, step 38's wanderer for a Zweibeiner) carries its keyed clips over: their angles as offsets on the fitted rest pose, the hip lifted so the soles stand where they stood (`carry_clips`). `tints` colour the tint mask's channels (`tint_pixels`). The rig keeps how it was drawn (`drawing`: template, joints, ground, size, layers), so `drawing_from_rig(rig, atlas)` opens a built character again in an editor.
+
+**A source folder** (`canvas/puppet/RigSource.ts`) is how a library keeps any rigged item editable: one picture per character, per part or per piece, and a short `rig.json` (`kit.json` for a kit) with `format: "spielwerk-rig-source"`, `version: 1` and a `kind`:
+
+| `kind` | What | Pictures |
+| --- | --- | --- |
+| `picture` with a `template` (`DrawnSourceData`) | a drawn character: `joints`, `ground`, the `layers`' bones, `clips_from` (a library id whose keyed clips carry over), `skin_of`, `tints` | `1-back.png`, `2-body.png`, ... (`drawn_layer_files`), each with an optional `.bones.png` and `.tint.png` |
+| `picture` with a whole `rig` (`SoftSourceData`) | a soft skin written by a script (step 41's Blender puppets) | one per picture of the skin, its map beside it |
+| `parts` | a cut-out puppet: the rig without rectangles | `parts/<slot>.png`, `parts/<slot>.<layer>.png` |
+| `wardrobe`, `marks` | clothes (step 39), a mark sheet (step 40) | `pieces/<piece>/<part>.png`, `marks/<id>.png` |
+| `kit` (`KitSourceData`) | a part kit for generated creatures: each part's `role`, `title`, `pivot`, `tip`, `points` | `parts/<id>.png`, `parts/<id>.tint.png` |
+
+`build_rig_source(data, read, { files, rig_of, name })` builds the catalogue's `rig` and the packed atlas from it (`BuiltRigSource`; the packing is fixed: `pack_boxes`, shelves sorted by height and name, `PACK_GAP` 4 pixels, so the same folder gives the same bytes); `split_rig_atlas(rig, atlas)` takes a built atlas apart into such a folder, and both ways round give the same rig and the same pixels (`pixel_difference`). `kit_from_pictures(data, read)` makes a `PartKit` straight from a kit's pictures, `rig_source_kind(rig)` says what a rig is. The asset library's `library.mjs rig <id>` runs exactly this, and the Blender scripts of steps 38 to 42 write their art as such folders.
+
+**The draw-over sheet.** `template_sheet(template, { picture, scale, title })` gives a canvas to draw on: the template's bones and joints (the far side's hollow), a scale in pixels, the ground line, the words of the joints placed where they cover no other, and optionally a character faint under it (`SheetPicture`: `image`, `origin`, `joints`). `template_sheet_layout` and `draw_template_sheet(context, template, options)` for a canvas of one's own.
+
+**What it costs.** Making the rig again after a joint moved (the step's Kobold, five layers, 340 × 450 pixels, its grid and clips) takes 16 ms in headless Chromium; a folder built in Node 22 with its PNGs decoded, 33 to 39 ms for a drawn character, 18 ms for a 27-part kit.
 
 ## In the game shell
 
