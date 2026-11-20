@@ -7,6 +7,7 @@ import { RigData } from "../RigData";
 import { blank_pixels, PictureLayer } from "../RigPicture";
 import {
     SkeletonTemplate,
+    TemplateLayerData,
     template_joints,
     template_point,
 } from "../SkeletonTemplate";
@@ -71,13 +72,45 @@ export function capsule(
     }
 }
 
-/** A figure for a template: its joints at `scale` round `origin`, each bone a capsule on its layer. */
+/**
+ * A Zweibeiner's five layers before the template split its body from its head (step 43's 0.1.3):
+ * the figure the ragdoll's tests were tuned on.
+ */
+export const ZWEIBEINER_FIVE_LAYERS: readonly TemplateLayerData[] = [
+    {
+        name: "far_arm",
+        title: "Arm hinten",
+        bones: ["upper_arm_l", "lower_arm_l", "hand_l"],
+    },
+    {
+        name: "far_leg",
+        title: "Bein hinten",
+        bones: ["thigh_l", "shin_l", "foot_l"],
+    },
+    {
+        name: "near_leg",
+        title: "Bein vorne",
+        bones: ["thigh_r", "shin_r", "foot_r"],
+    },
+    { name: "body", title: "Körper", bones: ["hip", "torso", "head", "jaw"] },
+    {
+        name: "near_arm",
+        title: "Arm vorne",
+        bones: ["upper_arm_r", "lower_arm_r", "hand_r"],
+    },
+];
+
+/**
+ * A figure for a template: its joints at `scale` round `origin`, each bone a capsule on its layer
+ * (the template's parts, or `layers` given).
+ */
 export function draw_figure(
     template: SkeletonTemplate,
     options: {
         scale?: number;
         size?: [number, number];
         stretch?: Record<string, [number, number]>;
+        layers?: readonly TemplateLayerData[];
     } = {},
 ) {
     const [width, height] = options.size ?? [520, 520];
@@ -89,35 +122,38 @@ export function draw_figure(
     for (const [name, [dx, dy]] of Object.entries(options.stretch ?? {})) {
         joints[name] = [joints[name][0] + dx, joints[name][1] + dy];
     }
-    const layers: PictureLayer[] = template.layers.map((layer) => {
-        const pixels = blank_pixels(width, height);
-        for (const bone of template.bones) {
-            const on =
-                layer.bones === undefined || layer.bones.includes(bone.name);
-            if (!on) {
-                continue;
+    const layers: PictureLayer[] = (options.layers ?? template.layers).map(
+        (layer) => {
+            const pixels = blank_pixels(width, height);
+            for (const bone of template.bones) {
+                const on =
+                    layer.bones === undefined ||
+                    layer.bones.includes(bone.name);
+                if (!on) {
+                    continue;
+                }
+                const from = template_point(bone.from, joints);
+                const to = template_point(bone.to, joints);
+                const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
+                const radius =
+                    bone.name.startsWith("torso") ||
+                    bone.name.startsWith("spine") ||
+                    bone.name.startsWith("body")
+                        ? 22 * scale
+                        : bone.name === "head"
+                          ? 30 * scale
+                          : Math.max(5, Math.min(14 * scale, length * 0.3));
+                capsule(
+                    pixels,
+                    from,
+                    to,
+                    radius,
+                    LAYER_COLOURS[layer.name] ?? LAYER_COLOURS.body,
+                );
             }
-            const from = template_point(bone.from, joints);
-            const to = template_point(bone.to, joints);
-            const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
-            const radius =
-                bone.name.startsWith("torso") ||
-                bone.name.startsWith("spine") ||
-                bone.name.startsWith("body")
-                    ? 22 * scale
-                    : bone.name === "head"
-                      ? 30 * scale
-                      : Math.max(5, Math.min(14 * scale, length * 0.3));
-            capsule(
-                pixels,
-                from,
-                to,
-                radius,
-                LAYER_COLOURS[layer.name] ?? LAYER_COLOURS.body,
-            );
-        }
-        return { name: layer.name, pixels, bones: layer.bones ?? null };
-    });
+            return { name: layer.name, pixels, bones: layer.bones ?? null };
+        },
+    );
     return { joints, layers, ground: height - 30 };
 }
 

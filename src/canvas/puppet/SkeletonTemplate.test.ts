@@ -5,6 +5,7 @@ import {
     SKELETON_TEMPLATE_NAMES,
     SKELETON_TEMPLATES,
     template_joints,
+    template_layer_bones,
     template_point,
 } from "./SkeletonTemplate";
 import { Skeleton } from "./Skeleton";
@@ -129,5 +130,126 @@ describe("skeleton templates", () => {
         expect(() => fit_template(template, joints, 300)).toThrow(
             /joint "snout"/,
         );
+    });
+});
+
+describe("a template's layers: one per part", () => {
+    const parts: Record<string, string[]> = {
+        zweibeiner: [
+            "far_arm",
+            "far_leg",
+            "near_leg",
+            "torso",
+            "head",
+            "near_arm",
+        ],
+        vierbeiner: [
+            "far_hind_leg",
+            "far_front_leg",
+            "tail",
+            "torso",
+            "head",
+            "near_hind_leg",
+            "near_front_leg",
+        ],
+        flieger: [
+            "far_wing",
+            "far_leg",
+            "tail",
+            "torso",
+            "head",
+            "near_leg",
+            "near_wing",
+        ],
+        wurm: ["torso", "head"],
+    };
+
+    it("every bone is in exactly one part, back to front, each with a German title", () => {
+        for (const name of SKELETON_TEMPLATE_NAMES) {
+            const template = SKELETON_TEMPLATES[name];
+            expect(
+                template.layers.map((layer) => layer.name),
+                name,
+            ).toEqual(parts[name]);
+            for (const bone of template.bones) {
+                const holding = template.layers.filter(
+                    (layer) => layer.bones?.includes(bone.name) === true,
+                );
+                expect(holding.length, `${name} ${bone.name}`).toBe(1);
+            }
+            for (const layer of template.layers) {
+                expect(layer.title, `${name} ${layer.name}`).toMatch(
+                    /^[A-ZÄÖÜ][a-zäöüß]+/,
+                );
+            }
+            // The far side's parts lie behind the near side's, the far arm or wing behind
+            // everything (a Zweibeiner's near leg stays behind its hips, as drawn before).
+            const at = (part: string) =>
+                template.layers.findIndex((layer) => layer.name === part);
+            for (const layer of template.layers) {
+                if (layer.name.startsWith("near_")) {
+                    const far = layer.name.replace("near_", "far_");
+                    expect(at(far), layer.name).toBeGreaterThanOrEqual(0);
+                    expect(at(layer.name), layer.name).toBeGreaterThan(at(far));
+                }
+            }
+            expect(at("torso"), name).toBeGreaterThanOrEqual(0);
+        }
+    });
+
+    it("the older layers stay as groups by their names: back, body and front mean what they meant", () => {
+        const four = SKELETON_TEMPLATES.vierbeiner;
+        expect(template_layer_bones(four, "body")).toEqual([
+            "spine_1",
+            "spine_2",
+            "tail_1",
+            "tail_2",
+            "neck_1",
+            "head",
+            "jaw",
+        ]);
+        expect(template_layer_bones(four, "back")).toEqual([
+            "thigh_hl",
+            "shin_hl",
+            "paw_hl",
+            "thigh_fl",
+            "shin_fl",
+            "paw_fl",
+        ]);
+        expect(template_layer_bones(four, "head")).toEqual([
+            "neck_1",
+            "head",
+            "jaw",
+        ]);
+        const two = SKELETON_TEMPLATES.zweibeiner;
+        expect(template_layer_bones(two, "body")).toEqual([
+            "hip",
+            "torso",
+            "head",
+            "jaw",
+        ]);
+        expect(template_layer_bones(two, "far_arm")).toEqual(
+            two.layers[0].bones,
+        );
+        expect(template_layer_bones(SKELETON_TEMPLATES.wurm, "body")).toEqual(
+            SKELETON_TEMPLATES.wurm.bones.map((bone) => bone.name),
+        );
+        expect(template_layer_bones(two, "flosse")).toBeNull();
+        for (const name of SKELETON_TEMPLATE_NAMES) {
+            const template = SKELETON_TEMPLATES[name];
+            for (const group of template.groups ?? []) {
+                // A group is whole parts.
+                for (const layer of template.layers) {
+                    const inside = layer.bones!.filter((bone) =>
+                        group.bones!.includes(bone),
+                    );
+                    expect(
+                        inside.length === 0 ||
+                            inside.length === layer.bones!.length,
+                        `${name} ${group.name} ${layer.name}`,
+                    ).toBe(true);
+                }
+            }
+        }
     });
 });

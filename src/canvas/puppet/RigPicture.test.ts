@@ -223,8 +223,14 @@ describe("rig_from_picture", () => {
             joints: figure.joints,
             template,
         });
-        const box = drawn_box(figure.layers[0].pixels, 0)!;
-        expect(made.fitted.ground).toBe(box[1] + box[3]);
+        // The lowest row of any layer (a Wurm is drawn as its body and its head).
+        const lowest = Math.max(
+            ...figure.layers.map((layer) => {
+                const box = drawn_box(layer.pixels, 0)!;
+                return box[1] + box[3];
+            }),
+        );
+        expect(made.fitted.ground).toBe(lowest);
         expect(() =>
             rig_from_picture({
                 layers: [

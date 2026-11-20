@@ -4,11 +4,17 @@ import { PuppetRagdoll, ragdoll_limits, RAGDOLL_LAYER } from "./PuppetRagdoll";
 import { PuppetRig } from "./PuppetRig";
 import { rig_from_picture } from "./RigPicture";
 import { SKELETON_TEMPLATES } from "./SkeletonTemplate";
-import { draw_figure, WANDERER } from "./test-data/figure";
+import {
+    draw_figure,
+    WANDERER,
+    ZWEIBEINER_FIVE_LAYERS,
+} from "./test-data/figure";
 
 /** A drawn Zweibeiner rigged as a soft skin (step 43), with its atlas's pixels. */
 function soft_figure(): PuppetRig {
-    const figure = draw_figure(SKELETON_TEMPLATES.zweibeiner);
+    const figure = draw_figure(SKELETON_TEMPLATES.zweibeiner, {
+        layers: ZWEIBEINER_FIVE_LAYERS,
+    });
     const made = rig_from_picture({
         layers: figure.layers,
         joints: figure.joints,

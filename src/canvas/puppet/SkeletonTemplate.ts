@@ -105,8 +105,16 @@ export interface SkeletonTemplate {
     readonly chains: readonly SkeletonChainData[];
     /** Anchors that stand on the ground at rest (heels, toes, paws). */
     readonly soles: readonly string[];
-    /** Back to front. */
+    /**
+     * The parts a drawing is split into, one layer each, back to front (since step 43's 0.1.4: an
+     * arm, a leg, the head can each be drawn and swapped on its own). Every bone is in one part.
+     */
     readonly layers: readonly TemplateLayerData[];
+    /**
+     * Groups of whole parts by name (`back`, `body`, `front`: the layers before the split), so a
+     * folder drawn with them still follows the same bones, and an editor offers them as presets.
+     */
+    readonly groups?: readonly TemplateLayerData[];
     /** The drawing order of cut-out slots, one per bone (a soft skin draws its pictures instead). */
     readonly slots: readonly string[];
     /** The bone a bite opens (its pixels follow it). */
@@ -326,18 +334,32 @@ function biped_template(): SkeletonTemplate {
             },
         ],
         soles: ["heel_l", "toe_l", "heel_r", "toe_r"],
-        // Five, as step 41's soft wanderer: an arm hanging over a leg must be a picture of its own,
-        // or the cells between them tear when the arm swings forward and the leg back.
+        // One per part, as step 41's soft wanderer: an arm hanging over a leg must be a picture of
+        // its own, or the cells between them tear when the arm swings forward and the leg back.
         layers: [
             { name: "far_arm", title: "Arm hinten", bones: limb("l") },
             { name: "far_leg", title: "Bein hinten", bones: leg("l") },
             { name: "near_leg", title: "Bein vorne", bones: leg("r") },
+            { name: "torso", title: "Rumpf", bones: ["hip", "torso"] },
+            { name: "head", title: "Kopf", bones: ["head", "jaw"] },
+            { name: "near_arm", title: "Arm vorne", bones: limb("r") },
+        ],
+        groups: [
+            {
+                name: "back",
+                title: "Hinten",
+                bones: [...limb("l"), ...leg("l")],
+            },
             {
                 name: "body",
                 title: "Körper",
                 bones: ["hip", "torso", "head", "jaw"],
             },
-            { name: "near_arm", title: "Arm vorne", bones: limb("r") },
+            {
+                name: "front",
+                title: "Vorne",
+                bones: [...leg("r"), ...limb("r")],
+            },
         ],
         slots: [
             ...limb("l"),
@@ -444,6 +466,7 @@ function quadruped_template(): SkeletonTemplate {
     };
     const soles: string[] = [];
     const layer_bones: Record<"l" | "r", string[]> = { l: [], r: [] };
+    const leg_bones: Record<string, string[]> = {};
     for (const [end] of legs) {
         for (const side of BIPED_SIDES) {
             const names = [
@@ -490,6 +513,7 @@ function quadruped_template(): SkeletonTemplate {
                 bend: end === "h" ? "forward" : "back",
             });
             layer_bones[side].push(...names);
+            leg_bones[`${end}${side}`] = names;
         }
     }
     const body = [
@@ -513,6 +537,31 @@ function quadruped_template(): SkeletonTemplate {
         chains,
         soles,
         layers: [
+            {
+                name: "far_hind_leg",
+                title: "Hinterbein fern",
+                bones: leg_bones.hl,
+            },
+            {
+                name: "far_front_leg",
+                title: "Vorderbein fern",
+                bones: leg_bones.fl,
+            },
+            { name: "tail", title: "Schwanz", bones: ["tail_1", "tail_2"] },
+            { name: "torso", title: "Rumpf", bones: ["spine_1", "spine_2"] },
+            { name: "head", title: "Kopf", bones: ["neck_1", "head", "jaw"] },
+            {
+                name: "near_hind_leg",
+                title: "Hinterbein nah",
+                bones: leg_bones.hr,
+            },
+            {
+                name: "near_front_leg",
+                title: "Vorderbein nah",
+                bones: leg_bones.fr,
+            },
+        ],
+        groups: [
             { name: "back", title: "Hinten", bones: layer_bones.l },
             { name: "body", title: "Körper", bones: body },
             { name: "front", title: "Vorne", bones: layer_bones.r },
@@ -588,7 +637,13 @@ function worm_template(): SkeletonTemplate {
             },
         ],
         soles: [],
-        layers: [{ name: "body", title: "Körper" }],
+        layers: [
+            { name: "torso", title: "Rumpf", bones: body },
+            { name: "head", title: "Kopf", bones: ["head", "jaw"] },
+        ],
+        groups: [
+            { name: "body", title: "Körper", bones: [...body, "head", "jaw"] },
+        ],
         slots: [...body, "head", "jaw"],
         jaw: "jaw",
         height: 34,
@@ -644,6 +699,7 @@ function flyer_template(): SkeletonTemplate {
     ];
     anchors.spine_tip = { bone: "spine_1", along: 1 };
     const sides: Record<"l" | "r", string[]> = { l: [], r: [] };
+    const parts: Record<string, string[]> = {};
     for (const side of BIPED_SIDES) {
         const far = side === "l";
         const dx = far ? -16 : 0;
@@ -750,6 +806,8 @@ function flyer_template(): SkeletonTemplate {
             },
         );
         sides[side].push(...wing, ...leg);
+        parts[`wing_${side}`] = wing;
+        parts[`leg_${side}`] = leg;
     }
     const body = ["spine_1", "tail_1", "tail_2", "neck_1", "head", "jaw"];
     return {
@@ -764,6 +822,15 @@ function flyer_template(): SkeletonTemplate {
         chains,
         soles: [],
         layers: [
+            { name: "far_wing", title: "Flügel fern", bones: parts.wing_l },
+            { name: "far_leg", title: "Bein fern", bones: parts.leg_l },
+            { name: "tail", title: "Schwanz", bones: ["tail_1", "tail_2"] },
+            { name: "torso", title: "Rumpf", bones: ["spine_1"] },
+            { name: "head", title: "Kopf", bones: ["neck_1", "head", "jaw"] },
+            { name: "near_leg", title: "Bein nah", bones: parts.leg_r },
+            { name: "near_wing", title: "Flügel nah", bones: parts.wing_r },
+        ],
+        groups: [
             { name: "back", title: "Hinten", bones: sides.l },
             { name: "body", title: "Körper", bones: body },
             { name: "front", title: "Vorne", bones: sides.r },
@@ -789,6 +856,24 @@ export const SKELETON_TEMPLATE_NAMES: readonly string[] = [
     "wurm",
     "flieger",
 ];
+
+/**
+ * The bones a layer of this name follows: a part's (`far_arm`, `head`), else a group's (`back`,
+ * `body`, `front`: older folders' layers); a layer or group without bones of its own follows every
+ * bone. Null for a name the template doesn't know.
+ */
+export function template_layer_bones(
+    template: SkeletonTemplate,
+    name: string,
+): readonly string[] | null {
+    const found =
+        template.layers.find((layer) => layer.name === name) ??
+        template.groups?.find((group) => group.name === name);
+    if (found === undefined) {
+        return null;
+    }
+    return found.bones ?? template.bones.map((bone) => bone.name);
+}
 
 /** A template by name; throws with the names there are. */
 export function skeleton_template(name: string): SkeletonTemplate {
