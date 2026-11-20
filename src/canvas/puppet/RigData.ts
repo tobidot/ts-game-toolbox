@@ -393,6 +393,11 @@ export interface PiecePartData {
     readonly slot?: string;
     /** Its layer instead of its place's. */
     readonly layer?: number;
+    /**
+     * Named points of the part, in its pixels from the rectangle's top left as `pivot` (since step
+     * 44): a gun's `muzzle`, the `grip` a second hand holds. `puppet.piece_point()` says where they are.
+     */
+    readonly points?: Readonly<Record<string, readonly [number, number]>>;
 }
 
 /** What a puppet wears, as plain data: a piece id per place (`{ hat: "straw-hat" }`); a place may be left out. */

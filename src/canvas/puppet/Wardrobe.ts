@@ -28,6 +28,8 @@ export interface PiecePart {
     readonly height: number;
     /** Six numbers (`a, b, c, d, e, f`) from the part's pixels to its bone's or anchor's frame. */
     readonly transform: Float64Array;
+    /** Named points in the part's pixels (`muzzle`, `grip`; since step 44). */
+    readonly points: ReadonlyMap<string, readonly [number, number]>;
 }
 
 /** A piece of a wardrobe, ready to wear. */
@@ -222,6 +224,17 @@ function read_part(
     if (part.layer !== undefined && !Number.isFinite(part.layer)) {
         throw new Error(`${where}: layer must be a number`);
     }
+    const points = new Map<string, readonly [number, number]>();
+    for (const [point, at] of Object.entries(part.points ?? {})) {
+        if (
+            !Array.isArray(at) ||
+            at.length !== 2 ||
+            !at.every(Number.isFinite)
+        ) {
+            throw new Error(`${where}: point "${point}" must be [x, y]`);
+        }
+        points.set(point, [at[0], at[1]]);
+    }
     const order: PieceOrder = orders[0] ?? "in_front_of";
     return {
         piece,
@@ -237,7 +250,28 @@ function read_part(
         width: rect[2],
         height: rect[3],
         transform: part_transform(pivot, part.rotation ?? 0, resolution),
+        points,
     };
+}
+
+/**
+ * A named point of a piece's part (`points` in its data) in the frame the part hangs in: its
+ * anchor's (as an aim's `from` takes it: a gun's muzzle in the hand) or its bone's. Null when the
+ * part has no such point. Since step 44.
+ */
+export function part_point(
+    part: PiecePart,
+    point: string,
+): [number, number] | null {
+    const at = part.points.get(point);
+    if (at === undefined) {
+        return null;
+    }
+    const m = part.transform;
+    return [
+        m[0] * at[0] + m[2] * at[1] + m[4],
+        m[1] * at[0] + m[3] * at[1] + m[5],
+    ];
 }
 
 /** What keeps a piece off a rig (empty: it fits). */

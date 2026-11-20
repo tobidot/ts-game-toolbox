@@ -3,6 +3,7 @@ import { Puppet } from "./Puppet";
 import { PuppetRig } from "./PuppetRig";
 import { RigData } from "./RigData";
 import { WANDERER } from "./test-data/figure";
+import { part_point, Wardrobe } from "./Wardrobe";
 
 /** Step 38's wanderer with its hands' anchors (as the catalogue has them) and an idle. */
 function wanderer(extra: Partial<RigData> = {}): PuppetRig {
@@ -181,5 +182,64 @@ describe("PuppetConstraints", () => {
         expect(hero.constraints.aim("tail", 0, 0)).toBe(false);
         expect(hero.constraints.aim("gaze", 0, 0)).toBe(false);
         expect(hero.constraints.set_enabled("arm_r", false)).toBe(true);
+    });
+});
+
+describe("a worn gun's muzzle", () => {
+    it("is where piece_point says, and an aim from it puts its line through the target", () => {
+        const rig = wanderer({
+            slots: [...WANDERER.slots, { name: "hand_r", bone: "hand_r" }],
+        });
+        const hero = rig.puppet("run");
+        const guns = Wardrobe.from_data({
+            skeleton: "biped-side",
+            places: { hand_r: 80 },
+            pieces: {
+                blaster: {
+                    place: "hand_r",
+                    parts: [
+                        {
+                            name: "blaster",
+                            anchor: "hand_r",
+                            rect: [4, 4, 119, 78],
+                            pivot: [33.9, 51.95],
+                            points: {
+                                muzzle: [114.75, 26.75],
+                                grip: [70.23, 47.75],
+                            },
+                        },
+                    ],
+                },
+            },
+        });
+        hero.use_wardrobe(guns);
+        expect(hero.fit_problems("blaster")).toEqual([]);
+        expect(hero.wear("blaster")).toBe(true);
+        const part = guns.piece("blaster")!.parts[0];
+        const muzzle = part_point(part, "muzzle")!;
+        expect(muzzle[0]).toBeCloseTo(114.75 - 33.9, 9);
+        expect(muzzle[1]).toBeCloseTo(26.75 - 51.95, 9);
+        expect(part_point(part, "nothing")).toBeNull();
+        for (const flip_x of [false, true]) {
+            hero.place(500, 400, { scale: 0.6, flip_x });
+            for (const [x, y] of [
+                [flip_x ? 100 : 900, 300],
+                [flip_x ? 200 : 800, 120],
+                [flip_x ? 150 : 850, 520],
+            ]) {
+                hero.constraints.aim("arm_r", x, y, { from: muzzle, fade: 0 });
+                hero.update(1 / 60);
+                const at = hero.piece_point("hand_r", "muzzle")!;
+                const wanted = (Math.atan2(y - at.y, x - at.x) * 180) / Math.PI;
+                const off = Math.abs(
+                    ((((wanted - at.rotation + 180) % 360) + 360) % 360) - 180,
+                );
+                expect(off).toBeLessThan(1);
+            }
+        }
+        expect(hero.piece_point("hand_r", "nothing")).toBeNull();
+        expect(hero.piece_point("hat", "muzzle")).toBeNull();
+        hero.take_off("hand_r");
+        expect(hero.piece_point("blaster", "muzzle")).toBeNull();
     });
 });

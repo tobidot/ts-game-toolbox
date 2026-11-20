@@ -1291,6 +1291,50 @@ export class Puppet {
     }
 
     /**
+     * Where a named point of a worn piece is now (a gun's `"muzzle"`, its `"grip"`; the part's
+     * `points` in the wardrobe's data), with the angle of the part's picture (its +x: where a gun
+     * drawn pointing forward points), in the placement's space (`place()`), mirrored like the
+     * puppet. The piece by its place (`"hand_r"`) or id. Null when nothing worn there has that
+     * point. After `update()`. Since step 44.
+     */
+    public piece_point(
+        place_or_id: string,
+        point: string,
+        out: PuppetAnchorPoint = { x: 0, y: 0, rotation: 0 },
+    ): PuppetAnchorPoint | null {
+        this.refresh();
+        const skin = this.worn;
+        if (skin === null) {
+            return null;
+        }
+        const id = this.outfit_map.get(place_or_id) ?? place_or_id;
+        if (![...this.outfit_map.values()].includes(id)) {
+            return null;
+        }
+        const piece = this.find_piece(id);
+        const part = piece?.parts.find((candidate) =>
+            candidate.points.has(point),
+        );
+        if (piece === undefined || piece === null || part === undefined) {
+            return null;
+        }
+        const name = `${piece.id}:${part.name}`;
+        const entry = this.order_for(skin).find((known) => known.name === name);
+        if (entry === undefined) {
+            return null;
+        }
+        const [a, b, c, d, e, f] = this.entry_matrix(entry);
+        const [px, py] = part.points.get(point)!;
+        const local_x = a * px + c * py + e;
+        const local_y = b * px + d * py + f;
+        const rotation = (Math.atan2(b, a) * 180) / Math.PI;
+        const placement = this.placement;
+        this.local_to_world(local_x, local_y, out);
+        out.rotation = placement.flip_x ? 180 - rotation : rotation;
+        return out;
+    }
+
+    /**
      * The box around the parts as they are drawn now, in the puppet's own space (`draw()` puts
      * the root at its `x`, `y`): of every part (default), of the skin's (`"body"`), of the clothes
      * (`"clothes"`) or of one worn piece (its id). Rectangles, not pixels. Null when there is none.
