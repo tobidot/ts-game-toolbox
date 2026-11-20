@@ -67,6 +67,11 @@ export interface DrawnSourceData extends SourceBase {
     readonly ground?: number;
     /** Layer name -> the bones it may follow. */
     readonly layers?: Readonly<Record<string, readonly string[]>>;
+    /**
+     * Layer name -> how far its pixels are moved against the joints, `[dx, dy]` in whole pixels
+     * (right, down); a layer left out stays where it was drawn (since step 43).
+     */
+    readonly offsets?: Readonly<Record<string, readonly [number, number]>>;
     /** The skin's name; default the folder's. */
     readonly name?: string;
     /** A library id whose keyed clips carry over (`rendered/puppet/wanderer` for a Zweibeiner). */
@@ -445,6 +450,7 @@ function build_drawn(
         bones: source.layers?.[layer.name] ?? null,
         map: layer.map === null ? null : read(layer.map),
         tint: layer.tint === null ? null : read(layer.tint),
+        offset: source.offsets?.[layer.name] ?? null,
     }));
     const keyed =
         source.clips_from === undefined

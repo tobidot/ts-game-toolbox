@@ -135,6 +135,8 @@ export interface RigDrawingData {
         readonly name: string;
         readonly bones?: readonly string[];
         readonly map?: boolean;
+        /** How far its pixels were moved against the joints, `[dx, dy]` (since step 43); none: not moved. */
+        readonly offset?: readonly [number, number];
     }[];
 }
 

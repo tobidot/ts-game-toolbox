@@ -89,6 +89,37 @@ export function copy_pixels(
     }
 }
 
+/**
+ * A picture moved by whole pixels (`dx` right, `dy` down) on a canvas of its own size: what leaves
+ * the canvas is cut. The same picture when both are 0.
+ */
+export function shift_pixels(
+    from: RgbaPixels,
+    dx: number,
+    dy: number,
+): RgbaPixels {
+    if (dx === 0 && dy === 0) {
+        return from;
+    }
+    const { width, height } = from;
+    const out = blank_pixels(width, height);
+    const left = Math.max(0, -dx);
+    const right = Math.min(width, width - dx);
+    const top = Math.max(0, -dy);
+    const bottom = Math.min(height, height - dy);
+    if (left >= right || top >= bottom) {
+        return out;
+    }
+    copy_pixels(
+        from,
+        [left, top, right - left, bottom - top],
+        out,
+        left + dx,
+        top + dy,
+    );
+    return out;
+}
+
 /** A rectangle of a picture as a picture of its own. */
 export function cut_pixels(
     from: RgbaPixels,
@@ -168,6 +199,40 @@ export interface PictureLayer {
     readonly map?: RgbaPixels | null;
     /** A tint mask as large as the layer: red takes `tints.main`, green `second`, blue `accent`. */
     readonly tint?: RgbaPixels | null;
+    /**
+     * Moves the layer's pixels (with its bone map and tint mask) by whole pixels against the
+     * joints, `[dx, dy]` (right, down), before it is rigged: a part drawn or generated a few pixels
+     * off lines up with its joints again (since step 43). What leaves the canvas is cut.
+     */
+    readonly offset?: readonly [number, number] | null;
+}
+
+/** A layer's offset in whole pixels; `[0, 0]` for none. */
+export function layer_offset(
+    layer: Pick<PictureLayer, "offset">,
+): [number, number] {
+    const offset = layer.offset ?? null;
+    return offset === null
+        ? [0, 0]
+        : [Math.round(offset[0]) + 0, Math.round(offset[1]) + 0];
+}
+
+/** A layer with its offset applied to its pixels, map and tint (the same layer without one). */
+function shifted_layer(layer: PictureLayer): PictureLayer {
+    const [dx, dy] = layer_offset(layer);
+    if (dx === 0 && dy === 0) {
+        return layer;
+    }
+    const shift = (pixels: RgbaPixels | null | undefined) =>
+        pixels === undefined || pixels === null
+            ? pixels
+            : shift_pixels(pixels, dx, dy);
+    return {
+        ...layer,
+        pixels: shift_pixels(layer.pixels, dx, dy),
+        map: shift(layer.map),
+        tint: shift(layer.tint),
+    };
 }
 
 /** Everything `rig_from_picture()` takes. */
@@ -374,7 +439,9 @@ export function rig_from_picture(input: RigFromPicture): PictureRig {
         }
     }
     const names = new Set<string>();
-    for (const layer of input.layers) {
+    // Moved layers are rigged where they were moved to.
+    const layers = input.layers.map(shifted_layer);
+    for (const layer of layers) {
         if (names.has(layer.name)) {
             throw new Error(`rig_from_picture: layer "${layer.name}" twice`);
         }
@@ -382,7 +449,7 @@ export function rig_from_picture(input: RigFromPicture): PictureRig {
     }
     const ground =
         input.ground ??
-        lowest_drawn_row(input.layers.map((layer) => layer.pixels)) ??
+        lowest_drawn_row(layers.map((layer) => layer.pixels)) ??
         height;
     const fitted = fit_template(template, input.joints, ground);
     const bone_names = fitted.bones.map((bone) => bone.name);
@@ -401,7 +468,7 @@ export function rig_from_picture(input: RigFromPicture): PictureRig {
         bones: readonly string[] | null;
     }> = [];
     const maps: RgbaPixels[] = [];
-    for (const layer of input.layers) {
+    for (const layer of layers) {
         const bones = layer.bones ?? null;
         for (const bone of bones ?? []) {
             if (!bone_names.includes(bone) || bone === "root") {
@@ -551,6 +618,7 @@ export function rig_from_picture(input: RigFromPicture): PictureRig {
                 ...(layer.map !== undefined && layer.map !== null
                     ? { map: true }
                     : {}),
+                ...(is_moved(layer) ? { offset: layer_offset(layer) } : {}),
             })),
         },
     };
@@ -595,9 +663,11 @@ export function drawing_from_rig(
         const pixels = blank_pixels(width, height);
         const picture = soft.pictures.find((each) => each.name === layer.name);
         let map: RgbaPixels | null = null;
+        // A moved layer goes back where it was drawn, its offset with it.
+        const [dx, dy] = layer_offset(layer);
         if (picture !== undefined) {
-            const x = Math.round(ox - picture.origin[0]);
-            const y = Math.round(oy - picture.origin[1]);
+            const x = Math.round(ox - picture.origin[0]) - dx;
+            const y = Math.round(oy - picture.origin[1]) - dy;
             copy_pixels(atlas, picture.rect, pixels, x, y);
             if (layer.map === true && picture.map !== undefined) {
                 map = blank_pixels(width, height);
@@ -609,6 +679,7 @@ export function drawing_from_rig(
             pixels,
             bones: layer.bones ?? null,
             map,
+            ...(dx !== 0 || dy !== 0 ? { offset: [dx, dy] as const } : {}),
         };
     });
     const joints: Record<string, [number, number]> = {};
@@ -622,6 +693,12 @@ export function drawing_from_rig(
         name,
         layers,
     };
+}
+
+/** Whether a layer is moved against the joints. */
+function is_moved(layer: Pick<PictureLayer, "offset">): boolean {
+    const [dx, dy] = layer_offset(layer);
+    return dx !== 0 || dy !== 0;
 }
 
 function r2(value: number): number {

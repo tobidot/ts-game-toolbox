@@ -8,6 +8,7 @@ import {
     drawn_box,
     pack_boxes,
     rig_from_picture,
+    shift_pixels,
 } from "./RigPicture";
 import {
     fit_template,
@@ -276,6 +277,82 @@ describe("rig_from_picture", () => {
         expect(
             drawing_from_rig({ ...made.rig, drawing: undefined }, made.pixels),
         ).toBeNull();
+    });
+
+    it("a layer moved by an offset rigs as if drawn there, opens again with its offset; none or [0, 0] changes nothing", () => {
+        const template = SKELETON_TEMPLATES.zweibeiner;
+        const figure = draw_figure(template, { size: [480, 520] });
+        const plain = rig_from_picture({
+            layers: figure.layers,
+            joints: figure.joints,
+            template,
+        });
+        const zero = rig_from_picture({
+            layers: figure.layers.map((layer) => ({
+                ...layer,
+                offset: [0, 0] as const,
+            })),
+            joints: figure.joints,
+            template,
+        });
+        expect(zero.rig).toEqual(plain.rig);
+        expect(Array.from(zero.pixels.data)).toEqual(
+            Array.from(plain.pixels.data),
+        );
+        // The head drawn 3 px too low: moved up by 3 it rigs as the head drawn in its place.
+        const at = figure.layers.findIndex((layer) => layer.name === "head");
+        const low = figure.layers.map((layer, index) =>
+            index === at
+                ? { ...layer, pixels: shift_pixels(layer.pixels, 2, 3) }
+                : layer,
+        );
+        const moved = rig_from_picture({
+            layers: low.map((layer, index) =>
+                index === at ? { ...layer, offset: [-2, -3] as const } : layer,
+            ),
+            joints: figure.joints,
+            template,
+        });
+        const { drawing: moved_drawing, ...moved_rest } = moved.rig;
+        const { drawing: plain_drawing, ...plain_rest } = plain.rig;
+        expect(moved_rest).toEqual(plain_rest);
+        expect(Array.from(moved.pixels.data)).toEqual(
+            Array.from(plain.pixels.data),
+        );
+        expect(moved_drawing!.layers[at].offset).toEqual([-2, -3]);
+        expect(plain_drawing!.layers[at].offset).toBeUndefined();
+        // Opened again: the head where it was drawn (3 px low), its offset with it.
+        const opened = drawing_from_rig(moved.rig, moved.pixels)!;
+        expect(opened.layers[at].offset).toEqual([-2, -3]);
+        expect(Array.from(opened.layers[at].pixels.data)).toEqual(
+            Array.from(low[at].pixels.data),
+        );
+        expect(opened.layers[0].offset).toBeUndefined();
+        expect(rig_from_picture({ ...opened }).rig).toEqual(moved.rig);
+    });
+
+    it("shift_pixels moves a picture by whole pixels and cuts what leaves it", () => {
+        const picture = blank_pixels(4, 3);
+        picture.data.set([255, 0, 0, 255], (1 * 4 + 1) * 4);
+        picture.data.set([0, 255, 0, 255], (2 * 4 + 3) * 4);
+        expect(shift_pixels(picture, 0, 0)).toBe(picture);
+        const moved = shift_pixels(picture, 1, -1);
+        expect(
+            Array.from(
+                moved.data.subarray((0 * 4 + 2) * 4, (0 * 4 + 2) * 4 + 4),
+            ),
+        ).toEqual([255, 0, 0, 255]);
+        // The green pixel at the right edge went over it.
+        expect(
+            Array.from(moved.data).filter(
+                (value, index) => index % 4 === 3 && value > 0,
+            ),
+        ).toHaveLength(1);
+        expect(
+            Array.from(shift_pixels(picture, 9, 0).data).every(
+                (value) => value === 0,
+            ),
+        ).toBe(true);
     });
 
     it("carry_clips leaves out clips on bones the skeleton lacks", () => {

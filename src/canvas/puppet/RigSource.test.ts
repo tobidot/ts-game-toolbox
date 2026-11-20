@@ -393,5 +393,28 @@ describe("source folders", () => {
         });
         expect(built.rig).toEqual(made.rig);
         expect(pixel_difference(built.pixels, made.pixels)).toBe(0);
+        // A layer moved in the folder (`offsets`) builds as rig_from_picture with that offset.
+        const first = figure.layers[0].name;
+        const moved_source: DrawnSourceData = {
+            ...source,
+            offsets: { [first]: [3, -2] },
+        };
+        const moved = build_rig_source(
+            moved_source,
+            (file) => files[file] ?? null,
+            { files: Object.keys(files) },
+        );
+        const expected = rig_from_picture({
+            layers: figure.layers.map((layer, index) =>
+                index === 0 ? { ...layer, offset: [3, -2] as const } : layer,
+            ),
+            joints: source.joints,
+            template: "vierbeiner",
+            ground: source.ground,
+            name: "hund",
+        });
+        expect(moved.rig).toEqual(expected.rig);
+        expect(pixel_difference(moved.pixels, expected.pixels)).toBe(0);
+        expect(pixel_difference(moved.pixels, made.pixels)).toBeGreaterThan(0);
     });
 });
