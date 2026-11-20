@@ -24,3 +24,4 @@ export * from "./Creature";
 export * from "./SkeletonTemplate";
 export * from "./RigPicture";
 export * from "./TemplateSheet";
+export * from "./RigSource";
