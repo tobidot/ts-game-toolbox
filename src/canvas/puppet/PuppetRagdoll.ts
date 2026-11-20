@@ -20,6 +20,16 @@ const SETTLED_SPEED = 20;
 const SETTLED_SECONDS = 0.4;
 /** How often the settling is checked, seconds. */
 const SETTLE_WINDOW = 0.1;
+/**
+ * A ragdoll comes to rest for good: once it has moved slower than `REST_SPEED` (rig units a
+ * second) for `REST_HOLD` seconds after `REST_AFTER` seconds, or at `REST_LATEST` seconds in any
+ * case. Its bodies then leave the world and it costs nothing more. (Limits pressed against the
+ * ground keep a many-legged one rocking a little for a long while; a game wants it lying still.)
+ */
+const REST_SPEED = 160;
+const REST_AFTER = 1;
+const REST_HOLD = 0.25;
+const REST_LATEST = 3;
 /** The solving's rounds go in this many passes, each ending with the bodies pushed out of walls. */
 const PASSES = 2;
 /** The range of a bone no clip turns. */
@@ -102,7 +112,9 @@ export class PuppetRagdoll {
     private readonly iterations: number;
     private readonly damping: number;
     private still_for = 0;
+    private slow_for = 0;
     private is_removed = false;
+    private is_resting = false;
     /** The roots' pose and frames at the fall (they stay). */
     private readonly root_world: Float64Array;
     private readonly x0: Float64Array;
@@ -118,6 +130,9 @@ export class PuppetRagdoll {
     private readonly before_y: Float64Array;
     private readonly x: Float64Array;
     private readonly y: Float64Array;
+    /** The points before a limit's turn (what it moved the whole by is taken back). */
+    private readonly saved_x: Float64Array;
+    private readonly saved_y: Float64Array;
     /** Per point, the last wall it touched: the line (normal, distance) and in which step. */
     private readonly plane_x: Float64Array;
     private readonly plane_y: Float64Array;
@@ -382,6 +397,8 @@ export class PuppetRagdoll {
         this.plane_step = new Float64Array(particles.length).fill(-2);
         this.last_y = new Float64Array(particles.length);
         this.y = new Float64Array(particles.length);
+        this.saved_x = new Float64Array(particles.length);
+        this.saved_y = new Float64Array(particles.length);
         this.rest_of = sticks.map((stick, index) => {
             let top = index;
             while (sticks[top].parent >= 0) {
@@ -398,9 +415,14 @@ export class PuppetRagdoll {
         });
     }
 
-    /** Every body has stopped (asleep, or slower than a few units a second for a while). */
+    /** Every body has stopped (slower than a few units a second for a while), or it came to rest. */
     public get is_settled(): boolean {
-        return this.still_for >= SETTLED_SECONDS;
+        return this.is_resting || this.still_for >= SETTLED_SECONDS;
+    }
+
+    /** It came to rest for good: its bodies left the world, its pose stays (see `REST_SPEED`). */
+    public get resting(): boolean {
+        return this.is_resting;
     }
 
     /** It was taken out of its world. */
@@ -488,12 +510,28 @@ export class PuppetRagdoll {
         return { length, joint };
     }
 
+    /** Comes to rest for good: the bodies leave the world where they lie, still. */
+    private rest(): void {
+        if (this.is_resting || this.is_removed) {
+            return;
+        }
+        this.is_resting = true;
+        this.world.steps.detach(this.listener);
+        for (const particle of this.particles) {
+            particle.body.velocity = { x: 0, y: 0 };
+            this.world.remove(particle.body);
+        }
+    }
+
     /** Takes the bodies out of the world and stops listening to it. */
     public remove(): void {
         if (this.is_removed) {
             return;
         }
         this.is_removed = true;
+        if (this.is_resting) {
+            return;
+        }
         this.world.steps.detach(this.listener);
         for (const particle of this.particles) {
             this.world.remove(particle.body);
@@ -576,6 +614,9 @@ export class PuppetRagdoll {
         const y = this.y;
         this.step_count += 1;
         this.watch(seconds);
+        if (this.is_resting) {
+            return;
+        }
         const keep = Math.max(0, 1 - this.damping * seconds);
         // A few passes, each ending with the bodies placed and out of the walls.
         const passes = Math.min(PASSES, this.iterations);
@@ -635,15 +676,25 @@ export class PuppetRagdoll {
             this.last_y[index] = position.y;
         }
         const is_first = this.age <= seconds;
-        if (
-            !is_first &&
-            fastest / this.window_age < SETTLED_SPEED * this.placement.scale
-        ) {
+        const speed = fastest / this.window_age;
+        const scale = this.placement.scale;
+        if (!is_first && speed < SETTLED_SPEED * scale) {
             this.still_for += this.window_age;
         } else {
             this.still_for = 0;
         }
+        if (!is_first && speed < REST_SPEED * scale) {
+            this.slow_for += this.window_age;
+        } else {
+            this.slow_for = 0;
+        }
         this.window_age = 0;
+        if (
+            (this.age >= REST_AFTER && this.slow_for >= REST_HOLD) ||
+            this.age >= REST_LATEST
+        ) {
+            this.rest();
+        }
     }
 
     /**
@@ -731,6 +782,8 @@ export class PuppetRagdoll {
                         const radians =
                             (this.placement.flip_x ? -fix : fix) * DEGREES;
                         const total = child_inertia + rest_inertia || 1;
+                        this.saved_x.set(x);
+                        this.saved_y.set(y);
                         turn_points(
                             child,
                             a,
@@ -744,6 +797,20 @@ export class PuppetRagdoll {
                             (-radians * child_inertia) / total,
                             x,
                             y,
+                        );
+                        // The bend neither pushes nor spins the whole: what it moved the body's
+                        // middle by, and turned it round it by, is taken back as one rigid move
+                        // (else a limit pressed on step after step pushes the ragdoll along the
+                        // ground, or spins it up, and it never comes to rest).
+                        keep_momentum(
+                            a,
+                            child,
+                            rest,
+                            this.saved_x,
+                            this.saved_y,
+                            x,
+                            y,
+                            weight,
                         );
                     }
                 }
@@ -767,6 +834,73 @@ function inertia(
         sum += (dx * dx + dy * dy) / weights[point];
     }
     return sum;
+}
+
+/**
+ * Takes back what moving the points (`x`, `y`, from `from_x`, `from_y`) did to the whole: the shift
+ * of their middle (by mass) and their turn round it, as one rigid move of every point, so their
+ * shape stays as it was moved to. The points: `pivot` and two lists.
+ */
+function keep_momentum(
+    pivot: number,
+    first: readonly number[],
+    second: readonly number[],
+    from_x: Float64Array,
+    from_y: Float64Array,
+    x: Float64Array,
+    y: Float64Array,
+    weights: Float64Array,
+): void {
+    let total = 0;
+    let middle_x = 0;
+    let middle_y = 0;
+    let shift_x = 0;
+    let shift_y = 0;
+    const each = (visit: (point: number) => void) => {
+        visit(pivot);
+        for (const point of first) {
+            visit(point);
+        }
+        for (const point of second) {
+            visit(point);
+        }
+    };
+    each((point) => {
+        const mass = 1 / weights[point];
+        total += mass;
+        middle_x += from_x[point] * mass;
+        middle_y += from_y[point] * mass;
+        shift_x += (x[point] - from_x[point]) * mass;
+        shift_y += (y[point] - from_y[point]) * mass;
+    });
+    if (total <= 0) {
+        return;
+    }
+    middle_x /= total;
+    middle_y /= total;
+    shift_x /= total;
+    shift_y /= total;
+    // The turn round the middle, after the shift is taken back (by mass, as a small angle).
+    let turn = 0;
+    let inertia_sum = 0;
+    each((point) => {
+        const mass = 1 / weights[point];
+        const rx = from_x[point] - middle_x;
+        const ry = from_y[point] - middle_y;
+        const dx = x[point] - from_x[point] - shift_x;
+        const dy = y[point] - from_y[point] - shift_y;
+        turn += mass * (rx * dy - ry * dx);
+        inertia_sum += mass * (rx * rx + ry * ry);
+    });
+    const angle = inertia_sum > 0 ? -turn / inertia_sum : 0;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    each((point) => {
+        const px = x[point] - shift_x - middle_x;
+        const py = y[point] - shift_y - middle_y;
+        x[point] = middle_x + cos * px - sin * py;
+        y[point] = middle_y + sin * px + cos * py;
+    });
 }
 
 /** Turns the points round point `pivot` by `radians`. */

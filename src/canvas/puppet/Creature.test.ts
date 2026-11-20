@@ -24,6 +24,7 @@ import { PuppetRig } from "./PuppetRig";
 import { Skeleton } from "./Skeleton";
 import { compose_soft_skin, map_color } from "./SoftCompose";
 import { parse_hex_color, RgbaPixels } from "./SoftMesh";
+import { PhysicsWorld } from "../../physics/world/PhysicsWorld";
 
 // ---- a small kit drawn here: capsules in grey with a dark outline, a mask beside each ----
 
@@ -971,5 +972,106 @@ describe("generated creatures", () => {
                 parts: { a: { ...KIT_SOURCE.data.parts.torso, jaw: "b" } },
             }),
         ).toThrow(/jaw "b" is not a part/);
+    });
+});
+
+describe("a creature's ragdoll", () => {
+    /** A creature of each kind, walking, falls with a push; in a world of its own. */
+    const fallen = (
+        kind: CreatureKind,
+        seed: number,
+        world: PhysicsWorld<unknown>,
+    ) => {
+        const creature = generate_creature(kind, seed, kit());
+        creature.play("walk");
+        creature.puppet.place(0, 400, { scale: 0.5, flip_x: seed % 2 === 0 });
+        for (let frame = 0; frame < 6; frame++) {
+            creature.update(1 / 60);
+        }
+        const ragdoll = creature.puppet.ragdoll(world, {
+            push: { bone: creature.puppet.skeleton.names[2], x: 260, y: -160 },
+            damping: 0,
+        });
+        return { creature, ragdoll };
+    };
+
+    it("pushes itself nowhere: its limits keep the momentum", () => {
+        for (const kind of CREATURE_KINDS) {
+            for (let seed = 1; seed <= 4; seed++) {
+                const world = new PhysicsWorld<unknown>({});
+                const { creature, ragdoll } = fallen(kind, seed * 97, world);
+                const motion = () => {
+                    let momentum_x = 0;
+                    let momentum_y = 0;
+                    for (const particle of ragdoll.particles) {
+                        const mass = 1 / particle.inverse_mass;
+                        const velocity = particle.body.velocity;
+                        momentum_x += mass * velocity.x;
+                        momentum_y += mass * velocity.y;
+                    }
+                    return { momentum_x, momentum_y };
+                };
+                world.update(1 / 60);
+                creature.update(1 / 60);
+                const start = motion();
+                for (let frame = 0; frame < 60; frame++) {
+                    world.update(1 / 60);
+                    creature.update(1 / 60);
+                }
+                const end = motion();
+                // Flying free for a second, nothing to push against: a bend back into its limits
+                // moves the whole neither way (else, pressed on the ground, it crawls along).
+                expect(
+                    Math.abs(end.momentum_x - start.momentum_x),
+                ).toBeLessThan(1e-6 * Math.abs(start.momentum_x) + 1e-3);
+                expect(
+                    Math.abs(end.momentum_y - start.momentum_y),
+                ).toBeLessThan(1e-6 * Math.abs(start.momentum_y) + 1e-3);
+            }
+        }
+    });
+
+    it("lands, comes to rest and lies still, its bones whole", () => {
+        for (const kind of CREATURE_KINDS) {
+            for (let seed = 1; seed <= 4; seed++) {
+                const world = new PhysicsWorld<unknown>({
+                    gravity: { x: 0, y: 1600 },
+                    friction: 0.5,
+                });
+                world.add({
+                    shape: {
+                        points: [
+                            { x: -3000, y: 0 },
+                            { x: 3000, y: 0 },
+                            { x: 3000, y: 200 },
+                            { x: -3000, y: 200 },
+                        ],
+                    },
+                    position: { x: 0, y: 400 },
+                    is_static: true,
+                });
+                const { creature, ragdoll } = fallen(kind, seed * 97, world);
+                for (
+                    let frame = 0;
+                    frame < 60 * 3.5 && !ragdoll.is_settled;
+                    frame++
+                ) {
+                    world.update(1 / 60);
+                    creature.update(1 / 60);
+                }
+                expect(ragdoll.is_settled).toBe(true);
+                const box = ragdoll.bounds();
+                for (let frame = 0; frame < 30; frame++) {
+                    world.update(1 / 60);
+                    creature.update(1 / 60);
+                }
+                // At rest it stays where it lies, on the floor, whole: the floor may press a joint a
+                // few units (at scale 0.5); the drawing reads only the angles.
+                expect(ragdoll.bounds()).toEqual(box);
+                expect(ragdoll.stretch().length).toBeLessThan(5);
+                expect(ragdoll.resting).toBe(true);
+                expect(box.bottom).toBeLessThan(400 + 1);
+            }
+        }
     });
 });
