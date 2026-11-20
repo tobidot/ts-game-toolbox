@@ -1,5 +1,6 @@
 import { SkinData } from "./RigData";
-import { SoftSkin } from "./SoftSkin";
+import { RgbaPixels } from "./SoftMesh";
+import { read_pixels, SoftSkin } from "./SoftSkin";
 
 const DEGREES = Math.PI / 180;
 
@@ -31,6 +32,8 @@ export class PuppetSkin {
      */
     public readonly soft: SoftSkin | null;
     private picture: CanvasImageSource | null;
+    /** The atlas's pixels once read; undefined before. */
+    private read: RgbaPixels | null | undefined = undefined;
 
     public constructor(
         public readonly name: string,
@@ -53,9 +56,35 @@ export class PuppetSkin {
 
     public set image(image: CanvasImageSource | null) {
         this.picture = image;
+        this.read = undefined;
         if (this.soft !== null) {
             this.soft.image = image;
         }
+    }
+
+    /**
+     * The atlas's pixels, read once (a soft skin's are its `soft.pixels`); null where they can't be
+     * read (no canvas, another origin, no picture yet). Set them for a test. Hit shapes come from them.
+     */
+    public get pixels(): RgbaPixels | null {
+        if (this.soft !== null) {
+            return this.soft.pixels;
+        }
+        if (this.read === undefined) {
+            if (this.picture === null) {
+                return null;
+            }
+            this.read = read_pixels(this.picture);
+        }
+        return this.read;
+    }
+
+    public set pixels(pixels: RgbaPixels | null) {
+        if (this.soft !== null) {
+            this.soft.pixels = pixels;
+            return;
+        }
+        this.read = pixels;
     }
 
     /**

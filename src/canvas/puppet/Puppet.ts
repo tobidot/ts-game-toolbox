@@ -11,6 +11,14 @@ import {
     PackedLooks,
     PuppetBaker,
 } from "./PuppetLook";
+import {
+    FLINCH_KICK,
+    hit_capsules,
+    HitCapsule,
+    PuppetFlinch,
+    PuppetHit,
+    PuppetHitTest,
+} from "./PuppetHits";
 import { PuppetJiggle } from "./PuppetJiggle";
 import { PuppetConstraints } from "./PuppetConstraints";
 import { PuppetLayers } from "./PuppetLayers";
@@ -31,6 +39,16 @@ import {
 } from "./Wardrobe";
 
 const DEGREES = Math.PI / 180;
+
+/** Hit shapes per skin, shared by every puppet wearing it. */
+const HIT_SHAPES = new WeakMap<
+    PuppetSkin,
+    {
+        readonly version: number;
+        readonly with_pixels: boolean;
+        readonly capsules: HitCapsule[];
+    }
+>();
 
 /** What a puppet wears changed: pieces put on, taken off, or both. */
 export class OutfitEvent extends EventBase {
@@ -225,6 +243,11 @@ export class Puppet {
      * step 44): `constraints.aim("arm_r", mouse_x, mouse_y)`, in the placement's space.
      */
     public readonly constraints: PuppetConstraints;
+    /** Bones turned by a hit, springing back (since step 44; `flinch()`). */
+    public readonly flinches = new PuppetFlinch();
+    private readonly hit_test = new PuppetHitTest();
+    private readonly hit_point: PuppetPoint = { x: 0, y: 0 };
+    private readonly hit_point_2: PuppetPoint = { x: 0, y: 0 };
 
     public constructor(
         public readonly rig: PuppetRig,
@@ -262,8 +285,10 @@ export class Puppet {
         this.player.update(delta_seconds);
         this.layers.update(delta_seconds);
         this.constraints.update(delta_seconds);
+        this.flinches.step(delta_seconds);
         this.player.apply(this.skeleton, false);
         this.layers.apply(this.skeleton);
+        this.flinches.apply(this.skeleton);
         this.skeleton.update();
         this.constraints.apply(this.skeleton);
         if (this.player.clip !== null) {
@@ -311,6 +336,180 @@ export class Puppet {
         out.x = placement.x + x * (placement.flip_x ? -scale : scale);
         out.y = placement.y + y * scale;
         return out;
+    }
+
+    // ---- hits ----
+
+    /**
+     * The skin's hit shapes: a capsule per bone, as wide as the bone's picture (since step 44). Made
+     * once per skin from its pixels and shared by every puppet wearing it; empty while a soft skin's
+     * pixels aren't there.
+     */
+    public get hit_shapes(): readonly HitCapsule[] {
+        this.refresh();
+        const skin = this.worn;
+        if (skin === null) {
+            return [];
+        }
+        const pixels = skin.pixels;
+        const known = HIT_SHAPES.get(skin);
+        if (
+            known !== undefined &&
+            known.version === this.rig.version &&
+            known.with_pixels === (pixels !== null)
+        ) {
+            return known.capsules;
+        }
+        const capsules = hit_capsules(this.rig, skin, pixels);
+        HIT_SHAPES.set(skin, {
+            version: this.rig.version,
+            with_pixels: pixels !== null,
+            capsules,
+        });
+        return capsules;
+    }
+
+    /**
+     * The bone hit at a point of the placement's space (`place()`): of the capsules there, the one
+     * drawn most on top. Null for none. After `update()`.
+     */
+    public hit_at(x: number, y: number): PuppetHit | null {
+        const shapes = this.hit_shapes;
+        const local = this.world_to_local(x, y, this.hit_point);
+        const index = this.hit_test.at(shapes, this.skeleton, local.x, local.y);
+        if (index < 0) {
+            return null;
+        }
+        const surface = this.hit_test.surface(index, local.x, local.y);
+        return this.hit_result(
+            shapes[index],
+            local.x,
+            local.y,
+            surface.nx,
+            surface.ny,
+            0,
+        );
+    }
+
+    /**
+     * Where a segment of the placement's space (a bolt's way this frame) first enters a bone's
+     * capsule: the bone, the point and the way out there. Null for a miss. A bolt through the head
+     * hits the head, not the torso behind it; of two capsules entered at the same place, the one
+     * drawn on top.
+     */
+    public ray_hit(from: PuppetPoint, to: PuppetPoint): PuppetHit | null {
+        const shapes = this.hit_shapes;
+        const a = this.world_to_local(from.x, from.y, this.hit_point);
+        const b = this.world_to_local(to.x, to.y, this.hit_point_2);
+        const found = this.hit_test.ray(
+            shapes,
+            this.skeleton,
+            a.x,
+            a.y,
+            b.x,
+            b.y,
+        );
+        if (found.index < 0) {
+            return null;
+        }
+        const x = a.x + (b.x - a.x) * found.t;
+        const y = a.y + (b.y - a.y) * found.t;
+        const surface = this.hit_test.surface(found.index, x, y);
+        return this.hit_result(
+            shapes[found.index],
+            x,
+            y,
+            surface.nx,
+            surface.ny,
+            found.t,
+        );
+    }
+
+    /**
+     * The bone a circle of the placement's space touches (a club's head, a bite), the one drawn most
+     * on top; the point is the capsule's surface nearest the circle's middle. Null for none.
+     */
+    public overlaps(circle: {
+        readonly x: number;
+        readonly y: number;
+        readonly radius: number;
+    }): PuppetHit | null {
+        const shapes = this.hit_shapes;
+        const local = this.world_to_local(circle.x, circle.y, this.hit_point);
+        const radius = circle.radius / this.placement.scale;
+        const index = this.hit_test.touching(
+            shapes,
+            this.skeleton,
+            local.x,
+            local.y,
+            radius,
+        );
+        if (index < 0) {
+            return null;
+        }
+        const surface = this.hit_test.surface(index, local.x, local.y);
+        return this.hit_result(
+            shapes[index],
+            surface.x,
+            surface.y,
+            surface.nx,
+            surface.ny,
+            0,
+        );
+    }
+
+    /**
+     * A hit turns a bone: an added turn away from `direction` (in the placement's space; a bolt's
+     * way), springing back to the pose (`flinches`), its parent half as much. `strength` 1 kicks
+     * it by `FLINCH_KICK` degrees a second. A bone by number or name; false for none.
+     */
+    public flinch(
+        bone: number | string,
+        direction: PuppetPoint,
+        strength = 1,
+    ): boolean {
+        this.refresh();
+        const index =
+            typeof bone === "string" ? this.skeleton.index_of(bone) : bone;
+        if (index < 0 || index >= this.skeleton.count) {
+            return false;
+        }
+        const turn = this.skeleton.world_rotation(index) * DEGREES;
+        const dx = this.placement.flip_x ? -direction.x : direction.x;
+        const dy = direction.y;
+        const length = Math.hypot(dx, dy);
+        if (length === 0) {
+            return false;
+        }
+        // Pushed at the bone's tip along `direction`: the cross product says which way it turns.
+        const cross = (Math.cos(turn) * dy - Math.sin(turn) * dx) / length;
+        const sign = cross >= 0 ? 1 : -1;
+        this.flinches.kick(
+            this.skeleton,
+            index,
+            sign * strength * FLINCH_KICK * Math.max(0.35, Math.abs(cross)),
+        );
+        return true;
+    }
+
+    /** A hit of the puppet's space as the placement's. */
+    private hit_result(
+        capsule: HitCapsule,
+        x: number,
+        y: number,
+        nx: number,
+        ny: number,
+        t: number,
+    ): PuppetHit {
+        const point = this.local_to_world(x, y);
+        return {
+            bone: capsule.bone,
+            name: capsule.name,
+            x: point.x,
+            y: point.y,
+            normal: { x: this.placement.flip_x ? -nx : nx, y: ny },
+            t,
+        };
     }
 
     /**
