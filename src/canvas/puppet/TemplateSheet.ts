@@ -152,9 +152,12 @@ export function draw_template_sheet(
     context.stroke();
     // The joints, the far side's hollow; the near side's words first, each where it covers no other word.
     context.font = `10px ${font}`;
-    const is_far = (name: string) => name.endsWith("_l") || /_[hf]l$/.test(name);
+    const is_far = (name: string) =>
+        name.endsWith("_l") || /_[hf]l$/.test(name);
     const placed: [number, number, number, number][] = [];
-    const ordered = [...template.joints].sort((a, b) => Number(is_far(a.name)) - Number(is_far(b.name)));
+    const ordered = [...template.joints].sort(
+        (a, b) => Number(is_far(a.name)) - Number(is_far(b.name)),
+    );
     for (const joint of ordered) {
         const at = joints[joint.name];
         if (at === undefined) {
@@ -251,7 +254,10 @@ function label_spot(
             const top = y - 9;
             const overlaps = placed.some(
                 ([left, other_top, other_width, other_height]) =>
-                    x < left + other_width + 2 && x + width + 2 > left && top < other_top + other_height && top + height > other_top,
+                    x < left + other_width + 2 &&
+                    x + width + 2 > left &&
+                    top < other_top + other_height &&
+                    top + height > other_top,
             );
             if (!overlaps) {
                 return [x, y];

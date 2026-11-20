@@ -39,7 +39,9 @@ describe("template_sheet", () => {
         expect(texts.some((text) => text.includes("Zweibeiner"))).toBe(true);
         expect(texts).toContain("Boden");
         // Every joint of the near side gets its word (a far one's may make way).
-        for (const joint of template.joints.filter((each) => !/_l$/.test(each.name))) {
+        for (const joint of template.joints.filter(
+            (each) => !/_l$/.test(each.name),
+        )) {
             expect(texts).toContain(joint.title);
         }
         expect(layout.height).toBeGreaterThan(template.height);
