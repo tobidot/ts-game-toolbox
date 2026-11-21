@@ -401,7 +401,14 @@ describe("fill_grid and normalize_grid", () => {
             fill_grid(grid, noise, { cell_size: 2 });
             best = Math.min(best, performance.now() - start);
         }
-        expect(best).toBeLessThan(1000 / 60);
+        // One frame on a desktop; a shared CI runner gets three, so only a real slowdown fails there.
+        const env = (
+            globalThis as {
+                process?: { env: Record<string, string | undefined> };
+            }
+        ).process?.env;
+        const budget = env?.CI ? 3000 / 60 : 1000 / 60;
+        expect(best).toBeLessThan(budget);
     });
 });
 
