@@ -277,7 +277,8 @@ describe("rig_from_picture", () => {
         expect(
             drawing_from_rig({ ...made.rig, drawing: undefined }, made.pixels),
         ).toBeNull();
-    });
+        // A 640 x 560 Flieger built twice: a few seconds when the whole suite runs in parallel.
+    }, 30_000);
 
     it("a layer moved by an offset rigs as if drawn there, opens again with its offset; none or [0, 0] changes nothing", () => {
         const template = SKELETON_TEMPLATES.zweibeiner;
